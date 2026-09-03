@@ -217,6 +217,7 @@ export function withCallViewModel(mode: MatrixRTCMode) {
             sfuConfig: exampleSfuConfig,
           }),
           advertised$: constant(exampleTransport),
+          error$: constant(null),
         },
         connectionFactory: {
           createConnection(

@@ -53,13 +53,6 @@ export interface ConnectionOpts {
   /** Optional factory to create the LiveKit room, mainly for testing purposes. */
   livekitRoomFactory: () => LivekitRoom;
 }
-export class FailedToStartError extends Error {
-  public constructor(message: string) {
-    super(message);
-    this.name = "FailedToStartError";
-  }
-}
-
 export enum ConnectionState {
   /** The start state of a connection. It has been created but nothing has loaded yet. */
   Initialized = "Initialized",

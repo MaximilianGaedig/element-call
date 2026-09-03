@@ -7,18 +7,10 @@ Please see LICENSE in the repository root for full details.
 
 import { type LivekitTransportConfig } from "matrix-js-sdk/lib/matrixrtc";
 import { type MatrixClient } from "matrix-js-sdk";
-import {
-  combineLatest,
-  distinctUntilChanged,
-  from,
-  map,
-  of,
-  switchMap,
-} from "rxjs";
 import { logger as rootLogger, type Logger } from "matrix-js-sdk/lib/logger";
 import { type CallMembershipIdentityParts } from "matrix-js-sdk/lib/matrixrtc/EncryptionManager";
 
-import { type Behavior } from "../../Behavior.ts";
+import { type Behavior, computed, state } from "../../Behavior.ts";
 import { type ObservableScope } from "../../ObservableScope.ts";
 import { Config } from "../../../config/Config.ts";
 import {
@@ -101,6 +93,11 @@ export interface LocalTransport {
    * or available.
    */
   active$: Behavior<LocalTransportWithSFUConfig | null>;
+  /**
+   * The first error that prevented us from determining or authenticating with
+   * the transport, if any. Such errors are fatal.
+   */
+  error$: Behavior<Error | null>;
 }
 
 /**
@@ -128,83 +125,105 @@ export const createLocalTransport$ = ({
     logger: logger,
   });
 
-  // Get the preferred transport from the current deployment.
-  const discoveredTransport$ = from(
-    transportDiscovery.discoverPreferredTransport(),
-  );
+  const error$ = state<Error | null>(null);
+  const fail = (e: Error): void => {
+    if (error$.peek() === null) error$.value = e;
+    else logger.error("Further transport error", e);
+  };
 
-  const preferredConfig$ = customLivekitUrl.value$
-    .pipe(
-      switchMap((customUrl) => {
-        if (customUrl) {
-          return of({
-            type: "livekit",
-            livekit_service_url: customUrl,
-          } as LivekitTransportConfig);
-        } else {
-          return discoveredTransport$;
-        }
-      }),
-    )
-    .pipe(
-      map((config) => {
-        if (!config) {
-          // Bubbled up from the preferredConfig$ observable.
-          throw new MatrixRTCTransportMissingError(client.getDomain() ?? "");
-        }
-        return config;
-      }),
-      distinctUntilChanged(areLivekitTransportsEqual),
+  // The transport we'd like to use: a custom URL from the settings, or
+  // otherwise the one discovered for this deployment.
+  const preferredConfig$ = state<LivekitTransportConfig | null>(null);
+  scope.effect(() => {
+    const customUrl = customLivekitUrl.value$.value;
+    if (customUrl) {
+      preferredConfig$.value = {
+        type: "livekit",
+        livekit_service_url: customUrl,
+      };
+      return;
+    }
+    let stale = false;
+    transportDiscovery.discoverPreferredTransport().then(
+      (config) => {
+        if (stale) return;
+        if (config) preferredConfig$.value = config;
+        else fail(new MatrixRTCTransportMissingError(client.getDomain() ?? ""));
+      },
+      (e: unknown) => {
+        if (!stale)
+          fail(
+            e instanceof Error ? e : new Error("Transport discovery failed"),
+          );
+      },
     );
+    return (): void => {
+      stale = true;
+    };
+  });
 
-  const preferredTransport$ = combineLatest([preferredConfig$, delayId$]).pipe(
-    switchMap(async ([transport, delayId]) => {
-      try {
-        return await doOpenIdAndJWTFromUrl(
-          transport,
-          forceJwtEndpoint,
-          ownMembershipIdentity,
-          roomId,
-          client,
-          delayId ?? undefined,
-          logger,
-        );
-      } catch (e) {
+  // Authenticate with the preferred transport, again whenever the delay ID
+  // changes so that the JWT service learns about the new delayed event.
+  const preferredTransport$ = state<LocalTransportWithSFUConfig | null>(null);
+  scope.effect(() => {
+    const transport = preferredConfig$.value;
+    const delayId = delayId$.value;
+    if (transport === null) return;
+    let stale = false;
+    doOpenIdAndJWTFromUrl(
+      transport,
+      forceJwtEndpoint,
+      ownMembershipIdentity,
+      roomId,
+      client,
+      delayId ?? undefined,
+      logger,
+    ).then(
+      (result) => {
+        if (!stale) preferredTransport$.value = result;
+      },
+      (e: unknown) => {
         logger.error(
           `Failed to authenticate to transport ${transport.livekit_service_url}`,
           e,
         );
-        throw mapAuthErrorToUserFriendlyError(e);
-      }
-    }),
-  );
+        if (!stale) fail(mapAuthErrorToUserFriendlyError(e));
+      },
+    );
+    return (): void => {
+      stale = true;
+    };
+  });
 
   // Always publish on and advertise the preferred transport.
   return {
-    advertised$: scope.behavior(
-      preferredTransport$.pipe(
-        map((t) => t.transport),
-        distinctUntilChanged(areLivekitTransportsEqual),
-      ),
-      null,
+    advertised$: computed(
+      () => preferredTransport$.value?.transport ?? null,
+      transportsEqual,
     ),
-    active$: scope.behavior(
-      preferredTransport$.pipe(
-        // XXX: WORK AROUND due to a reconnection glitch.
-        // To remove when we have a proper way to refresh the delegation event ID without refreshing
-        // the whole credentials.
-        // We deliberately hide any changes to the SFU config because we
-        // do not want the app to reconnect whenever the JWT
-        // token changes due to us delegating a new delayed event. The
-        // initial SFU config for the transport is all the app needs.
-        distinctUntilChanged((prev, next) =>
-          areLivekitTransportsEqual(prev.transport, next.transport),
-        ),
-      ),
-      null,
+    // XXX: WORK AROUND due to a reconnection glitch.
+    // To remove when we have a proper way to refresh the delegation event ID without refreshing
+    // the whole credentials.
+    // We deliberately hide any changes to the SFU config because we
+    // do not want the app to reconnect whenever the JWT
+    // token changes due to us delegating a new delayed event. The
+    // initial SFU config for the transport is all the app needs.
+    active$: computed(
+      () => preferredTransport$.value,
+      (a, b) => transportsEqual(a?.transport ?? null, b?.transport ?? null),
     ),
+    error$,
   };
 };
+
+function transportsEqual(
+  a: LivekitTransportConfig | null,
+  b: LivekitTransportConfig | null,
+): boolean {
+  return (
+    a === b || (a !== null && b !== null && areLivekitTransportsEqual(a, b))
+  );
+}
 
 /**
  *  Utility to ensure the user can authenticate with the SFU.

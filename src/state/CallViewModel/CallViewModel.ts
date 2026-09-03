@@ -15,7 +15,6 @@ import {
 } from "livekit-client";
 import { type Room as MatrixRoom } from "matrix-js-sdk";
 import {
-  catchError,
   combineLatest,
   filter,
   fromEvent,
@@ -521,18 +520,7 @@ export function createCallViewModel$(
   const connectionManager = createConnectionManager$({
     scope: scope,
     connectionFactory: connectionFactory,
-    localTransport$: scope.behavior(
-      localTransport$.pipe(
-        switchMap((t) => t.active$),
-        catchError((e: unknown) => {
-          logger.info(
-            "could not pass local transport to createConnectionManager$. localTransport$ threw an error",
-            e,
-          );
-          return of(null);
-        }),
-      ),
-    ),
+    localTransport$: computed(() => localTransport$.value.active$.value),
     remoteTransports$: membershipsAndTransports.transports$,
     logger: logger,
     ownMembershipIdentity,
@@ -1481,36 +1469,45 @@ export function createCallViewModel$(
   const toggleScreenSharing =
     options.toggleScreensharing ?? localMembership.toggleScreenSharing;
 
-  const errors$ = scope.behavior<{
+  const errors$ = computed<{
     transportError?: ElementCallError;
     matrixError?: ElementCallError;
     connectionError?: ElementCallError;
     publishError?: ElementCallError;
-  } | null>(
-    localMembership.localMemberState$.pipe(
-      map((value) => {
-        const returnObject: {
-          transportError?: ElementCallError;
-          matrixError?: ElementCallError;
-          connectionError?: ElementCallError;
-          publishError?: ElementCallError;
-        } = {};
-        if (value instanceof ElementCallError) return { transportError: value };
-        if (value === TransportState.Waiting) return null;
-        if (value.matrix instanceof ElementCallError)
-          returnObject.matrixError = value.matrix;
-        if (value.media instanceof ElementCallError)
-          returnObject.publishError = value.media;
-        else if (
-          typeof value.media === "object" &&
-          value.media.connection instanceof ElementCallError
-        )
-          returnObject.connectionError = value.media.connection;
-        return returnObject;
-      }),
-    ),
-    null,
-  );
+  } | null>(() => {
+    const value = localMembership.localMemberState$.value;
+    const returnObject: {
+      transportError?: ElementCallError;
+      matrixError?: ElementCallError;
+      connectionError?: ElementCallError;
+      publishError?: ElementCallError;
+    } = {};
+    if (value instanceof ElementCallError) return { transportError: value };
+    if (value === TransportState.Waiting) return null;
+    if (value.matrix instanceof ElementCallError)
+      returnObject.matrixError = value.matrix;
+    if (value.media instanceof ElementCallError)
+      returnObject.publishError = value.media;
+    else if (
+      typeof value.media === "object" &&
+      value.media.connection instanceof ElementCallError
+    )
+      returnObject.connectionError = value.media.connection;
+    return returnObject;
+  });
+
+  // Once a fatal error has occurred it stays, even if the state moves on
+  const fatalError$ = state<ElementCallError | null>(null);
+  scope.effect(() => {
+    const errors = errors$.value;
+    logger.debug("errors$ to compute any fatal errors:", errors);
+    const error =
+      errors?.transportError ??
+      errors?.matrixError ??
+      errors?.connectionError ??
+      null;
+    if (error !== null) fatalError$.value = error;
+  });
 
   return {
     autoLeave$: autoLeave$,
@@ -1529,21 +1526,7 @@ export function createCallViewModel$(
     hoverScreen: (): void => screenHover$.next(),
     unhoverScreen: (): void => screenUnhover$.next(),
 
-    fatalError$: scope.behavior(
-      errors$.pipe(
-        map((errors) => {
-          logger.debug("errors$ to compute any fatal errors:", errors);
-          return (
-            errors?.transportError ??
-            errors?.matrixError ??
-            errors?.connectionError ??
-            null
-          );
-        }),
-        filter((error) => error !== null),
-      ),
-      null,
-    ),
+    fatalError$,
     allConnections$,
     participantCount$: participantCount$,
     keyRotationSuppressed$: keyRotationSuppressed$,

@@ -20,7 +20,6 @@ import {
   afterAll,
   beforeEach,
 } from "vitest";
-import { map } from "rxjs";
 import { logger } from "matrix-js-sdk/lib/logger";
 import { type LocalTrack } from "livekit-client";
 
@@ -33,7 +32,7 @@ import {
   mockConfig,
   mockLivekitRoom,
   mockMuteStates,
-  withRxTestScheduler,
+  withTestScheduler,
   ownMemberMock,
 } from "../../../utils/test";
 import {
@@ -198,29 +197,27 @@ describe("LocalMembership", () => {
     roomId: "!test-room-id:example.org",
   };
 
-  it("throws error on missing RTC config error", () => {
-    withRxTestScheduler(({ scope, hot, behavior, expectObservable }) => {
-      const localTransport$ = scope.behavior<null | LivekitTransportConfig>(
-        hot("1ms #", {}, new MatrixRTCTransportMissingError("domain.com")),
-        null,
-      );
-
+  it("fails on missing RTC config error", () => {
+    withTestScheduler(({ scope, behavior, expectObservable }) => {
       // we do not need any connection data since we want to fail before reaching that.
       const mockConnectionManager = {
-        transports$: scope.behavior(localTransport$.pipe(map((t) => [t]))),
         connectionManagerData$: constant(new ConnectionManagerData()),
       };
 
       const aLocalTransport: LocalTransport = {
-        advertised$: localTransport$,
-        active$: behavior("a", { a: null }),
+        advertised$: constant(null),
+        active$: constant(null),
+        error$: behavior("ne", {
+          n: null,
+          e: new MatrixRTCTransportMissingError("domain.com"),
+        }),
       };
 
       const localMembership = createLocalMembership$({
         scope,
         ...defaultCreateLocalMemberValues,
         connectionManager: mockConnectionManager,
-        localTransport$: behavior("a", { a: aLocalTransport }),
+        localTransport$: constant(aLocalTransport),
       });
       localMembership.requestJoinAndPublish();
 
@@ -232,23 +229,21 @@ describe("LocalMembership", () => {
   });
 
   it("Should not publish to active transport if advertised has errors", () => {
-    withRxTestScheduler(({ scope, hot, behavior, expectObservable }) => {
-      const advertised$ = scope.behavior<null | LivekitTransportConfig>(
-        hot("--#", {}, new FailToGetOpenIdToken(new Error("foo"))),
-        null,
-      );
-
+    withTestScheduler(({ scope, behavior, expectObservable }) => {
       // Populate a connection for active
       const connectionManagerData = new ConnectionManagerData();
       connectionManagerData.add(connectionTransportBConnected, []);
       const mockConnectionManager = {
-        transports$: constant([bTransport]),
         connectionManagerData$: constant(connectionManagerData),
       };
 
       const aLocalTransport: LocalTransport = {
-        advertised$,
-        active$: behavior("a", { n: null, a: bTransportWithSFUConfig }),
+        advertised$: constant(null),
+        active$: constant(bTransportWithSFUConfig),
+        error$: behavior("n-e", {
+          n: null,
+          e: new FailToGetOpenIdToken(new Error("foo")),
+        }),
       };
 
       defaultCreateLocalMemberValues.createPublisherFactory.mockImplementation(
@@ -265,7 +260,7 @@ describe("LocalMembership", () => {
         scope,
         ...defaultCreateLocalMemberValues,
         connectionManager: mockConnectionManager,
-        localTransport$: behavior("a", { a: aLocalTransport }),
+        localTransport$: constant(aLocalTransport),
       });
       localMembership.requestJoinAndPublish();
 
@@ -284,6 +279,7 @@ describe("LocalMembership", () => {
 
     const aLocalTransport: LocalTransport = {
       advertised$: state(aTransport),
+      error$: constant(null),
       active$: state(aTransportWithSFUConfig),
     };
 
@@ -369,6 +365,7 @@ describe("LocalMembership", () => {
     const activeTransport$ = state(aTransportWithSFUConfig);
     const aLocalTransport: LocalTransport = {
       advertised$: state(aTransport),
+      error$: constant(null),
       active$: activeTransport$,
     };
 
@@ -462,6 +459,7 @@ describe("LocalMembership", () => {
 
     const aLocalTransport: LocalTransport = {
       advertised$: state(aTransport),
+      error$: constant(null),
       active$: state(aTransportWithSFUConfig),
     };
 
@@ -502,6 +500,7 @@ describe("LocalMembership", () => {
 
     const aLocalTransport: LocalTransport = {
       advertised$: state(aTransport),
+      error$: constant(null),
       active$: activeTransport$,
     };
 
@@ -679,6 +678,7 @@ describe("LocalMembership", () => {
         },
         localTransport$: state({
           advertised$: state(aTransport),
+          error$: constant(null),
           active$: state(aTransportWithSFUConfig),
         }),
       });
@@ -720,6 +720,7 @@ describe("LocalMembership", () => {
         },
         localTransport$: state({
           advertised$: state(aTransport),
+          error$: constant(null),
           active$: state(aTransportWithSFUConfig),
         }),
       });
@@ -771,6 +772,7 @@ describe("LocalMembership", () => {
         },
         localTransport$: state({
           advertised$: state(aTransport),
+          error$: constant(null),
           active$: state(aTransportWithSFUConfig),
         }),
       });
@@ -816,6 +818,7 @@ describe("LocalMembership", () => {
         },
         localTransport$: state({
           advertised$: state(aTransport),
+          error$: constant(null),
           active$: state(aTransportWithSFUConfig),
         }),
       });

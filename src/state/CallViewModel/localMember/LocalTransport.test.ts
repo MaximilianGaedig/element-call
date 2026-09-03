@@ -15,7 +15,6 @@ import {
   vi,
 } from "vitest";
 import { type LivekitTransportConfig } from "matrix-js-sdk/lib/matrixrtc";
-import { filter, lastValueFrom } from "rxjs";
 import fetchMock from "fetch-mock";
 
 import {
@@ -30,7 +29,6 @@ import {
   type LocalTransportWithSFUConfig,
 } from "./LocalTransport";
 import { constant } from "../../Behavior";
-import { ObservableScope } from "../../ObservableScope";
 import {
   MatrixRTCTransportMissingError,
   FailToGetOpenIdToken,
@@ -50,8 +48,8 @@ describe("LocalTransport", () => {
 
   beforeEach(() => vi.clearAllMocks());
 
-  it("throws if config is missing", async () => {
-    const { advertised$, active$ } = createLocalTransport$({
+  it("fails if config is missing", async () => {
+    const { advertised$, active$, error$ } = createLocalTransport$({
       scope: testScope(),
       roomId: "!room:example.org",
       client: {
@@ -69,17 +67,16 @@ describe("LocalTransport", () => {
     });
     await flushPromises();
 
-    expect(() => advertised$.value).toThrow(
+    expect(error$.value).toEqual(
       new MatrixRTCTransportMissingError("example.org"),
     );
-    expect(() => active$.value).toThrow(
-      new MatrixRTCTransportMissingError("example.org"),
-    );
+    expect(advertised$.value).toBe(null);
+    expect(active$.value).toBe(null);
   });
 
-  it("throws FailToGetOpenIdToken when OpenID fetch fails", async () => {
+  it("fails with FailToGetOpenIdToken when OpenID fetch fails", async () => {
     // Provide a valid config so makeTransportInternal resolves a transport
-    const scope = new ObservableScope();
+    const scope = testScope();
     mockConfig({
       livekit: { livekit_service_url: "https://lk.example.org" },
     });
@@ -90,9 +87,7 @@ describe("LocalTransport", () => {
         throw new FailToGetOpenIdToken(new Error("no openid"));
       },
     );
-    const observations: unknown[] = [];
-    const errors: Error[] = [];
-    const { advertised$, active$ } = createLocalTransport$({
+    const { advertised$, active$, error$ } = createLocalTransport$({
       scope,
       roomId: "!example_room_id",
       client: {
@@ -107,18 +102,15 @@ describe("LocalTransport", () => {
       forceJwtEndpoint: JwtEndpointVersion.Legacy,
       delayId$: constant("delay_id_mock"),
     });
-    active$.subscribe(
-      (o) => observations.push(o),
-      (e) => errors.push(e),
-    );
+    expect(error$.value).toBe(null);
     resolver.resolve();
     await flushPromises();
 
-    const expectedError = new FailToGetOpenIdToken(new Error("no openid"));
-    expect(observations).toStrictEqual([null]);
-    expect(errors).toStrictEqual([expectedError]);
-    expect(() => advertised$.value).toThrow(expectedError);
-    expect(() => active$.value).toThrow(expectedError);
+    expect(error$.value).toEqual(
+      new FailToGetOpenIdToken(new Error("no openid")),
+    );
+    expect(advertised$.value).toBe(null);
+    expect(active$.value).toBe(null);
   });
 
   it("emits preferred transport after OpenID resolves", async () => {
@@ -290,13 +282,13 @@ describe("LocalTransport", () => {
       openIdResolver.reject(
         new FailToGetOpenIdToken(new Error("Test driven error")),
       );
-      await expect(async () =>
-        lastValueFrom(createLocalTransport$(localTransportOpts).active$),
-      ).rejects.toThrow(expect.any(FailToGetOpenIdToken));
+      const { error$ } = createLocalTransport$(localTransportOpts);
+      await flushPromises();
+      expect(error$.value).toBeInstanceOf(FailToGetOpenIdToken);
     });
 
-    it("throws if no options are available", async () => {
-      const { advertised$, active$ } = createLocalTransport$({
+    it("fails if no options are available", async () => {
+      const { advertised$, active$, error$ } = createLocalTransport$({
         scope: testScope(),
         ownMembershipIdentity: ownMemberMock,
         roomId: "!example_room_id",
@@ -314,12 +306,11 @@ describe("LocalTransport", () => {
       });
       await flushPromises();
 
-      expect(() => advertised$.value).toThrow(
+      expect(error$.value).toEqual(
         new MatrixRTCTransportMissingError("example.org"),
       );
-      expect(() => active$.value).toThrow(
-        new MatrixRTCTransportMissingError("example.org"),
-      );
+      expect(advertised$.value).toBe(null);
+      expect(active$.value).toBe(null);
     });
   });
 
@@ -353,12 +344,12 @@ describe("LocalTransport", () => {
 
     const advertisedValues: LivekitTransportConfig[] = [];
     const activeValues: LocalTransportWithSFUConfig[] = [];
-    advertised$
-      .pipe(filter((v) => v !== null))
-      .subscribe((t) => advertisedValues.push(t));
-    active$
-      .pipe(filter((v) => v !== null))
-      .subscribe((t) => activeValues.push(t));
+    advertised$.subscribe((t) => {
+      if (t !== null) advertisedValues.push(t);
+    });
+    active$.subscribe((t) => {
+      if (t !== null) activeValues.push(t);
+    });
 
     await flushPromises();
 
@@ -372,7 +363,7 @@ describe("LocalTransport", () => {
       "https://lk.example.org",
     );
 
-    expect(authCallSpy).toHaveBeenCalledTimes(2);
+    expect(authCallSpy).toHaveBeenCalledTimes(1);
     // Now emits 3 new delays id
     delayId$.value = "delay_id_1";
     await flushPromises();
@@ -386,9 +377,7 @@ describe("LocalTransport", () => {
     expect(activeValues.length).toEqual(1);
 
     // Still we should have updated the delayID to auth
-    expect(authCallSpy).toHaveBeenCalledTimes(
-      4 * 2 /* 2 calls for each delayId ?? why */,
-    );
+    expect(authCallSpy).toHaveBeenCalledTimes(4);
 
     expect(authCallSpy).toHaveBeenLastCalledWith(
       expect.anything(),

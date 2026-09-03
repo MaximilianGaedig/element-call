@@ -18,25 +18,11 @@ import {
   type LivekitTransportConfig,
   type MatrixRTCSession,
 } from "matrix-js-sdk/lib/matrixrtc";
-import {
-  catchError,
-  combineLatest,
-  distinctUntilChanged,
-  from,
-  fromEvent,
-  map,
-  type Observable,
-  of,
-  pairwise,
-  startWith,
-  switchMap,
-  tap,
-} from "rxjs";
 import { type Logger } from "matrix-js-sdk/lib/logger";
 import { deepCompare } from "matrix-js-sdk/lib/utils";
 import { type CallMembershipIdentityParts } from "matrix-js-sdk/lib/matrixrtc/EncryptionManager";
 
-import { type Behavior, fromEvents } from "../../Behavior.ts";
+import { type Behavior, computed, fromEvents, state } from "../../Behavior.ts";
 import { type IConnectionManager } from "../remoteMembers/ConnectionManager.ts";
 import { type ObservableScope } from "../../ObservableScope.ts";
 import { type Publisher } from "./Publisher.ts";
@@ -63,12 +49,10 @@ import { Config } from "../../../config/Config.ts";
 import {
   ConnectionState,
   type Connection,
-  type FailedToStartError,
 } from "../remoteMembers/Connection.ts";
 import { type HomeserverConnected } from "./HomeserverConnected.ts";
 import { type LocalTransport } from "./LocalTransport.ts";
 import { areLivekitTransportsEqual } from "../remoteMembers/MatrixLivekitMembers.ts";
-import { state } from "../../Behavior";
 import { PUBLICATION_EVENTS } from "../../trackReference.ts";
 
 export enum TransportState {
@@ -102,7 +86,8 @@ export enum TrackState {
 export type LocalMemberMediaState =
   | {
       tracks: TrackState;
-      connection: ConnectionState | FailedToStartError;
+      /** The state of the local connection, or `null` if there is none yet. */
+      connection: ConnectionState | Error | null;
     }
   | PublishState
   | ElementCallError;
@@ -214,100 +199,79 @@ export const createLocalMembership$ = ({
   const logger = parentLogger.getChild("[LocalMembership]");
   logger.debug(`Creating local membership..`);
 
-  // We consider error on the transport as fatal.
-  // Whether it is the active transport or the preferred transport.
-  const handleTransportError = (e: unknown): Observable<null> => {
-    let error: ElementCallError;
-    if (e instanceof ElementCallError) {
-      error = e;
-    } else {
-      error = new UnknownCallError(
-        e instanceof Error ? e : new Error("Unknown error from localTransport"),
-      );
-    }
-    setTransportError(error);
-    return of(null);
-  };
+  const transportsEqual = (
+    a: LivekitTransportConfig | null,
+    b: LivekitTransportConfig | null,
+  ): boolean =>
+    a === b || (a !== null && b !== null && areLivekitTransportsEqual(a, b));
+
+  // We consider errors on the transport as fatal, whether they concern the
+  // active transport or the preferred transport.
+  const fatalTransportError$ = computed<ElementCallError | null>(() => {
+    const e = localTransport$.value.error$.value;
+    if (e === null) return null;
+    return e instanceof ElementCallError
+      ? e
+      : new UnknownCallError(
+          e instanceof Error
+            ? e
+            : new Error("Unknown error from localTransport"),
+        );
+  });
 
   // This is the transport that we will advertise in our membership.
-  const advertisedTransport$ = localTransport$.pipe(
-    switchMap((lt) => lt.advertised$),
-    catchError(handleTransportError),
-    distinctUntilChanged(areLivekitTransportsEqual),
+  const advertisedTransport$ = computed(
+    () => localTransport$.value.advertised$.value,
+    transportsEqual,
   );
 
-  // Unwrap the local transport and set the state of the LocalMembership to error in case the transport is an error.
-  const activeTransport$ = scope.behavior(
-    localTransport$.pipe(
-      switchMap((lt) => {
-        return combineLatest([lt.active$, lt.advertised$]).pipe(
-          map(([active, advertised]) => {
-            // Our policy is to not publish to another transport if our prefered transport is miss-configured
-            if (advertised == null) return null;
+  const activeTransport$ = computed(() => {
+    const transport = localTransport$.value;
+    // Our policy is to not publish to another transport if our preferred
+    // transport is misconfigured
+    if (transport.advertised$.value == null) return null;
+    return transport.active$.value?.transport ?? null;
+  }, transportsEqual);
 
-            return active?.transport ?? null;
-          }),
-        );
-      }),
-      catchError(handleTransportError),
-      distinctUntilChanged(areLivekitTransportsEqual),
-    ),
-  );
-
-  const localConnection$ = scope.behavior(
-    combineLatest([
-      connectionManager.connectionManagerData$,
-      activeTransport$,
-    ]).pipe(
-      map(([connectionData, localTransport]) => {
-        if (localTransport === null) {
-          return null;
-        }
-
-        return connectionData.getConnectionForTransport(localTransport);
-      }),
-      tap((connection) => {
-        logger.info(
-          `Local connection updated: ${connection?.transport?.livekit_service_url}`,
-        );
-      }),
-    ),
-  );
-
-  // Tracks error that happen when creating the local tracks.
-  const mediaErrors$ = localConnection$.pipe(
-    switchMap((connection) => {
-      if (!connection) {
-        return of(null);
-      } else {
-        return fromEvent(
-          connection.livekitRoom,
-          RoomEvent.MediaDevicesError,
-          (error: Error) => {
-            return MediaDeviceFailure.getFailure(error) ?? null;
-          },
-        );
-      }
-    }),
-  );
-
-  mediaErrors$.pipe(scope.bind()).subscribe((error) => {
-    if (error) {
-      // This is a MediaDevice error, can be PermissionDenied, NotFound, DeviceInUse, Other.
-      // Will also occurs if you cancel screen sharing browser prompt.
-      // This is not necessarily fatal, since the user might be able to join without media.
-      // XXX We might want to give some user feedback here to let them know their media is not working.
-      logger.error(`Failed to create local tracks:`, error);
-    }
+  const localConnection$ = computed(() => {
+    const transport = activeTransport$.value;
+    if (transport === null) return null;
+    return connectionManager.connectionManagerData$.value.getConnectionForTransport(
+      transport,
+    );
   });
+  scope.effect(() => {
+    logger.info(
+      `Local connection updated: ${localConnection$.value?.transport?.livekit_service_url}`,
+    );
+  });
+
+  // Media device errors can be PermissionDenied, NotFound, DeviceInUse, Other.
+  // They also occur if you cancel the screen sharing browser prompt.
+  // This is not necessarily fatal, since the user might be able to join without media.
+  // XXX We might want to give some user feedback here to let them know their media is not working.
+  scope.effect(() => {
+    const connection = localConnection$.value;
+    if (!connection) return;
+    const onMediaDevicesError = (error: Error): void => {
+      const failure = MediaDeviceFailure.getFailure(error);
+      if (failure) logger.error(`Failed to create local tracks:`, failure);
+    };
+    connection.livekitRoom.on(RoomEvent.MediaDevicesError, onMediaDevicesError);
+    return (): void => {
+      connection.livekitRoom.off(
+        RoomEvent.MediaDevicesError,
+        onMediaDevicesError,
+      );
+    };
+  });
+
   // MATRIX RELATED
 
-  // This should be used in a combineLatest with publisher$ to connect.
-  // to make it possible to call startTracks before the preferredTransport$ has resolved.
-  const trackStartRequested = Promise.withResolvers<void>();
-
-  // This should be used in a combineLatest with publisher$ to connect.
-  // to make it possible to call startTracks before the preferredTransport$ has resolved.
+  // Whether the user has asked for tracks to be started. This can happen before
+  // the transport has resolved.
+  const tracksRequested$ = state(false);
+  // Whether the user has asked to join the call and publish media.
   const joinAndPublishRequested$ = state(false);
 
   /**
@@ -316,12 +280,12 @@ export const createLocalMembership$ = ({
   const publisher$ = state<Publisher | null>(null);
 
   const startTracks = (): void => {
-    trackStartRequested.resolve();
+    tracksRequested$.value = true;
     // This used to return the tracks, but now they are only accessible via the publisher.
   };
 
   const requestJoinAndPublish = (): void => {
-    trackStartRequested.resolve();
+    tracksRequested$.value = true;
     joinAndPublishRequested$.value = true;
   };
 
@@ -353,27 +317,18 @@ export const createLocalMembership$ = ({
   });
 
   // Use reconcile here to not run concurrent createAndSetupTracks calls
-  // `tracks$` will update once they are ready.
   scope.reconcile(
-    scope.behavior(
-      combineLatest([
-        publisher$ /*, tracks$*/,
-        from(trackStartRequested.promise),
-      ]),
-      null,
-    ),
-    async (valueIfReady) => {
-      if (!valueIfReady) return;
-      const [publisher] = valueIfReady;
+    computed(() => (tracksRequested$.value ? publisher$.value : null)),
+    async (publisher) => {
       if (publisher) {
         await publisher.createAndSetupTracks().catch((e) => logger.error(e));
       }
     },
   );
 
-  // Based on `connectRequested$` we start publishing tracks. (once they are there!)
+  // Based on `joinAndPublishRequested$` we start publishing tracks. (once they are there!)
   scope.reconcile(
-    scope.behavior(combineLatest([publisher$, joinAndPublishRequested$])),
+    computed(() => [publisher$.value, joinAndPublishRequested$.value] as const),
     async ([publisher, shouldJoinAndPublish]) => {
       // Get the current publishing state to avoid redundant calls.
       const isPublishing = publisher?.shouldPublish === true;
@@ -397,7 +352,7 @@ export const createLocalMembership$ = ({
 
   // STATE COMPUTATION
 
-  // These are non fatal since we can join a room and concume media even though publishing failed.
+  // These are non fatal since we can join a room and consume media even though publishing failed.
   const publishError$ = state<ElementCallError | null>(null);
   const setPublishError = (e: ElementCallError): void => {
     if (publishError$.value !== null) {
@@ -407,58 +362,25 @@ export const createLocalMembership$ = ({
     }
   };
 
-  const fatalTransportError$ = state<ElementCallError | null>(null);
-
-  const setTransportError = (e: ElementCallError): void => {
-    if (fatalTransportError$.value !== null) {
-      logger.error("Multiple Transport Errors:", e);
-    } else {
-      fatalTransportError$.value = e;
-    }
-  };
-
-  const localConnectionState$ = localConnection$.pipe(
-    switchMap((connection) => (connection ? connection.state$ : of(null))),
+  const localConnectionState$ = computed(
+    () => localConnection$.value?.state$.value ?? null,
   );
 
-  const mediaState$: Behavior<LocalMemberMediaState> = scope.behavior(
-    combineLatest([
-      localConnectionState$,
-      activeTransport$,
-      joinAndPublishRequested$,
-      from(trackStartRequested.promise).pipe(
-        map(() => true),
-        startWith(false),
-      ),
-    ]).pipe(
-      map(
-        ([
-          localConnectionState,
-          localTransport,
-          shouldPublish,
-          shouldStartTracks,
-        ]) => {
-          if (!localTransport) return null;
-          const trackState: TrackState = shouldStartTracks
-            ? TrackState.Ready
-            : TrackState.WaitingForUser;
+  const mediaState$: Behavior<LocalMemberMediaState | null> = computed(() => {
+    if (!activeTransport$.value) return null;
+    const trackState: TrackState = tracksRequested$.value
+      ? TrackState.Ready
+      : TrackState.WaitingForUser;
+    const connection = localConnectionState$.value;
+    if (
+      connection !== ConnectionState.LivekitConnected ||
+      trackState !== TrackState.Ready
+    )
+      return { connection, tracks: trackState };
+    if (!joinAndPublishRequested$.value) return PublishState.WaitingForUser;
+    return PublishState.Publishing;
+  }, deepCompare);
 
-          if (
-            localConnectionState !== ConnectionState.LivekitConnected ||
-            trackState !== TrackState.Ready
-          )
-            return {
-              connection: localConnectionState,
-              tracks: trackState,
-            };
-          if (!shouldPublish) return PublishState.WaitingForUser;
-          // if (!publishing) return PublishState.Starting;
-          return PublishState.Publishing;
-        },
-      ),
-      distinctUntilChanged(deepCompare),
-    ),
-  );
   const fatalMatrixError$ = state<ElementCallError | null>(null);
   const setMatrixError = (e: ElementCallError): void => {
     if (fatalMatrixError$.value !== null) {
@@ -468,130 +390,109 @@ export const createLocalMembership$ = ({
     }
   };
 
-  const localMemberState$ = scope.behavior<LocalMemberState>(
-    combineLatest([
-      mediaState$,
-      homeserverConnected.rtsSession$,
-      fatalMatrixError$,
-      fatalTransportError$,
-      publishError$,
-    ]).pipe(
-      map(
-        ([
-          mediaState,
-          rtcSessionStatus,
-          fatalMatrixError,
-          fatalTransportError,
-          publishError,
-        ]) => {
-          if (fatalTransportError !== null) return fatalTransportError;
-          // `mediaState` will be 'null' until the transport/connection appears.
-          if (mediaState && rtcSessionStatus)
-            return {
-              matrix: fatalMatrixError ?? rtcSessionStatus,
-              media: publishError ?? mediaState,
-            };
-          return TransportState.Waiting;
-        },
-      ),
-    ),
-  );
+  const localMemberState$ = computed<LocalMemberState>(() => {
+    const fatalTransportError = fatalTransportError$.value;
+    if (fatalTransportError !== null) return fatalTransportError;
+    const mediaState = mediaState$.value;
+    const rtcSessionStatus = homeserverConnected.rtsSession$.value;
+    // `mediaState` will be 'null' until the transport/connection appears.
+    if (mediaState && rtcSessionStatus)
+      return {
+        matrix: fatalMatrixError$.value ?? rtcSessionStatus,
+        media: publishError$.value ?? mediaState,
+      };
+    return TransportState.Waiting;
+  });
 
   /**
    * The disconnect reason for the combined Matrix + LiveKit connection, or null
    * when fully connected. Homeserver reasons take priority over livekit.
-   * Both connectivity state and reason come from the same combineLatest emission,
-   * avoiding any race between the two.
    */
-  const connectionDisconnectReason$ = scope.behavior(
-    combineLatest([
-      homeserverConnected.combined$,
-      localConnectionState$.pipe(
-        map((state) => state === ConnectionState.LivekitConnected),
-      ),
-    ]).pipe(
-      map(([[hsConnected, hsReason], livekitConnected]) => {
-        if (!hsConnected) return hsReason!;
-        if (!livekitConnected) return "livekit" as const;
-        return null;
-      }),
-      tap((v) => logger.debug("livekit+matrix: Connected state changed", v)),
-    ),
-  );
+  const connectionDisconnectReason$ = computed(() => {
+    const [hsConnected, hsReason] = homeserverConnected.combined$.value;
+    if (!hsConnected) return hsReason!;
+    if (localConnectionState$.value !== ConnectionState.LivekitConnected)
+      return "livekit" as const;
+    return null;
+  });
+  scope.effect(() => {
+    logger.debug(
+      "livekit+matrix: Connected state changed",
+      connectionDisconnectReason$.value,
+    );
+  });
 
   /**
    * Whether we are "fully" connected to the call. Accounts for both the
    * connection to the MatrixRTC session and the LiveKit publish connection.
    */
-  const matrixAndLivekitConnected$ = scope.behavior(
-    connectionDisconnectReason$.pipe(map((reason) => reason === null)),
+  const matrixAndLivekitConnected$ = computed(
+    () => connectionDisconnectReason$.value === null,
   );
 
   /**
-   * Whether we should tell the user that we're reconnecting to the call.
+   * Whether we should tell the user that we're reconnecting to the call: we
+   * were connected, and now we're not.
    */
-  const reconnecting$ = scope.behavior(
-    matrixAndLivekitConnected$.pipe(
-      pairwise(),
-      map(([prev, current]) => prev === true && current === false),
-    ),
-    false,
-  );
+  const reconnecting$ = state(false);
+  let wasConnected = matrixAndLivekitConnected$.value;
+  scope.effect(() => {
+    const connected = matrixAndLivekitConnected$.value;
+    reconnecting$.value = wasConnected && !connected;
+    wasConnected = connected;
+  });
 
+  // Report completed reconnection cycles to analytics. Only begin tracking
+  // when transitioning FROM connected (null → non-null), so that the initial
+  // startup phase — where we may be non-null before the first real
+  // connection — isn't counted as a reconnect.
   let reconnectStart: {
     time: number;
     reason: NonNullable<(typeof connectionDisconnectReason$)["value"]>;
   } | null = null;
-  connectionDisconnectReason$
-    .pipe(distinctUntilChanged(), pairwise(), scope.bind())
-    .subscribe(([prev, reason]) => {
-      if (reason !== null) {
-        // Only begin tracking when transitioning FROM connected (null → non-null).
-        // This prevents the initial startup phase — where we may be non-null before
-        // the first real connection — from being counted as a reconnect.
-        if (prev === null) {
-          reconnectStart ??= { time: Date.now(), reason };
-        }
-      } else if (reconnectStart !== null) {
-        PosthogAnalytics.instance.eventCallReconnecting.track(
-          roomId,
-          reconnectStart.reason,
-          (Date.now() - reconnectStart.time) / 1000,
-        );
-        PosthogAnalytics.instance.eventCallEnded.cacheReconnecting(
-          reconnectStart.reason,
-        );
-        reconnectStart = null;
-      }
-    });
+  let prevReason = connectionDisconnectReason$.value;
+  scope.effect(() => {
+    const reason = connectionDisconnectReason$.value;
+    if (reason !== null) {
+      if (prevReason === null) reconnectStart ??= { time: Date.now(), reason };
+    } else if (reconnectStart !== null) {
+      PosthogAnalytics.instance.eventCallReconnecting.track(
+        roomId,
+        reconnectStart.reason,
+        (Date.now() - reconnectStart.time) / 1000,
+      );
+      PosthogAnalytics.instance.eventCallEnded.cacheReconnecting(
+        reconnectStart.reason,
+      );
+      reconnectStart = null;
+    }
+    prevReason = reason;
+  });
 
-  // inform the widget about the connect and disconnect intent from the user.
-  scope
-    .behavior(joinAndPublishRequested$.pipe(pairwise(), scope.bind()), [
-      undefined,
-      joinAndPublishRequested$.value,
-    ])
-    .subscribe(([prev, current]) => {
-      if (!widget) return;
-      // JOIN prev=false (was left) => current-true (now joiend)
-      if (!prev && current) {
-        widget.api.transport
-          .send(ElementWidgetActions.JoinCall, {})
-          .catch((e) => {
-            logger.error("Failed to send join action", e);
-          });
-      }
-      // LEAVE prev=false (was joined) => current-true (now left)
-      if (prev && !current) {
-        widget.api.transport
-          .send(ElementWidgetActions.HangupCall, {})
-          .catch((e) => {
-            logger.error("Failed to send hangup action", e);
-          });
-      }
-    });
+  // Inform the widget about the connect and disconnect intent from the user.
+  let wasJoinRequested = joinAndPublishRequested$.value;
+  scope.effect(() => {
+    const joinRequested = joinAndPublishRequested$.value;
+    const prev = wasJoinRequested;
+    wasJoinRequested = joinRequested;
+    if (!widget || prev === joinRequested) return;
+    widget.api.transport
+      .send(
+        joinRequested
+          ? ElementWidgetActions.JoinCall
+          : ElementWidgetActions.HangupCall,
+        {},
+      )
+      .catch((e) => {
+        logger.error(
+          `Failed to send ${joinRequested ? "join" : "hangup"} action`,
+          e,
+        );
+      });
+  });
 
-  muteStates.video.enabled$.pipe(scope.bind()).subscribe((videoEnabled) => {
+  scope.effect(() => {
+    const videoEnabled = muteStates.video.enabled$.value;
     void matrixRTCSession
       .updateCallIntent(videoEnabled ? "video" : "audio")
       .catch((e) => {
@@ -605,10 +506,11 @@ export const createLocalMembership$ = ({
       });
   });
 
-  // Keep matrix rtc session in sync with advertisedTransport$, connectRequested$
+  // Keep matrix rtc session in sync with advertisedTransport$, joinAndPublishRequested$
   scope.reconcile(
-    scope.behavior(
-      combineLatest([advertisedTransport$, joinAndPublishRequested$]),
+    computed(
+      () =>
+        [advertisedTransport$.value, joinAndPublishRequested$.value] as const,
     ),
     async ([transport, shouldConnect]) => {
       if (!transport) return;
@@ -634,63 +536,54 @@ export const createLocalMembership$ = ({
     },
   );
 
-  const participant$ = scope.behavior(
-    localConnection$.pipe(
-      map((c) => c?.livekitRoom?.localParticipant ?? null),
-      tap((p) => {
-        logger.debug("participant$ updated:", p?.identity);
-      }),
-    ),
+  const participant$ = computed(
+    () => localConnection$.value?.livekitRoom?.localParticipant ?? null,
   );
+  scope.effect(() => {
+    logger.debug("participant$ updated:", participant$.value?.identity);
+  });
 
   // Pause upstream of all local media tracks when we're disconnected from
   // MatrixRTC, because it can be an unpleasant surprise for the app to say
   // 'reconnecting' and yet still be transmitting your media to others.
-  // We use matrixConnected$ rather than reconnecting$ because we want to
-  // pause tracks during the initial joining sequence too until we're sure
+  // We use the homeserver connection rather than reconnecting$ because we want
+  // to pause tracks during the initial joining sequence too until we're sure
   // that our own media is displayed on screen.
   // TODO refactor this based no livekitState$
-  combineLatest([participant$, homeserverConnected.combined$])
-    .pipe(scope.bind())
-    .subscribe(([participant, [connected]]) => {
-      if (!participant) return;
-      const publications = participant.trackPublications.values();
-      if (connected) {
-        for (const p of publications) {
-          if (p.track?.isUpstreamPaused === true) {
-            const kind = p.track.kind;
-            logger.info(
-              `Resuming ${kind} track (MatrixRTC connection present)`,
-            );
-            p.track
-              .resumeUpstream()
-              .catch((e) =>
-                logger.error(
-                  `Failed to resume ${kind} track after MatrixRTC reconnection`,
-                  e,
-                ),
-              );
-          }
-        }
-      } else {
-        for (const p of publications) {
-          if (p.track?.isUpstreamPaused === false) {
-            const kind = p.track.kind;
-            logger.info(
-              `Pausing ${kind} track (uncertain MatrixRTC connection)`,
-            );
-            p.track
-              .pauseUpstream()
-              .catch((e) =>
-                logger.error(
-                  `Failed to pause ${kind} track after entering uncertain MatrixRTC connection`,
-                  e,
-                ),
-              );
-          }
-        }
+  scope.effect(() => {
+    const participant = participant$.value;
+    const [connected] = homeserverConnected.combined$.value;
+    if (!participant) return;
+    for (const p of participant.trackPublications.values()) {
+      const track = p.track;
+      if (!track) continue;
+      if (connected && track.isUpstreamPaused === true) {
+        logger.info(
+          `Resuming ${track.kind} track (MatrixRTC connection present)`,
+        );
+        track
+          .resumeUpstream()
+          .catch((e) =>
+            logger.error(
+              `Failed to resume ${track.kind} track after MatrixRTC reconnection`,
+              e,
+            ),
+          );
+      } else if (!connected && track.isUpstreamPaused === false) {
+        logger.info(
+          `Pausing ${track.kind} track (uncertain MatrixRTC connection)`,
+        );
+        track
+          .pauseUpstream()
+          .catch((e) =>
+            logger.error(
+              `Failed to pause ${track.kind} track after entering uncertain MatrixRTC connection`,
+              e,
+            ),
+          );
       }
-    });
+    }
+  });
 
   /**
    * Whether the user is currently sharing their screen.
@@ -791,10 +684,9 @@ export const createLocalMembership$ = ({
     participant$,
     reconnecting$,
     connected$: matrixAndLivekitConnected$,
-    disconnected$: scope.behavior(
-      homeserverConnected.rtsSession$.pipe(
-        map((state) => state === RTCSessionStatus.Disconnected),
-      ),
+    disconnected$: computed(
+      () =>
+        homeserverConnected.rtsSession$.value === RTCSessionStatus.Disconnected,
     ),
     sharingScreen$,
     toggleScreenSharing,
