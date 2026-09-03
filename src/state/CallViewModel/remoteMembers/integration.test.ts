@@ -12,11 +12,7 @@ import fetchMock from "fetch-mock";
 import { type LivekitTransportConfig } from "matrix-js-sdk/lib/matrixrtc";
 import { logger } from "matrix-js-sdk/lib/logger";
 
-import {
-  type Epoch,
-  ObservableScope,
-  trackEpoch,
-} from "../../ObservableScope.ts";
+import { ObservableScope } from "../../ObservableScope.ts";
 import { ECConnectionFactory } from "./ConnectionFactory.ts";
 import { type OpenIDClientParts } from "../../../livekit/openIDSFU.ts";
 import {
@@ -101,25 +97,20 @@ afterEach(() => {
 });
 
 test("bob, carl, then bob joining no tracks yet", () => {
-  withTestScheduler(({ expectObservable, behavior, scope }) => {
+  withTestScheduler(({ expectObservable, behavior }) => {
     const bobMembership = mockRtcMembership("@bob:example.com", "BDEV000");
     const carlMembership = mockRtcMembership("@carl:example.com", "CDEV000");
     const daveMembership = mockRtcMembership("@dave:foo.bar", "DDEV000");
 
     const eMarble = "abc";
     const vMarble = "abc";
-    const memberships$ = scope.behavior(
-      behavior(eMarble, {
-        a: [bobMembership],
-        b: [bobMembership, carlMembership],
-        c: [bobMembership, carlMembership, daveMembership],
-      }).pipe(trackEpoch()),
-    );
+    const memberships$ = behavior(eMarble, {
+      a: [bobMembership],
+      b: [bobMembership, carlMembership],
+      c: [bobMembership, carlMembership, daveMembership],
+    });
 
-    const membershipsAndTransports = membershipsAndTransports$(
-      testScope,
-      memberships$,
-    );
+    const membershipsAndTransports = membershipsAndTransports$(memberships$);
 
     const connectionManager = createConnectionManager$({
       scope: testScope,
@@ -139,8 +130,7 @@ test("bob, carl, then bob joining no tracks yet", () => {
     });
 
     expectObservable(remoteMatrixLivekitMembers$).toBe(vMarble, {
-      a: expect.toSatisfy((e: Epoch<RemoteMatrixLivekitMember[]>) => {
-        const items = e.value;
+      a: expect.toSatisfy((items: RemoteMatrixLivekitMember[]) => {
         expect(items.length).toBe(1);
         const item = items[0]!;
         expectObservable(item.membership$).toBe("a", {
@@ -159,8 +149,7 @@ test("bob, carl, then bob joining no tracks yet", () => {
         });
         return true;
       }),
-      b: expect.toSatisfy((e: Epoch<RemoteMatrixLivekitMember[]>) => {
-        const items = e.value;
+      b: expect.toSatisfy((items: RemoteMatrixLivekitMember[]) => {
         expect(items.length).toBe(2);
 
         {
@@ -196,8 +185,7 @@ test("bob, carl, then bob joining no tracks yet", () => {
         }
         return true;
       }),
-      c: expect.toSatisfy((e: Epoch<RemoteMatrixLivekitMember[]>) => {
-        const items = e.value;
+      c: expect.toSatisfy((items: RemoteMatrixLivekitMember[]) => {
         expect(items.length).toBe(3);
 
         expectObservable(items[0].membership$).toBe("a", {

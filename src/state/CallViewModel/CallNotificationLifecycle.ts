@@ -36,7 +36,7 @@ import {
 import { logger as rootLogger } from "matrix-js-sdk/lib/logger";
 
 import { type Behavior } from "../Behavior";
-import { type Epoch, type ObservableScope } from "../ObservableScope";
+import { type ObservableScope } from "../ObservableScope";
 import { type RoomMemberMap } from "./remoteMembers/MatrixMemberMetadata";
 
 export type AutoLeaveReason = "allOthersLeft" | "timeout" | "decline";
@@ -81,7 +81,7 @@ export function createReceivedDecline$(
 
 export interface Props {
   scope: ObservableScope;
-  memberships$: Behavior<Epoch<CallMembership[]>>;
+  memberships$: Behavior<CallMembership[]>;
   matrixRoomMembers$: Behavior<RoomMemberMap>;
   sentCallNotification$: Observable<CallNotificationWrapper | null>;
   receivedDecline$: Observable<
@@ -141,7 +141,7 @@ export function createCallNotificationLifecycle$({
         );
         // Call is accepted when the recipient joins
         const accept$ = memberships$.pipe(
-          filter((ms) => ms.value.some((m) => m.userId === recipient)),
+          filter((ms) => ms.some((m) => m.userId === recipient)),
           map(() => "accept" as const),
         );
         // Call is declined when we receive a decline event
@@ -174,7 +174,7 @@ export function createCallNotificationLifecycle$({
   const allOthersLeft$ = memberships$.pipe(
     pairwise(),
     filter(
-      ([{ value: prev }, { value: current }]) =>
+      ([prev, current]) =>
         current.every((m) => m.userId === localUser.userId) &&
         prev.some((m) => m.userId !== localUser.userId),
     ),

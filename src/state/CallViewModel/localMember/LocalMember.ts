@@ -256,13 +256,12 @@ export const createLocalMembership$ = ({
     ),
   );
 
-  // Drop Epoch data here since we will not combine this anymore
   const localConnection$ = scope.behavior(
     combineLatest([
       connectionManager.connectionManagerData$,
       activeTransport$,
     ]).pipe(
-      map(([{ value: connectionData }, localTransport]) => {
+      map(([connectionData, localTransport]) => {
         if (localTransport === null) {
           return null;
         }

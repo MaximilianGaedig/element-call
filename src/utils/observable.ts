@@ -25,7 +25,7 @@ import {
 import { logger } from "matrix-js-sdk/lib/logger";
 
 import { type Behavior, state, type State } from "../state/Behavior";
-import { Epoch, ObservableScope } from "../state/ObservableScope";
+import { ObservableScope } from "../state/ObservableScope";
 
 const nothing = Symbol("nothing");
 
@@ -151,35 +151,6 @@ export function generateItems<
 }
 
 /**
- * Same as generateItems, but preserves epoch data.
- */
-export function generateItemsWithEpoch<
-  Input,
-  Keys extends [unknown, ...unknown[]],
-  Data,
-  Item,
->(
-  name: string,
-  generator: (
-    input: Input,
-  ) => Iterable<{ keys: readonly [...Keys]; data: Data }, void, void>,
-  factory: (
-    scope: ObservableScope,
-    data$: Behavior<Data>,
-    ...keys: Keys
-  ) => Item,
-): OperatorFunction<Epoch<Input>, Epoch<Item[]>> {
-  return generateItemsInternal(
-    name,
-    function* (input) {
-      yield* generator(input.value);
-    },
-    factory,
-    (items, input) => new Epoch(items, input.epoch),
-  );
-}
-
-/**
  * Segments a behavior into periods during which its value matches the filter
  * (outputting a behavior with a narrowed type) and periods during which it does
  * not match (outputting null).
@@ -198,38 +169,6 @@ export function filterBehavior<T, S extends T>(
         return null;
       }, null),
       distinctUntilChanged(),
-    );
-}
-
-/**
- * Maps a changing input value to an item whose lifetime is tied to a certain
- * computed key. The item may capture some dynamic data from the input.
- */
-export function generateItem<
-  Input,
-  Keys extends [unknown, ...unknown[]],
-  Data,
-  Item,
->(
-  name: string,
-  generator: (input: Input) => { keys: readonly [...Keys]; data: Data },
-  factory: (
-    scope: ObservableScope,
-    data$: Behavior<Data>,
-    ...keys: Keys
-  ) => Item,
-): OperatorFunction<Input, Item> {
-  return (input$) =>
-    input$.pipe(
-      generateItemsInternal(
-        name,
-        function* (input) {
-          yield generator(input);
-        },
-        factory,
-        (items) => items,
-      ),
-      map(([item]) => item),
     );
 }
 

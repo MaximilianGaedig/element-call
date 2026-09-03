@@ -5,10 +5,7 @@ SPDX-License-IdFentifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import {
-  type CallMembership,
-  type LivekitTransportConfig,
-} from "matrix-js-sdk/lib/matrixrtc";
+import { type LivekitTransportConfig } from "matrix-js-sdk/lib/matrixrtc";
 import { type MatrixClient } from "matrix-js-sdk";
 import {
   combineLatest,
@@ -22,7 +19,7 @@ import { logger as rootLogger, type Logger } from "matrix-js-sdk/lib/logger";
 import { type CallMembershipIdentityParts } from "matrix-js-sdk/lib/matrixrtc/EncryptionManager";
 
 import { type Behavior } from "../../Behavior.ts";
-import { type Epoch, type ObservableScope } from "../../ObservableScope.ts";
+import { type ObservableScope } from "../../ObservableScope.ts";
 import { Config } from "../../../config/Config.ts";
 import {
   FailToGetOpenIdToken,
@@ -45,7 +42,6 @@ import { RtcTransportAutoDiscovery } from "./RtcTransportAutoDiscovery.ts";
 interface Props {
   scope: ObservableScope;
   ownMembershipIdentity: CallMembershipIdentityParts;
-  memberships$: Behavior<Epoch<CallMembership[]>>;
   client: Pick<
     MatrixClient,
     "getDomain" | "baseUrl" | "_unstable_getRTCTransports"
@@ -118,7 +114,6 @@ export interface LocalTransport {
  */
 export const createLocalTransport$ = ({
   scope,
-  memberships$,
   ownMembershipIdentity,
   client,
   roomId,

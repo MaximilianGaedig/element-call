@@ -14,10 +14,7 @@ import {
   type MockedObject,
   vi,
 } from "vitest";
-import {
-  type CallMembership,
-  type LivekitTransportConfig,
-} from "matrix-js-sdk/lib/matrixrtc";
+import { type LivekitTransportConfig } from "matrix-js-sdk/lib/matrixrtc";
 import { filter, lastValueFrom } from "rxjs";
 import fetchMock from "fetch-mock";
 
@@ -33,7 +30,7 @@ import {
   type LocalTransportWithSFUConfig,
 } from "./LocalTransport";
 import { constant } from "../../Behavior";
-import { Epoch, ObservableScope } from "../../ObservableScope";
+import { ObservableScope } from "../../ObservableScope";
 import {
   MatrixRTCTransportMissingError,
   FailToGetOpenIdToken,
@@ -57,7 +54,6 @@ describe("LocalTransport", () => {
     const { advertised$, active$ } = createLocalTransport$({
       scope: testScope(),
       roomId: "!room:example.org",
-      memberships$: constant(new Epoch<CallMembership[]>([])),
       client: {
         // eslint-disable-next-line @typescript-eslint/naming-convention
         _unstable_getRTCTransports: async () => Promise.resolve([]),
@@ -99,7 +95,6 @@ describe("LocalTransport", () => {
     const { advertised$, active$ } = createLocalTransport$({
       scope,
       roomId: "!example_room_id",
-      memberships$: constant(new Epoch<CallMembership[]>([])),
       client: {
         baseUrl: "https://example.org",
         getDomain: () => "example.org",
@@ -141,7 +136,6 @@ describe("LocalTransport", () => {
     const { advertised$, active$ } = createLocalTransport$({
       scope: testScope(),
       roomId: "!room:example.org",
-      memberships$: constant(new Epoch<CallMembership[]>([])),
       client: {
         // eslint-disable-next-line @typescript-eslint/naming-convention
         _unstable_getRTCTransports: async () => Promise.resolve([]),
@@ -197,7 +191,6 @@ describe("LocalTransport", () => {
         roomId: "!example_room_id",
         forceJwtEndpoint: JwtEndpointVersion.Legacy,
         delayId$: constant(null),
-        memberships$: constant(new Epoch<CallMembership[]>([])),
         client: {
           baseUrl: "https://example.org",
           getDomain: vi.fn().mockReturnValue("example.org"),
@@ -309,7 +302,6 @@ describe("LocalTransport", () => {
         roomId: "!example_room_id",
         forceJwtEndpoint: JwtEndpointVersion.Legacy,
         delayId$: constant(null),
-        memberships$: constant(new Epoch<CallMembership[]>([])),
         client: {
           getDomain: () => "example.org",
           baseUrl: "https://example.org",
@@ -348,7 +340,6 @@ describe("LocalTransport", () => {
       // We want multi-sdu
       forceJwtEndpoint: JwtEndpointVersion.Legacy,
       delayId$: delayId$,
-      memberships$: constant(new Epoch<CallMembership[]>([])),
       client: {
         getDomain: () => "example.org",
         baseUrl: "https://example.org",

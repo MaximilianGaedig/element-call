@@ -10,7 +10,9 @@ import { type LivekitTransportConfig } from "matrix-js-sdk/lib/matrixrtc";
 import { type RemoteParticipant } from "livekit-client";
 import { logger } from "matrix-js-sdk/lib/logger";
 
-import { Epoch, mapEpoch, ObservableScope } from "../../ObservableScope.ts";
+import { map } from "rxjs";
+
+import { ObservableScope } from "../../ObservableScope.ts";
 import {
   createConnectionManager$,
   type ConnectionManagerData,
@@ -76,17 +78,16 @@ describe("connections$ stream", () => {
         connectionFactory: fakeConnectionFactory,
         localTransport$: constant(null),
         remoteTransports$: behavior("a", {
-          a: new Epoch([TRANSPORT_1, TRANSPORT_2], 0),
+          a: [TRANSPORT_1, TRANSPORT_2],
         }),
         logger: logger,
         ownMembershipIdentity: ownMemberMock,
       });
 
       expectObservable(
-        connectionManagerData$.pipe(mapEpoch((d) => d.getConnections())),
+        connectionManagerData$.pipe(map((d) => d.getConnections())),
       ).toBe("a", {
-        a: expect.toSatisfy((e: Epoch<Connection[]>) => {
-          const connections = e.value;
+        a: expect.toSatisfy((connections: Connection[]) => {
           expect(connections.length).toBe(2);
 
           expect(
@@ -117,24 +118,23 @@ describe("connections$ stream", () => {
         connectionFactory: fakeConnectionFactory,
         localTransport$: constant(null),
         remoteTransports$: behavior("abcdef", {
-          a: new Epoch([TRANSPORT_1], 0),
-          b: new Epoch([TRANSPORT_1], 1),
-          c: new Epoch([TRANSPORT_1], 2),
-          d: new Epoch([TRANSPORT_1], 3),
-          e: new Epoch([TRANSPORT_1], 4),
-          f: new Epoch([TRANSPORT_1, TRANSPORT_2], 5),
+          a: [TRANSPORT_1],
+          b: [TRANSPORT_1],
+          c: [TRANSPORT_1],
+          d: [TRANSPORT_1],
+          e: [TRANSPORT_1],
+          f: [TRANSPORT_1, TRANSPORT_2],
         }),
         logger: logger,
         ownMembershipIdentity: ownMemberMock,
       });
 
       expectObservable(
-        connectionManagerData$.pipe(mapEpoch((d) => d.getConnections())),
-      ).toBe("xxxxxa", {
+        connectionManagerData$.pipe(map((d) => d.getConnections())),
+        // Identical transport lists don't produce new connection data
+      ).toBe("x----a", {
         x: expect.anything(),
-        a: expect.toSatisfy((e: Epoch<Connection[]>) => {
-          const connections = e.value;
-
+        a: expect.toSatisfy((connections: Connection[]) => {
           expect(connections.length).toBe(2);
           expect(
             vi.mocked(fakeConnectionFactory).createConnection,
@@ -164,26 +164,23 @@ describe("connections$ stream", () => {
         connectionFactory: fakeConnectionFactory,
         localTransport$: constant(null),
         remoteTransports$: behavior("abc", {
-          a: new Epoch([TRANSPORT_1], 0),
-          b: new Epoch([TRANSPORT_1, TRANSPORT_2], 1),
-          c: new Epoch([TRANSPORT_1], 2),
+          a: [TRANSPORT_1],
+          b: [TRANSPORT_1, TRANSPORT_2],
+          c: [TRANSPORT_1],
         }),
         logger: logger,
         ownMembershipIdentity: ownMemberMock,
       });
 
       expectObservable(
-        connectionManagerData$.pipe(mapEpoch((d) => d.getConnections())),
+        connectionManagerData$.pipe(map((d) => d.getConnections())),
       ).toBe("xab", {
         x: expect.anything(),
-        a: expect.toSatisfy((e: Epoch<Connection[]>) => {
-          const connections = e.value;
+        a: expect.toSatisfy((connections: Connection[]) => {
           expect(connections.length).toBe(2);
           return true;
         }),
-        b: expect.toSatisfy((e: Epoch<Connection[]>) => {
-          const connections = e.value;
-
+        b: expect.toSatisfy((connections: Connection[]) => {
           expect(connections.length).toBe(1);
           // The second connection should have been stopped has it is no longer needed.
           const connection2 = allCreatedConnections.find((c) =>
@@ -279,22 +276,20 @@ describe("connectionManagerData$ stream", () => {
         connectionFactory: fakeConnectionFactory,
         localTransport$: constant(null),
         remoteTransports$: behavior("a", {
-          a: new Epoch([TRANSPORT_1, TRANSPORT_2], 0),
+          a: [TRANSPORT_1, TRANSPORT_2],
         }),
         logger,
         ownMembershipIdentity: ownMemberMock,
       });
 
       expectObservable(connectionManagerData$).toBe("abcd", {
-        a: expect.toSatisfy((e) => {
-          const data: ConnectionManagerData = e.value;
+        a: expect.toSatisfy((data: ConnectionManagerData) => {
           expect(data.getConnections().length).toBe(2);
           expect(data.getParticipantsForTransport(TRANSPORT_1).length).toBe(0);
           expect(data.getParticipantsForTransport(TRANSPORT_2).length).toBe(0);
           return true;
         }),
-        b: expect.toSatisfy((e) => {
-          const data: ConnectionManagerData = e.value;
+        b: expect.toSatisfy((data: ConnectionManagerData) => {
           expect(data.getConnections().length).toBe(2);
           expect(data.getParticipantsForTransport(TRANSPORT_1).length).toBe(1);
           expect(data.getParticipantsForTransport(TRANSPORT_2).length).toBe(0);
@@ -303,8 +298,7 @@ describe("connectionManagerData$ stream", () => {
           ).toBe("user1A");
           return true;
         }),
-        c: expect.toSatisfy((e) => {
-          const data: ConnectionManagerData = e.value;
+        c: expect.toSatisfy((data: ConnectionManagerData) => {
           expect(data.getConnections().length).toBe(2);
           expect(data.getParticipantsForTransport(TRANSPORT_1).length).toBe(1);
           expect(data.getParticipantsForTransport(TRANSPORT_2).length).toBe(1);
@@ -316,8 +310,7 @@ describe("connectionManagerData$ stream", () => {
           ).toBe("user2A");
           return true;
         }),
-        d: expect.toSatisfy((e) => {
-          const data: ConnectionManagerData = e.value;
+        d: expect.toSatisfy((data: ConnectionManagerData) => {
           expect(data.getConnections().length).toBe(2);
           expect(data.getParticipantsForTransport(TRANSPORT_1).length).toBe(2);
           expect(data.getParticipantsForTransport(TRANSPORT_2).length).toBe(1);

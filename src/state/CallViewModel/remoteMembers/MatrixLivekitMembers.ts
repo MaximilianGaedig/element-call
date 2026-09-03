@@ -10,13 +10,11 @@ import {
   type CallMembership,
   type LivekitTransportConfig,
 } from "matrix-js-sdk/lib/matrixrtc";
-import { combineLatest, filter, map } from "rxjs";
-
-import { type Behavior } from "../../Behavior";
+import { type Behavior, computed } from "../../Behavior";
 import { type IConnectionManager } from "./ConnectionManager";
-import { Epoch, type ObservableScope } from "../../ObservableScope";
+import { type ObservableScope } from "../../ObservableScope";
 import { type Connection } from "./Connection";
-import { generateItemsWithEpoch } from "../../../utils/observable";
+import { keyedItems } from "../../keyedItems";
 
 interface LocalTaggedParticipant {
   type: "local";
@@ -59,7 +57,7 @@ export interface RemoteMatrixLivekitMember extends MatrixLivekitMember {
 interface Props {
   scope: ObservableScope;
   membershipsWithTransport$: Behavior<
-    Epoch<{ membership: CallMembership; transport?: LivekitTransportConfig }[]>
+    { membership: CallMembership; transport?: LivekitTransportConfig }[]
   >;
   connectionManager: IConnectionManager;
   localUser: { deviceId: string; userId: string };
@@ -80,72 +78,67 @@ export function createRemoteMatrixLivekitMembers$({
   membershipsWithTransport$,
   connectionManager,
   localUser,
-}: Props): Behavior<Epoch<RemoteMatrixLivekitMember[]>> {
+}: Props): Behavior<RemoteMatrixLivekitMember[]> {
   /**
    * Behavior of all the remote call members and their associated livekit data (if available).
    */
-  return scope.behavior(
-    combineLatest([
-      membershipsWithTransport$,
-      connectionManager.connectionManagerData$,
-    ]).pipe(
-      filter((values) =>
-        values.every((value) => value.epoch === values[0].epoch),
-      ),
-      map(([ms, data]) => new Epoch([ms.value, data.value] as const, ms.epoch)),
-      generateItemsWithEpoch(
-        "RemoteMatrixLivekitMembers",
-        // Generator function.
-        // creates an array of `{key, data}[]`
-        // Each change in the keys (new key) will result in a call to the factory function.
-        function* ([membershipsWithTransport, managerData]) {
-          for (const { membership, transport } of membershipsWithTransport) {
-            // Exclude the local membership
-            if (
-              membership.userId === localUser.userId &&
-              membership.deviceId === localUser.deviceId
-            )
-              continue;
-
-            const participants = transport
-              ? managerData.getParticipantsForTransport(transport)
-              : [];
-            const participant =
-              participants.find(
-                (p) => p.identity == membership.rtcBackendIdentity,
-              ) ?? null;
-            const connection = transport
-              ? managerData.getConnectionForTransport(transport)
-              : null;
-
-            yield {
-              // This could just be the backend identity without the other keys.
-              // The user ID, device ID, and member ID are included however so
-              // they show up in debug logs.
-              keys: [
-                membership.userId,
-                membership.deviceId,
-                membership.memberId,
-                membership.rtcBackendIdentity,
-              ],
-              data: { membership, participant, connection },
-            };
-          }
-        },
-        // Each update where the key of the generator array do not change will result in updates to the `data$` behavior.
-        (scope, data$, userId, _deviceId, _memberId, _rtcBackendIdentity) => {
-          const { participant$, ...rest } = scope.splitBehavior(data$);
-          // will only get called once per backend identity.
-          // updates to data$ and as a result to displayName$ and mxcAvatarUrl$ are more frequent.
-          return {
-            userId,
-            participant: { type: "remote" as const, value$: participant$ },
-            ...rest,
-          };
-        },
-      ),
+  return keyedItems(
+    scope,
+    "RemoteMatrixLivekitMembers",
+    computed(
+      () =>
+        [
+          membershipsWithTransport$.value,
+          connectionManager.connectionManagerData$.value,
+        ] as const,
     ),
-    new Epoch([], -1),
+    // Generator function.
+    // creates an array of `{key, data}[]`
+    // Each change in the keys (new key) will result in a call to the factory function.
+    function* ([membershipsWithTransport, managerData]) {
+      for (const { membership, transport } of membershipsWithTransport) {
+        // Exclude the local membership
+        if (
+          membership.userId === localUser.userId &&
+          membership.deviceId === localUser.deviceId
+        )
+          continue;
+
+        const participants = transport
+          ? managerData.getParticipantsForTransport(transport)
+          : [];
+        const participant =
+          participants.find(
+            (p) => p.identity == membership.rtcBackendIdentity,
+          ) ?? null;
+        const connection = transport
+          ? managerData.getConnectionForTransport(transport)
+          : null;
+
+        yield {
+          // This could just be the backend identity without the other keys.
+          // The user ID, device ID, and member ID are included however so
+          // they show up in debug logs.
+          keys: [
+            membership.userId,
+            membership.deviceId,
+            membership.memberId,
+            membership.rtcBackendIdentity,
+          ],
+          data: { membership, participant, connection },
+        };
+      }
+    },
+    // Each update where the key of the generator array do not change will result in updates to the `data$` behavior.
+    (_scope, data$, userId, _deviceId, _memberId, _rtcBackendIdentity) => ({
+      userId,
+      membership$: computed(() => data$.value.membership),
+      connection$: computed(() => data$.value.connection),
+      participant: {
+        type: "remote" as const,
+        value$: computed(() => data$.value.participant),
+      },
+    }),
   );
 }
 

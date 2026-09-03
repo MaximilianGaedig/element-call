@@ -46,7 +46,7 @@ import {
   FailToGetOpenIdToken,
   MatrixRTCTransportMissingError,
 } from "../../../utils/errors";
-import { Epoch, ObservableScope } from "../../ObservableScope";
+import { ObservableScope } from "../../ObservableScope";
 import { constant } from "../../Behavior";
 import { ConnectionManagerData } from "../remoteMembers/ConnectionManager";
 import { ConnectionState, type Connection } from "../remoteMembers/Connection";
@@ -211,12 +211,8 @@ describe("LocalMembership", () => {
 
       // we do not need any connection data since we want to fail before reaching that.
       const mockConnectionManager = {
-        transports$: scope.behavior(
-          localTransport$.pipe(map((t) => new Epoch([t]))),
-        ),
-        connectionManagerData$: constant(
-          new Epoch(new ConnectionManagerData()),
-        ),
+        transports$: scope.behavior(localTransport$.pipe(map((t) => [t]))),
+        connectionManagerData$: constant(new ConnectionManagerData()),
       };
 
       const aLocalTransport: LocalTransport = {
@@ -250,8 +246,8 @@ describe("LocalMembership", () => {
       const connectionManagerData = new ConnectionManagerData();
       connectionManagerData.add(connectionTransportBConnected, []);
       const mockConnectionManager = {
-        transports$: constant(new Epoch([bTransport])),
-        connectionManagerData$: constant(new Epoch(connectionManagerData)),
+        transports$: constant([bTransport]),
+        connectionManagerData$: constant(connectionManagerData),
       };
 
       const aLocalTransport: LocalTransport = {
@@ -296,8 +292,8 @@ describe("LocalMembership", () => {
     };
 
     const mockConnectionManager = {
-      transports$: constant(new Epoch([])),
-      connectionManagerData$: constant(new Epoch(new ConnectionManagerData())),
+      transports$: constant([]),
+      connectionManagerData$: constant(new ConnectionManagerData()),
     };
     async function reject(): Promise<void> {
       return Promise.reject(new Error("Not connected yet"));
@@ -412,7 +408,7 @@ describe("LocalMembership", () => {
       scope,
       ...defaultCreateLocalMemberValues,
       connectionManager: {
-        connectionManagerData$: constant(new Epoch(connectionManagerData)),
+        connectionManagerData$: constant(connectionManagerData),
       },
       localTransport$: state(aLocalTransport),
     });
@@ -480,7 +476,7 @@ describe("LocalMembership", () => {
       scope,
       ...defaultCreateLocalMemberValues,
       connectionManager: {
-        connectionManagerData$: constant(new Epoch(connectionManagerData)),
+        connectionManagerData$: constant(connectionManagerData),
       },
       localTransport$: state(aLocalTransport),
     });
@@ -513,7 +509,7 @@ describe("LocalMembership", () => {
       active$: activeTransport$,
     };
 
-    const connectionManagerData$ = state(new Epoch(connectionManagerData));
+    const connectionManagerData$ = state(connectionManagerData);
     const publishers: Publisher[] = [];
 
     const publishing$ = state<boolean>(false);
@@ -571,7 +567,7 @@ describe("LocalMembership", () => {
       [],
     );
 
-    connectionManagerData$.value = new Epoch(connectionManagerData2);
+    connectionManagerData$.value = connectionManagerData2;
     await flushPromises();
     expect(localMembership.localMemberState$.value).toStrictEqual({
       matrix: RTCMemberStatus.Connected,
@@ -683,7 +679,7 @@ describe("LocalMembership", () => {
           rtsSession$: constant(RTCMemberStatus.Connected),
         },
         connectionManager: {
-          connectionManagerData$: constant(new Epoch(connectionManagerData)),
+          connectionManagerData$: constant(connectionManagerData),
         },
         localTransport$: state({
           advertised$: state(aTransport),
@@ -724,7 +720,7 @@ describe("LocalMembership", () => {
           rtsSession$: constant(RTCMemberStatus.Connected),
         },
         connectionManager: {
-          connectionManagerData$: constant(new Epoch(connectionManagerData)),
+          connectionManagerData$: constant(connectionManagerData),
         },
         localTransport$: state({
           advertised$: state(aTransport),
@@ -775,7 +771,7 @@ describe("LocalMembership", () => {
           rtsSession$: constant(RTCMemberStatus.Connected),
         },
         connectionManager: {
-          connectionManagerData$: constant(new Epoch(connectionManagerData)),
+          connectionManagerData$: constant(connectionManagerData),
         },
         localTransport$: state({
           advertised$: state(aTransport),
@@ -820,7 +816,7 @@ describe("LocalMembership", () => {
           rtsSession$: constant(RTCMemberStatus.Connected),
         },
         connectionManager: {
-          connectionManagerData$: constant(new Epoch(connectionManagerData)),
+          connectionManagerData$: constant(connectionManagerData),
         },
         localTransport$: state({
           advertised$: state(aTransport),

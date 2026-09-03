@@ -10,19 +10,13 @@ import {
   type CallMembership,
   type LivekitTransport,
 } from "matrix-js-sdk/lib/matrixrtc";
-import { combineLatest, map, type Observable } from "rxjs";
 
 import { type IConnectionManager } from "./ConnectionManager.ts";
 import {
   type RemoteMatrixLivekitMember,
   createRemoteMatrixLivekitMembers$,
 } from "./MatrixLivekitMembers.ts";
-import {
-  Epoch,
-  mapEpoch,
-  ObservableScope,
-  trackEpoch,
-} from "../../ObservableScope.ts";
+import { ObservableScope } from "../../ObservableScope.ts";
 import { ConnectionManagerData } from "./ConnectionManager.ts";
 import {
   flushPromises,
@@ -30,7 +24,7 @@ import {
   mockRemoteParticipant,
 } from "../../../utils/test.ts";
 import { type Connection } from "./Connection.ts";
-import { constant } from "../../Behavior.ts";
+import { type Behavior, computed, constant } from "../../Behavior.ts";
 import { localRtcMember } from "../../../utils/test-fixtures.ts";
 import { state } from "../../Behavior";
 
@@ -66,31 +60,17 @@ afterEach(() => {
   testScope.end();
 });
 
-function epochMeWith$<T, U>(
-  source$: Observable<Epoch<U>>,
-  me$: Observable<T>,
-): Observable<Epoch<T>> {
-  return combineLatest([source$, me$]).pipe(
-    map(([ep, cd]) => {
-      return new Epoch(cd, ep.epoch);
-    }),
-  );
-}
-
 test("should signal participant not yet connected to livekit", async () => {
   const mockedMemberships$ = state([bobMembership]);
   const mockConnectionManagerData$ = state(new ConnectionManagerData());
-  const { memberships$, membershipsWithTransport$ } =
-    createEpochedMemberships$(mockedMemberships$);
+  const membershipsWithTransport$ =
+    createMembershipsWithTransport$(mockedMemberships$);
 
-  const connectionManagerData$ = epochMeWith$(
-    memberships$,
-    mockConnectionManagerData$,
-  );
+  const connectionManagerData$ = mockConnectionManagerData$;
 
   const remoteMatrixLivekitMembers$ = createRemoteMatrixLivekitMembers$({
     scope: testScope,
-    membershipsWithTransport$: testScope.behavior(membershipsWithTransport$),
+    membershipsWithTransport$,
     connectionManager: {
       connectionManagerData$: connectionManagerData$,
     } as unknown as IConnectionManager,
@@ -98,7 +78,7 @@ test("should signal participant not yet connected to livekit", async () => {
   });
 
   await flushPromises();
-  expect(remoteMatrixLivekitMembers$.value.value).toSatisfy(
+  expect(remoteMatrixLivekitMembers$.value).toSatisfy(
     (data: RemoteMatrixLivekitMember[]) => {
       expect(data.length).toEqual(1);
       expect(data[0].membership$.value).toBe(bobMembership);
@@ -109,30 +89,20 @@ test("should signal participant not yet connected to livekit", async () => {
   );
 });
 
-// Helper to create epoch'ed memberships$ and membershipsWithTransport$ from memberships observable.
-function createEpochedMemberships$(m$: Observable<CallMembership[]>): {
-  memberships$: Observable<Epoch<CallMembership[]>>;
-  membershipsWithTransport$: Observable<
-    Epoch<{ membership: CallMembership; transport?: LivekitTransport }[]>
-  >;
-} {
-  const memberships$ = m$.pipe(trackEpoch());
-  const membershipsWithTransport$ = memberships$.pipe(
-    mapEpoch((members) => {
-      return members.map((m) => {
-        const tr = m.getTransport(m);
-        return {
-          membership: m,
-          transport:
-            tr?.type === "livekit" ? (tr as LivekitTransport) : undefined,
-        };
-      });
+// Helper to create membershipsWithTransport$ from memberships.
+function createMembershipsWithTransport$(
+  memberships$: Behavior<CallMembership[]>,
+): Behavior<{ membership: CallMembership; transport?: LivekitTransport }[]> {
+  return computed(() =>
+    memberships$.value.map((m) => {
+      const tr = m.getTransport(m);
+      return {
+        membership: m,
+        transport:
+          tr?.type === "livekit" ? (tr as LivekitTransport) : undefined,
+      };
     }),
   );
-  return {
-    memberships$,
-    membershipsWithTransport$,
-  };
 }
 
 test("should signal participant on a connection that is publishing", async () => {
@@ -141,7 +111,7 @@ test("should signal participant on a connection that is publishing", async () =>
     bobMembership.deviceId,
   );
 
-  const { memberships$, membershipsWithTransport$ } = createEpochedMemberships$(
+  const membershipsWithTransport$ = createMembershipsWithTransport$(
     constant([bobMembership]),
   );
 
@@ -153,14 +123,11 @@ test("should signal participant on a connection that is publishing", async () =>
     mockRemoteParticipant({ identity: bobParticipantId }),
   ]);
 
-  const connectionManagerData$ = epochMeWith$(
-    memberships$,
-    constant(dataWithPublisher),
-  );
+  const connectionManagerData$ = constant(dataWithPublisher);
 
   const remoteMatrixLivekitMembers$ = createRemoteMatrixLivekitMembers$({
     scope: testScope,
-    membershipsWithTransport$: testScope.behavior(membershipsWithTransport$),
+    membershipsWithTransport$,
     connectionManager: {
       connectionManagerData$: connectionManagerData$,
     } as unknown as IConnectionManager,
@@ -168,7 +135,7 @@ test("should signal participant on a connection that is publishing", async () =>
   });
 
   await flushPromises();
-  expect(remoteMatrixLivekitMembers$.value.value).toSatisfy(
+  expect(remoteMatrixLivekitMembers$.value).toSatisfy(
     (data: RemoteMatrixLivekitMember[]) => {
       expect(data.length).toEqual(1);
       expect(data[0].membership$.value).toBe(bobMembership);
@@ -184,7 +151,7 @@ test("should signal participant on a connection that is publishing", async () =>
 });
 
 test("should signal participant on a connection that is not publishing", async () => {
-  const { memberships$, membershipsWithTransport$ } = createEpochedMemberships$(
+  const membershipsWithTransport$ = createMembershipsWithTransport$(
     constant([bobMembership]),
   );
 
@@ -194,21 +161,18 @@ test("should signal participant on a connection that is not publishing", async (
   const dataWithPublisher = new ConnectionManagerData();
   dataWithPublisher.add(connection, []);
 
-  const connectionManagerData$ = epochMeWith$(
-    memberships$,
-    constant(dataWithPublisher),
-  );
+  const connectionManagerData$ = constant(dataWithPublisher);
 
   const remoteMatrixLivekitMembers$ = createRemoteMatrixLivekitMembers$({
     scope: testScope,
-    membershipsWithTransport$: testScope.behavior(membershipsWithTransport$),
+    membershipsWithTransport$,
     connectionManager: {
       connectionManagerData$: connectionManagerData$,
     } as unknown as IConnectionManager,
     localUser: localRtcMember,
   });
   await flushPromises();
-  expect(remoteMatrixLivekitMembers$.value.value).toSatisfy(
+  expect(remoteMatrixLivekitMembers$.value).toSatisfy(
     (data: RemoteMatrixLivekitMember[]) => {
       expect(data.length).toEqual(1);
       expect(data[0].membership$.value).toBe(bobMembership);
@@ -221,8 +185,9 @@ test("should signal participant on a connection that is not publishing", async (
 
 describe("Publication edge case", () => {
   test("bob is publishing in several connections", async () => {
-    const { memberships$, membershipsWithTransport$ } =
-      createEpochedMemberships$(constant([bobMembership, carlMembership]));
+    const membershipsWithTransport$ = createMembershipsWithTransport$(
+      constant([bobMembership, carlMembership]),
+    );
 
     const connectionWithPublisher = new ConnectionManagerData();
     const bobParticipantId = fallbackMemberId(
@@ -243,21 +208,18 @@ describe("Publication edge case", () => {
       mockRemoteParticipant({ identity: bobParticipantId }),
     ]);
 
-    const connectionManagerData$ = epochMeWith$(
-      memberships$,
-      constant(connectionWithPublisher),
-    );
+    const connectionManagerData$ = constant(connectionWithPublisher);
 
     const remoteMatrixLivekitMembers$ = createRemoteMatrixLivekitMembers$({
       scope: testScope,
-      membershipsWithTransport$: testScope.behavior(membershipsWithTransport$),
+      membershipsWithTransport$,
       connectionManager: {
         connectionManagerData$: connectionManagerData$,
       } as unknown as IConnectionManager,
       localUser: localRtcMember,
     });
     await flushPromises();
-    expect(remoteMatrixLivekitMembers$.value.value).toSatisfy(
+    expect(remoteMatrixLivekitMembers$.value).toSatisfy(
       (data: RemoteMatrixLivekitMember[]) => {
         expect(data.length).toEqual(2);
         expect(data[0].membership$.value).toBe(bobMembership);
@@ -277,8 +239,8 @@ describe("Publication edge case", () => {
 test("bob is publishing in the wrong connection", async () => {
   const mockedMemberships$ = state([bobMembership, carlMembership]);
 
-  const { memberships$, membershipsWithTransport$ } =
-    createEpochedMemberships$(mockedMemberships$);
+  const membershipsWithTransport$ =
+    createMembershipsWithTransport$(mockedMemberships$);
 
   const connectionWithPublisher = new ConnectionManagerData();
 
@@ -297,14 +259,11 @@ test("bob is publishing in the wrong connection", async () => {
   ]);
 
   const connectionsWithPublisher$ = state(connectionWithPublisher);
-  const connectionManagerData$ = epochMeWith$(
-    memberships$,
-    connectionsWithPublisher$,
-  );
+  const connectionManagerData$ = connectionsWithPublisher$;
 
   const remoteMatrixLivekitMembers$ = createRemoteMatrixLivekitMembers$({
     scope: testScope,
-    membershipsWithTransport$: testScope.behavior(membershipsWithTransport$),
+    membershipsWithTransport$,
     connectionManager: {
       connectionManagerData$: connectionManagerData$,
     } as unknown as IConnectionManager,
@@ -312,7 +271,7 @@ test("bob is publishing in the wrong connection", async () => {
   });
 
   await flushPromises();
-  expect(remoteMatrixLivekitMembers$.value.value).toSatisfy(
+  expect(remoteMatrixLivekitMembers$.value).toSatisfy(
     (data: RemoteMatrixLivekitMember[]) => {
       expect(data.length).toEqual(2);
       expect(data[0].membership$.value).toBe(bobMembership);
