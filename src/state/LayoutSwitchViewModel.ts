@@ -5,17 +5,8 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import {
-  combineLatest,
-  map,
-  Subject,
-  startWith,
-  skipWhile,
-  switchAll,
-} from "rxjs";
-
 import { type WindowMode } from "./CallViewModel/CallViewModel.ts";
-import { constant, type Behavior } from "./Behavior.ts";
+import { type Behavior, computed, state } from "./Behavior.ts";
 import { type ObservableScope } from "./ObservableScope.ts";
 
 export type LayoutMode = "spotlight" | "grid";
@@ -42,58 +33,38 @@ export function createLayoutSwitchViewModel(
   windowMode$: Behavior<WindowMode>,
   hasRemoteScreenShares$: Behavior<boolean>,
 ): LayoutSwitchViewModel {
-  const userSelection$ = new Subject<LayoutMode>();
-  // Callback to set the layout desired by the user.
-  // Notice that this is only a preference, the actual layout can be overridden
-  // if there is a remote screen share active.
-  const setLayout = (value: LayoutMode): void => userSelection$.next(value);
-
   /**
    * The natural layout - the layout that the interface would prefer to be in,
    * not accounting for the user's manual selections.
    */
-  const naturalLayout$ = scope.behavior<LayoutMode>(
-    combineLatest(
-      [hasRemoteScreenShares$, windowMode$],
-      (hasRemoteScreenShares, windowMode) => {
-        // When the window is flat (as with a phone in landscape orientation),
-        // grid is preferable as there's usually more than enough horizontal
-        // space to fit in some grid tiles on the side.
-        if (windowMode === "flat") return "grid";
-        // When there are screen shares, spotlight is a better experience. We
-        // want them to be big and readable.
-        return hasRemoteScreenShares ? "spotlight" : "grid";
-      },
-    ),
-  );
+  const naturalLayout$ = computed<LayoutMode>(() => {
+    // When the window is flat (as with a phone in landscape orientation),
+    // grid is preferable as there's usually more than enough horizontal
+    // space to fit in some grid tiles on the side.
+    if (windowMode$.value === "flat") return "grid";
+    // When there are screen shares, spotlight is a better experience. We
+    // want them to be big and readable.
+    return hasRemoteScreenShares$.value ? "spotlight" : "grid";
+  });
 
   /**
-   * The layout mode of the call's media tiles.
+   * The layout the user has manually selected, or null to follow the natural
+   * layout.
    */
-  const layout$ = scope.behavior<LayoutMode>(
-    // Whenever the user makes a selection, we enter a new mode of behavior:
-    userSelection$.pipe(
-      map((selection) => {
-        if (selection === "grid")
-          // The user has selected grid. Start by respecting their choice, but
-          // then follow the natural mode again as soon as it matches.
-          return naturalLayout$.pipe(
-            skipWhile((naturalMode) => naturalMode !== selection),
-            startWith(selection),
-          );
+  const selection$ = state<LayoutMode | null>(null);
 
-        // The user has selected spotlight. If this matches the natural layout,
-        // then follow the natural layout going forward.
-        return selection === naturalLayout$.value
-          ? naturalLayout$
-          : constant(selection);
-      }),
-      // Initially the mode of behavior is to just follow the natural layout.
-      startWith(naturalLayout$),
-      // Switch between each mode of behavior.
-      switchAll(),
-    ),
-  );
+  // A manual selection of grid is only respected until the natural layout
+  // catches up with it; after that we follow the natural layout again. A manual
+  // selection of spotlight sticks until the user changes it.
+  scope.effect(() => {
+    if (selection$.value === "grid" && naturalLayout$.value === "grid")
+      selection$.value = null;
+  });
 
-  return { layout$, setLayout };
+  return {
+    layout$: computed(() => selection$.value ?? naturalLayout$.value),
+    setLayout: (value) => {
+      selection$.value = value === naturalLayout$.value ? null : value;
+    },
+  };
 }

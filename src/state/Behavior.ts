@@ -16,6 +16,7 @@ import {
 } from "@preact/signals-core";
 
 const noError = Symbol("noError");
+const nothing = Symbol("nothing");
 
 /**
  * A value that changes over time. Read it synchronously with `.value`, or read
@@ -131,9 +132,24 @@ export function state<T>(value: T): State<T> {
 /**
  * A Behavior derived from other Behaviors. `fn` is re-run whenever a Behavior
  * it read has changed, and only when someone reads the result.
+ *
+ * @param equals If given, a new result that is equal to the previous one is
+ *   dropped, so that dependents don't re-run.
  */
-export function computed<T>(fn: () => T): Behavior<T> {
-  return new Derived(computedSignal(fn));
+export function computed<T>(
+  fn: () => T,
+  equals?: (a: T, b: T) => boolean,
+): Behavior<T> {
+  if (equals === undefined) return new Derived(computedSignal(fn));
+  let prev: T | typeof nothing = nothing;
+  return new Derived(
+    computedSignal(() => {
+      const next = fn();
+      if (prev !== nothing && equals(prev, next)) return prev;
+      prev = next;
+      return next;
+    }),
+  );
 }
 
 export function constant<T>(value: T): Behavior<T> {

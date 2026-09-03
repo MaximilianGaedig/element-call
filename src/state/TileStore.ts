@@ -27,7 +27,7 @@ debugTileLayout.value$.subscribe((value) => (DEBUG_ENABLED = value));
 class SpotlightTileData {
   private readonly media$: State<MediaViewModel[]>;
   public get media(): MediaViewModel[] {
-    return this.media$.value;
+    return this.media$.peek();
   }
   public set media(value: MediaViewModel[]) {
     this.media$.value = value;
@@ -35,7 +35,7 @@ class SpotlightTileData {
 
   private readonly maximised$: State<boolean>;
   public get maximised(): boolean {
-    return this.maximised$.value;
+    return this.maximised$.peek();
   }
   public set maximised(value: boolean) {
     this.maximised$.value = value;
@@ -43,7 +43,7 @@ class SpotlightTileData {
 
   private readonly background$: State<SpotlightBackground>;
   public get background(): SpotlightBackground {
-    return this.background$.value;
+    return this.background$.peek();
   }
   public set background(value: SpotlightBackground) {
     this.background$.value = value;
@@ -70,7 +70,7 @@ class SpotlightTileData {
 class GridTileData {
   private readonly media$: State<UserMediaViewModel | RingingMediaViewModel>;
   public get media(): UserMediaViewModel | RingingMediaViewModel {
-    return this.media$.value;
+    return this.media$.peek();
   }
   public set media(value: UserMediaViewModel) {
     this.media$.value = value;
