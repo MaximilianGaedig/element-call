@@ -6,15 +6,12 @@ Please see LICENSE in the repository root for full details.
 */
 
 import {
-  type Participant,
-  ParticipantEvent,
   type LocalParticipant,
   type ScreenShareCaptureOptions,
   type TrackPublishOptions,
   RoomEvent,
   MediaDeviceFailure,
 } from "livekit-client";
-import { observeParticipantEvents } from "@livekit/components-core";
 import {
   Status as RTCSessionStatus,
   type LivekitTransport,
@@ -39,7 +36,7 @@ import { type Logger } from "matrix-js-sdk/lib/logger";
 import { deepCompare } from "matrix-js-sdk/lib/utils";
 import { type CallMembershipIdentityParts } from "matrix-js-sdk/lib/matrixrtc/EncryptionManager";
 
-import { type Behavior } from "../../Behavior.ts";
+import { type Behavior, fromEvents } from "../../Behavior.ts";
 import { type IConnectionManager } from "../remoteMembers/ConnectionManager.ts";
 import { type ObservableScope } from "../../ObservableScope.ts";
 import { type Publisher } from "./Publisher.ts";
@@ -72,6 +69,7 @@ import { type HomeserverConnected } from "./HomeserverConnected.ts";
 import { type LocalTransport } from "./LocalTransport.ts";
 import { areLivekitTransportsEqual } from "../remoteMembers/MatrixLivekitMembers.ts";
 import { state } from "../../Behavior";
+import { PUBLICATION_EVENTS } from "../../trackReference.ts";
 
 export enum TransportState {
   /** Not even a transport is available to the LocalMembership */
@@ -697,10 +695,11 @@ export const createLocalMembership$ = ({
   /**
    * Whether the user is currently sharing their screen.
    */
-  const sharingScreen$ = scope.behavior(
-    participant$.pipe(
-      switchMap((p) => (p !== null ? observeSharingScreen$(p) : of(false))),
-    ),
+  const sharingScreen$ = fromEvents(
+    scope,
+    participant$,
+    PUBLICATION_EVENTS,
+    (p) => p?.isScreenShareEnabled ?? false,
   );
 
   let toggleScreenSharing: (() => void) | null = null;
@@ -803,16 +802,6 @@ export const createLocalMembership$ = ({
     internalLoggerRef: logger,
   };
 };
-
-export function observeSharingScreen$(p: Participant): Observable<boolean> {
-  return observeParticipantEvents(
-    p,
-    ParticipantEvent.TrackPublished,
-    ParticipantEvent.TrackUnpublished,
-    ParticipantEvent.LocalTrackPublished,
-    ParticipantEvent.LocalTrackUnpublished,
-  ).pipe(map((p) => p.isScreenShareEnabled));
-}
 
 interface EnterRTCSessionOptions {
   encryptMedia: boolean;

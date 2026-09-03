@@ -7,9 +7,6 @@ Please see LICENSE in the repository root for full details.
 
 import {
   BehaviorSubject,
-  catchError,
-  EMPTY,
-  endWith,
   filter,
   type Observable,
   share,
@@ -17,7 +14,7 @@ import {
   takeUntil,
 } from "rxjs";
 
-import { effect, signal } from "@preact/signals-core";
+import { effect, signal, untracked } from "@preact/signals-core";
 
 import { type Behavior, State } from "./Behavior";
 
@@ -120,40 +117,36 @@ export class ObservableScope {
     value$: Behavior<T>,
     callback: (value: T) => Promise<(() => Promise<void>) | void>,
   ): void {
-    let latestValue: T | typeof nothing = nothing;
-    let reconcilePromise: Promise<void> | undefined = undefined;
+    let latest: T | typeof nothing = nothing;
+    let processed: T | typeof nothing = nothing;
+    let running = false;
     let cleanUp: (() => Promise<void>) | void = undefined;
-    let prevVal: T | typeof nothing = nothing;
 
-    // While this loop runs it will process the latest from `value$` until it caught up with the updates.
-    // It might skip updates from `value$` and only process the newest value after callback has resolved.
-    const reconcileLoop = async (): Promise<void> => {
-      while (latestValue !== prevVal) {
-        await cleanUp?.(); // Call the previous value's clean-up handler
-        prevVal = latestValue;
-
-        if (latestValue !== nothing) cleanUp = await callback(latestValue); // Sync current value...
-        // `latestValue` might have gotten updated during the `await callback`. That is why we loop here
+    // Processes the latest value until caught up. Values that arrive while a
+    // callback is in flight are coalesced into the next iteration.
+    const run = async (): Promise<void> => {
+      running = true;
+      try {
+        while (latest !== processed) {
+          await cleanUp?.();
+          processed = latest;
+          cleanUp = latest === nothing ? undefined : await callback(latest);
+        }
+      } finally {
+        running = false;
       }
     };
+    const push = (value: T | typeof nothing): void => {
+      latest = value;
+      if (!running) void run();
+    };
 
-    value$
-      .pipe(
-        catchError(() => EMPTY), // Ignore errors
-        this.bind(), // Limit to the duration of the scope
-        endWith(nothing), // Clean up when the scope ends
-      )
-      .subscribe((value) => {
-        // Always track the latest value! The `reconcileLoop` will run until it "processed" the "last" `latestValue`.
-        latestValue = value;
-        // There's already an instance of the below 'reconcileLoop' loop running
-        // concurrently. So lets let the loop handle it. NEVER instanciate two `reconcileLoop`s.
-        if (reconcilePromise) return;
-
-        reconcilePromise = reconcileLoop().finally(() => {
-          reconcilePromise = undefined;
-        });
-      });
+    this.effect(() => {
+      const value = value$.value;
+      // The callback's own reads must not become dependencies of this effect
+      untracked(() => push(value));
+    });
+    this.onEnd(() => push(nothing));
   }
 }
 

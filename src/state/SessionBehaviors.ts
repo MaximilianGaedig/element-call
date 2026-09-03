@@ -12,10 +12,9 @@ import {
   MatrixRTCSessionEvent,
   isLivekitTransportConfig,
 } from "matrix-js-sdk/lib/matrixrtc";
-import { fromEvent } from "rxjs";
 
 import { type ObservableScope } from "./ObservableScope";
-import { type Behavior, computed } from "./Behavior";
+import { type Behavior, computed, fromEvents } from "./Behavior";
 
 export const membershipsAndTransports$ = (
   memberships$: Behavior<CallMembership[]>,
@@ -56,16 +55,13 @@ export const membershipsAndTransports$ = (
 export const createMemberships$ = (
   scope: ObservableScope,
   matrixRTCSession: MatrixRTCSession,
-): Behavior<CallMembership[]> => {
-  return scope.behavior(
-    fromEvent(
-      matrixRTCSession,
-      MatrixRTCSessionEvent.MembershipsChanged,
-      (_, memberships: CallMembership[]) => memberships,
-    ),
-    matrixRTCSession.memberships,
+): Behavior<CallMembership[]> =>
+  fromEvents(
+    scope,
+    matrixRTCSession,
+    [MatrixRTCSessionEvent.MembershipsChanged],
+    (session) => session.memberships,
   );
-};
 
 /**
  * Whether the session has grown large enough that MatrixRTC has stopped rotating the media
@@ -75,13 +71,10 @@ export const createMemberships$ = (
 export const createKeyRotationSuppressed$ = (
   scope: ObservableScope,
   matrixRTCSession: MatrixRTCSession,
-): Behavior<boolean> => {
-  return scope.behavior(
-    fromEvent(
-      matrixRTCSession,
-      MatrixRTCSessionEvent.KeyRotationSuppressedChanged,
-      (suppressed: boolean) => suppressed,
-    ),
-    matrixRTCSession.isKeyRotationSuppressed,
+): Behavior<boolean> =>
+  fromEvents(
+    scope,
+    matrixRTCSession,
+    [MatrixRTCSessionEvent.KeyRotationSuppressedChanged],
+    (session) => session.isKeyRotationSuppressed,
   );
-};

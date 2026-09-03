@@ -13,7 +13,7 @@ import posthog, {
 } from "posthog-js";
 import { logger } from "matrix-js-sdk/lib/logger";
 import { type MatrixClient } from "matrix-js-sdk";
-import { type Subscription } from "rxjs";
+import { effect } from "@preact/signals-core";
 
 import { widget } from "../widget";
 import {
@@ -165,7 +165,7 @@ export class PosthogAnalytics {
   private anonymity = Anonymity.Disabled;
   private platformSuperProperties = {};
   private registrationType: RegistrationType = RegistrationType.Guest;
-  private optInListener: Subscription | null = null;
+  private optInListener: (() => void) | null = null;
 
   public static hasInstance(): boolean {
     return Boolean(this.internalInstance);
@@ -346,7 +346,7 @@ export class PosthogAnalytics {
     if (this.enabled) {
       this.posthog.reset();
     }
-    this.optInListener?.unsubscribe();
+    this.optInListener?.();
     this.optInListener = null;
     this.setAnonymity(Anonymity.Disabled);
   }
@@ -435,7 +435,8 @@ export class PosthogAnalytics {
     //  * When the user changes their preferences on this device
     // Note that for new accounts, pseudonymousAnalyticsOptIn won't be set, so updateAnonymityFromSettings
     // won't be called (i.e. this.anonymity will be left as the default, until the setting changes)
-    this.optInListener ??= optInAnalytics.value$.subscribe((optIn) => {
+    this.optInListener ??= effect(() => {
+      const optIn = optInAnalytics.value$.value;
       this.setAnonymity(optIn ? Anonymity.Pseudonymous : Anonymity.Disabled);
       this.maybeIdentifyUser().catch(() =>
         logger.log("Could not identify user"),

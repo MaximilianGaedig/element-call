@@ -8,12 +8,12 @@ Please see LICENSE in the repository root for full details.
 import { expect, test } from "vitest";
 import { type Observable, of, Subject, switchMap } from "rxjs";
 
-import { withTestScheduler } from "./test";
+import { withRxTestScheduler } from "./test";
 import { filterBehavior, generateItems, pauseWhen } from "./observable";
 import { type Behavior } from "../state/Behavior";
 
 test("pauseWhen", () => {
-  withTestScheduler(({ behavior, expectObservable }) => {
+  withRxTestScheduler(({ behavior, expectObservable }) => {
     const inputMarbles = " abcdefgh-i-jk-";
     const pauseMarbles = " n-y--n-yn-y--n";
     const outputMarbles = "abc--fgh-i---k";
@@ -32,7 +32,7 @@ test("generateItems", () => {
   const scope4$ = new Subject<string>();
   const scopeSubjects = [scope1$, scope2$, scope3$, scope4$];
 
-  withTestScheduler(({ hot, expectObservable }) => {
+  withRxTestScheduler(({ hot, expectObservable }) => {
     // Each scope should start when the input number reaches or surpasses their
     // number and end when the input number drops back below their number.
     // At the very end, unsubscribing should end all remaining scopes.
@@ -76,7 +76,7 @@ test("generateItems", () => {
 });
 
 test("filterBehavior", () => {
-  withTestScheduler(({ behavior, expectObservable }) => {
+  withRxTestScheduler(({ behavior, expectObservable }) => {
     // Filtering the input should segment it into 2 modes of non-null behavior.
     const inputMarbles = "   abcxabx";
     const filteredMarbles = "a--xa-x";

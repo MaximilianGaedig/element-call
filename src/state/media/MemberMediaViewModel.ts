@@ -6,7 +6,6 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { type Track } from "livekit-client";
 import {
   type AudioSource,
   type TrackReference,
@@ -14,13 +13,12 @@ import {
 } from "@livekit/components-core";
 import { type LocalParticipant, type RemoteParticipant } from "livekit-client";
 import { type Room as LivekitRoom } from "livekit-client";
-import { of, switchMap } from "rxjs";
 
 import { type Behavior, computed } from "../Behavior";
 import { type BaseMediaViewModel, createBaseMedia } from "./MediaViewModel";
 import { type EncryptionSystem } from "../../e2ee/sharedKeyManagement";
 import { type ObservableScope } from "../ObservableScope";
-import { observeTrackReference$ } from "../observeTrackReference";
+import { trackReference$ } from "../trackReference";
 import { E2eeType } from "../../e2ee/e2eeType";
 import { type UserMediaViewModel } from "./UserMediaViewModel";
 import { type ScreenShareViewModel } from "./ScreenShareViewModel";
@@ -64,20 +62,8 @@ export function createMemberMedia(
     ...inputs
   }: MemberMediaInputs,
 ): BaseMemberMediaViewModel {
-  const trackBehavior$ = (
-    scope: ObservableScope,
-    source: Track.Source,
-  ): Behavior<TrackReference | undefined> =>
-    scope.behavior(
-      participant$.pipe(
-        switchMap((p) =>
-          !p ? of(undefined) : observeTrackReference$(p, source),
-        ),
-      ),
-    );
-
-  const audio$ = trackBehavior$(scope, audioSource);
-  const video$ = trackBehavior$(scope, videoSource);
+  const audio$ = trackReference$(scope, participant$, audioSource);
+  const video$ = trackReference$(scope, participant$, videoSource);
 
   return {
     ...createBaseMedia(inputs),

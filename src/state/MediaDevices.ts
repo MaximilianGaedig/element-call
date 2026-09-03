@@ -5,8 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { filter, map, type Observable, pairwise, switchMap } from "rxjs";
-import { createMediaDeviceObserver } from "@livekit/components-core";
+import { Room as LivekitRoom } from "livekit-client";
 import { type Logger, logger as rootLogger } from "matrix-js-sdk/lib/logger";
 
 import {
@@ -19,7 +18,6 @@ import { type ObservableScope } from "./ObservableScope";
 import { availableOutputDevices$ as controlledAvailableOutputDevices$ } from "../controls";
 import { getUrlParams } from "../UrlParams";
 import { platform } from "../Platform";
-import { switchWhen } from "../utils/observable";
 import { type Behavior, computed, constant, state } from "./Behavior";
 import { AndroidControlledAudioOutput } from "./AndroidControlledAudioOutput.ts";
 import { IOSControlledAudioOutput } from "./IOSControlledAudioOutput.ts";
@@ -48,10 +46,11 @@ export interface SelectedDevice {
  */
 export interface SelectedAudioInputDevice extends SelectedDevice {
   /**
-   * Emits whenever we think that this audio input device has logically changed
-   * to refer to a different hardware device.
+   * Identifies the hardware behind the device. It changes when a device with a
+   * stable ID (such as Chrome's "default" device) starts referring to different
+   * hardware.
    */
-  hardwareDeviceChange$: Observable<void>;
+  groupId: string | undefined;
 }
 
 /**
@@ -114,30 +113,35 @@ export function availableRawDevices$(
   scope: ObservableScope,
   logger: Logger,
 ): Behavior<MediaDeviceInfo[]> {
-  const logError = (e: Error): void =>
-    logger.error("Error creating MediaDeviceObserver", e);
-  const devices$ = createMediaDeviceObserver(kind, logError, false);
-  const devicesWithNames$ = createMediaDeviceObserver(kind, logError, true);
-
-  return scope.behavior(
-    usingNames$.pipe(
-      switchMap((withNames) =>
-        withNames
-          ? // It might be that there is already a media stream running somewhere,
-            // and so we can do without requesting a second one. Only switch to the
-            // device observer that explicitly requests the names if we see that
-            // names are in fact missing from the initial device enumeration.
-            devices$.pipe(
-              switchWhen(
-                (devices, i) => i === 0 && devices.every((d) => !d.label),
-                devicesWithNames$,
-              ),
-            )
-          : devices$,
-      ),
-    ),
-    [],
-  );
+  const devices$ = state<MediaDeviceInfo[]>([]);
+  scope.effect(() => {
+    const usingNames = usingNames$.value;
+    let stopped = false;
+    const refresh = async (): Promise<void> => {
+      try {
+        let devices = await LivekitRoom.getLocalDevices(kind, false);
+        // Requesting device names may prompt for permissions and acquire a
+        // media stream, so only do it if names are in fact missing (they may
+        // already be known because a media stream is running elsewhere).
+        if (usingNames && devices.every((d) => !d.label))
+          devices = await LivekitRoom.getLocalDevices(kind, true);
+        if (!stopped) devices$.value = devices;
+      } catch (e) {
+        logger.error("Error enumerating media devices", e);
+      }
+    };
+    void refresh();
+    const onDeviceChange = (): void => void refresh();
+    navigator.mediaDevices?.addEventListener("devicechange", onDeviceChange);
+    return (): void => {
+      stopped = true;
+      navigator.mediaDevices?.removeEventListener(
+        "devicechange",
+        onDeviceChange,
+      );
+    };
+  });
+  return devices$;
 }
 
 function buildDeviceMap(
@@ -191,25 +195,22 @@ class AudioInput implements MediaDevice<DeviceLabel, SelectedAudioInputDevice> {
   public readonly available$ = computed(() =>
     buildDeviceMap(this.availableRaw$.value),
   );
-  public readonly selected$ = computed(() => {
-    const id = selectDevice(
-      this.available$.value,
-      audioInputSetting.value$.value,
-    );
-    return id === undefined
-      ? undefined
-      : {
-          id,
-          // We can identify when the hardware device has changed by watching for
-          // changes in the group ID
-          hardwareDeviceChange$: this.availableRaw$.pipe(
-            map((devices) => devices.find((d) => d.deviceId === id)?.groupId),
-            pairwise(),
-            filter(([before, after]) => before !== after),
-            map(() => undefined),
-          ),
-        };
-  });
+  public readonly selected$ = computed<SelectedAudioInputDevice | undefined>(
+    () => {
+      const id = selectDevice(
+        this.available$.value,
+        audioInputSetting.value$.value,
+      );
+      return id === undefined
+        ? undefined
+        : {
+            id,
+            groupId: this.availableRaw$.value.find((d) => d.deviceId === id)
+              ?.groupId,
+          };
+    },
+    (a, b) => a?.id === b?.id && a?.groupId === b?.groupId,
+  );
 
   public select(id: string): void {
     audioInputSetting.setValue(id);

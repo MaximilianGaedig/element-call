@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { MatrixRTCSessionEvent } from "matrix-js-sdk/lib/matrixrtc";
 import { EventEmitter } from "events";
 
@@ -18,8 +18,6 @@ describe("SessionBehaviors", () => {
       const scope = testScope();
       const emitter = new EventEmitter();
       const mockSession = Object.assign(emitter, {
-        on: vi.fn(),
-        off: vi.fn(),
         isKeyRotationSuppressed: false,
       });
 
@@ -29,10 +27,12 @@ describe("SessionBehaviors", () => {
       );
 
       expect(keyRotationSuppressed$.value).toBe(false);
+      mockSession.isKeyRotationSuppressed = true;
       emitter.emit(MatrixRTCSessionEvent.KeyRotationSuppressedChanged, true);
 
       expect(keyRotationSuppressed$.value).toBe(true);
 
+      mockSession.isKeyRotationSuppressed = false;
       emitter.emit(MatrixRTCSessionEvent.KeyRotationSuppressedChanged, false);
 
       expect(keyRotationSuppressed$.value).toBe(false);

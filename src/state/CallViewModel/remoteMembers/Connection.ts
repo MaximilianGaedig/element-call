@@ -7,17 +7,13 @@ Please see LICENSE in the repository root for full details.
 */
 
 import {
-  connectedParticipantsObserver,
-  connectionStateObserver,
-} from "@livekit/components-core";
-import {
   ConnectionError,
   ConnectionErrorReason,
   type RemoteParticipant,
   type Room as LivekitRoom,
+  RoomEvent,
 } from "livekit-client";
 import { type LivekitTransportConfig } from "matrix-js-sdk/lib/matrixrtc";
-import { map } from "rxjs";
 import { type Logger } from "matrix-js-sdk/lib/logger";
 import { type CallMembershipIdentityParts } from "matrix-js-sdk/lib/matrixrtc/EncryptionManager";
 
@@ -26,7 +22,7 @@ import {
   type OpenIDClientParts,
   type SFUConfig,
 } from "../../../livekit/openIDSFU.ts";
-import { type Behavior } from "../../Behavior.ts";
+import { type Behavior, fromEvents, state } from "../../Behavior.ts";
 import { type ObservableScope } from "../../ObservableScope.ts";
 import {
   ElementCallError,
@@ -36,7 +32,6 @@ import {
   SFURoomCreationRestrictedError,
   UnknownCallError,
 } from "../../../utils/errors.ts";
-import { state } from "../../Behavior";
 
 export interface ConnectionOpts {
   /**
@@ -161,9 +156,15 @@ export class Connection {
     this.transport = transport;
     this.client = client;
 
-    this.remoteParticipants$ = scope.behavior(
-      // Only tracks remote participants
-      connectedParticipantsObserver(this.livekitRoom),
+    this.remoteParticipants$ = fromEvents(
+      scope,
+      this.livekitRoom,
+      [
+        RoomEvent.ParticipantConnected,
+        RoomEvent.ParticipantDisconnected,
+        RoomEvent.ConnectionStateChanged,
+      ],
+      (room) => Array.from(room.remoteParticipants.values()),
     );
 
     scope.onEnd(() => {
@@ -210,16 +211,17 @@ export class Connection {
       // If we were stopped while fetching the config, don't proceed to connect
       if (this.stopped) return;
 
-      // Setup observer once we are done with getSFUConfigWithOpenID
-      connectionStateObserver(this.livekitRoom)
-        .pipe(
-          this.scope.bind(),
-          map((s) => s as unknown as ConnectionState),
-        )
-        .subscribe((lkState) => {
-          // It is save to cast lkState to ConnectionState as they are fully overlapping.
-          this._state$.value = lkState;
-        });
+      // Mirror the LiveKit connection state once we are done with getSFUConfigWithOpenID.
+      // It is safe to cast the LiveKit state to ConnectionState as they are fully overlapping.
+      const syncState = (): void => {
+        this._state$.value = this.livekitRoom
+          .state as unknown as ConnectionState;
+      };
+      syncState();
+      this.livekitRoom.on(RoomEvent.ConnectionStateChanged, syncState);
+      this.scope.onEnd(() =>
+        this.livekitRoom.off(RoomEvent.ConnectionStateChanged, syncState),
+      );
 
       try {
         this.logger.info(`livekitRoom.connect ${url}`);

@@ -16,7 +16,6 @@ import {
 } from "vitest";
 import { render, type RenderResult } from "@testing-library/react";
 import { type LocalParticipant } from "livekit-client";
-import { of } from "rxjs";
 import { BrowserRouter } from "react-router-dom";
 import { TooltipProvider } from "@vector-im/compound-web";
 import { RoomContext, useLocalParticipant } from "@livekit/components-react";
@@ -51,7 +50,7 @@ import { AppBar } from "../AppBar";
 import { type MatrixInfo } from "./VideoPreview";
 import { ProcessorProvider } from "../livekit/TrackProcessorContext";
 import { initializeWidget } from "../widget";
-import { state } from "../state/Behavior";
+import { constant, state } from "../state/Behavior";
 
 initializeWidget();
 vi.hoisted(
@@ -136,7 +135,7 @@ function createInCallView(args: CreateInCallViewArgs = {}): RenderResult & {
       localParticipant,
     },
     {
-      remoteParticipants$: of([remoteParticipant]),
+      remoteParticipants$: constant([remoteParticipant]),
     },
   );
   const { vm, footerVm, developerSettingsVm, rtcSession } =

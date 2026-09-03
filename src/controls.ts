@@ -5,8 +5,9 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { Subject } from "rxjs";
 import { logger } from "matrix-js-sdk/lib/logger";
+
+import { state } from "./state/Behavior";
 
 export interface Controls {
   canEnterPip(): boolean;
@@ -70,21 +71,26 @@ export interface OutputDevice {
 }
 
 /**
+ * Whether a call is running, and so the picture-in-picture controls can be used.
+ */
+export const callActive$ = state(false);
+
+/**
  * If pipMode is enabled, EC will render a adapted call view layout.
  */
-export const setPipEnabled$ = new Subject<boolean>();
+export const pipEnabled$ = state(false);
 
 /**
- * Stores the list of available controlled audio output devices.
+ * The list of available controlled audio output devices.
  * This is set when the native code calls `setAvailableAudioDevices` with the list of available audio output devices.
  */
-export const availableOutputDevices$ = new Subject<OutputDevice[]>();
+export const availableOutputDevices$ = state<OutputDevice[]>([]);
 
 /**
- * Stores the current audio output device id.
- * This is set when the native code calls `setAudioDevice`
+ * The current audio output device id, if the native code has selected one by
+ * calling `setAudioDevice`.
  */
-export const outputDevice$ = new Subject<string>();
+export const outputDevice$ = state<string | undefined>(undefined);
 
 /**
  * This allows the os to mute the call if the user
@@ -92,7 +98,7 @@ export const outputDevice$ = new Subject<string>();
  *
  * This should also be used to display a darkened overlay screen letting the user know that audio is muted.
  */
-export const setAudioEnabled$ = new Subject<boolean>();
+export const audioEnabled$ = state(true);
 
 let playbackStartedEmitted = false;
 export const setPlaybackStarted = (): void => {
@@ -104,15 +110,15 @@ export const setPlaybackStarted = (): void => {
 
 window.controls = {
   canEnterPip(): boolean {
-    return setPipEnabled$.observed;
+    return callActive$.value;
   },
   enablePip(): void {
-    if (!setPipEnabled$.observed) throw new Error("No call is running");
-    setPipEnabled$.next(true);
+    if (!callActive$.value) throw new Error("No call is running");
+    pipEnabled$.value = true;
   },
   disablePip(): void {
-    if (!setPipEnabled$.observed) throw new Error("No call is running");
-    setPipEnabled$.next(false);
+    if (!callActive$.value) throw new Error("No call is running");
+    pipEnabled$.value = false;
   },
 
   /**
@@ -136,25 +142,21 @@ window.controls = {
       "[MediaDevices controls] setAvailableAudioDevices called from native:",
       devices,
     );
-    availableOutputDevices$.next(devices);
+    availableOutputDevices$.value = devices;
   },
   setAudioDevice(id: string): void {
     logger.info(
       "[MediaDevices controls] setAudioDevice called from native",
       id,
     );
-    outputDevice$.next(id);
+    outputDevice$.value = id;
   },
   setAudioEnabled(enabled: boolean): void {
     logger.info(
       "[MediaDevices controls] setAudioEnabled called from native:",
       enabled,
     );
-    if (!setAudioEnabled$.observed)
-      throw new Error(
-        "Output controls are disabled. No setAudioEnabled$ observer",
-      );
-    setAudioEnabled$.next(enabled);
+    audioEnabled$.value = enabled;
   },
 
   // wrappers for the deprecated controls fields

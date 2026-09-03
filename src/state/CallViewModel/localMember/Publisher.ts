@@ -13,24 +13,21 @@ import {
   type Room as LivekitRoom,
   Track,
 } from "livekit-client";
-import {
-  map,
-  NEVER,
-  type Observable,
-  type Subscription,
-  switchMap,
-} from "rxjs";
 import { type Logger } from "matrix-js-sdk/lib/logger";
 
-import type { Behavior } from "../../Behavior.ts";
-import type { MediaDevices, SelectedDevice } from "../../MediaDevices.ts";
+import { type Behavior, computed, constant } from "../../Behavior.ts";
+import type {
+  MediaDevices,
+  SelectedAudioInputDevice,
+  SelectedDevice,
+} from "../../MediaDevices.ts";
 import type { MuteStates } from "../../MuteStates.ts";
 import {
   type ProcessorState,
   trackProcessorSync,
 } from "../../../livekit/TrackProcessorContext.tsx";
 import { getUrlParams } from "../../../UrlParams.ts";
-import { observeTrackReference$ } from "../../observeTrackReference";
+import { trackReference$ } from "../../trackReference";
 import { type Connection } from "../remoteMembers/Connection.ts";
 import { ObservableScope } from "../../ObservableScope.ts";
 
@@ -307,40 +304,44 @@ export class Publisher {
     scope: ObservableScope,
   ): void {
     const lkRoom = this.connection.livekitRoom;
-    devices.audioInput.selected$
-      .pipe(
-        switchMap((device) => device?.hardwareDeviceChange$ ?? NEVER),
-        scope.bind(),
-      )
-      .subscribe(() => {
-        if (lkRoom.state != LivekitConnectionState.Connected) return;
-        const activeMicTrack = Array.from(
-          lkRoom.localParticipant.audioTrackPublications.values(),
-        ).find((d) => d.source === Track.Source.Microphone)?.track;
+    let previous: SelectedAudioInputDevice | undefined;
+    scope.effect(() => {
+      const device = devices.audioInput.selected$.value;
+      const hardwareChanged =
+        previous !== undefined &&
+        device !== undefined &&
+        previous.id === device.id &&
+        previous.groupId !== device.groupId;
+      previous = device;
+      if (!hardwareChanged) return;
+      if (lkRoom.state != LivekitConnectionState.Connected) return;
+      const activeMicTrack = Array.from(
+        lkRoom.localParticipant.audioTrackPublications.values(),
+      ).find((d) => d.source === Track.Source.Microphone)?.track;
 
-        if (
-          activeMicTrack &&
-          // only restart if the stream is still running: LiveKit will detect
-          // when a track stops & restart appropriately, so this is not our job.
-          // Plus, we need to avoid restarting again if the track is already in
-          // the process of being restarted.
-          activeMicTrack.mediaStreamTrack.readyState !== "ended"
-        ) {
-          this.logger?.info(
-            "Restarting audio device track due to active media device changed (workaroundRestartAudioInputTrackChrome)",
-          );
-          // Restart the track, which will cause Livekit to do another
-          // getUserMedia() call with deviceId: default to get the *new* default device.
-          // Note that room.switchActiveDevice() won't work: Livekit will ignore it because
-          // the deviceId hasn't changed (was & still is default).
-          lkRoom.localParticipant
-            .getTrackPublication(Track.Source.Microphone)
-            ?.audioTrack?.restartTrack()
-            .catch((e) => {
-              this.logger.error(`Failed to restart audio device track`, e);
-            });
-        }
-      });
+      if (
+        activeMicTrack &&
+        // only restart if the stream is still running: LiveKit will detect
+        // when a track stops & restart appropriately, so this is not our job.
+        // Plus, we need to avoid restarting again if the track is already in
+        // the process of being restarted.
+        activeMicTrack.mediaStreamTrack.readyState !== "ended"
+      ) {
+        this.logger?.info(
+          "Restarting audio device track due to active media device changed (workaroundRestartAudioInputTrackChrome)",
+        );
+        // Restart the track, which will cause Livekit to do another
+        // getUserMedia() call with deviceId: default to get the *new* default device.
+        // Note that room.switchActiveDevice() won't work: Livekit will ignore it because
+        // the deviceId hasn't changed (was & still is default).
+        lkRoom.localParticipant
+          .getTrackPublication(Track.Source.Microphone)
+          ?.audioTrack?.restartTrack()
+          .catch((e) => {
+            this.logger.error(`Failed to restart audio device track`, e);
+          });
+      }
+    });
   }
 
   // Observe changes in the selected media devices and update the LiveKit room accordingly.
@@ -351,12 +352,13 @@ export class Publisher {
   ): void {
     const lkRoom = this.connection.livekitRoom;
     const syncDevice = (
+      scope: ObservableScope,
       kind: MediaDeviceKind,
-      selected$: Observable<SelectedDevice | undefined>,
-    ): Subscription =>
-      selected$.pipe(scope.bind()).subscribe((device) => {
+      selected$: Behavior<SelectedDevice | undefined>,
+    ): void =>
+      scope.effect(() => {
+        const device = selected$.value;
         if (lkRoom.state != LivekitConnectionState.Connected) return;
-        // if (this.connectionState$.value !== ConnectionState.Connected) return;
         this.logger.info(
           "[LivekitRoom] syncDevice room.getActiveDevice(kind) !== d.id :",
           lkRoom.getActiveDevice(kind),
@@ -378,10 +380,10 @@ export class Publisher {
         }
       });
 
-    syncDevice("audioinput", devices.audioInput.selected$);
+    syncDevice(scope, "audioinput", devices.audioInput.selected$);
     if (!controlledAudioDevices)
-      syncDevice("audiooutput", devices.audioOutput.selected$);
-    syncDevice("videoinput", devices.videoInput.selected$);
+      syncDevice(scope, "audiooutput", devices.audioOutput.selected$);
+    syncDevice(scope, "videoinput", devices.videoInput.selected$);
   }
 
   /**
@@ -429,15 +431,15 @@ export class Publisher {
     room: LivekitRoom,
     trackerProcessorState$: Behavior<ProcessorState>,
   ): void {
-    const track$ = scope.behavior(
-      observeTrackReference$(room.localParticipant, Track.Source.Camera).pipe(
-        map((trackRef) => {
-          const track = trackRef?.publication.track;
-          return track instanceof LocalVideoTrack ? track : null;
-        }),
-      ),
-      null,
+    const camera$ = trackReference$(
+      scope,
+      constant(room.localParticipant),
+      Track.Source.Camera,
     );
+    const track$ = computed(() => {
+      const track = camera$.value?.publication.track;
+      return track instanceof LocalVideoTrack ? track : null;
+    });
     trackProcessorSync(scope, track$, trackerProcessorState$);
   }
 }

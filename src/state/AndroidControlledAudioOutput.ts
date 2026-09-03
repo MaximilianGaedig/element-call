@@ -5,16 +5,6 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 import { logger as rootLogger } from "matrix-js-sdk/lib/logger";
-import {
-  distinctUntilChanged,
-  map,
-  merge,
-  type Observable,
-  scan,
-  startWith,
-  Subject,
-  tap,
-} from "rxjs";
 
 import {
   type AudioOutputDeviceLabel,
@@ -24,30 +14,7 @@ import {
 import type { ObservableScope } from "./ObservableScope.ts";
 import type { RTCCallIntent } from "matrix-js-sdk/lib/matrixrtc";
 import { type Controls, type OutputDevice } from "../controls.ts";
-import { type Behavior } from "./Behavior.ts";
-
-type ControllerState = {
-  /**
-   * The list of available output devices, ordered by preference order (most preferred first).
-   */
-  devices: OutputDevice[];
-  /**
-   * Explicit user preference for the selected device.
-   */
-  preferredDeviceId: string | undefined;
-  /**
-   * The effective selected device, always valid against available devices.
-   */
-  selectedDeviceId: string | undefined;
-};
-
-/**
- * The possible actions that can be performed on the controller,
- * either by the user or by the system.
- */
-type ControllerAction =
-  | { type: "selectDevice"; deviceId: string | undefined }
-  | { type: "deviceUpdated"; devices: OutputDevice[] };
+import { type Behavior, computed, state } from "./Behavior.ts";
 /**
  * The implementation of the audio output media device for Android when using the controlled audio output mode.
  *
@@ -71,14 +38,28 @@ export class AndroidControlledAudioOutput implements MediaDevice<
   );
 
   /**
-   * STATE stream: the current state of the controller, including the list of available devices and the selected device.
+   * Explicit user preference for the selected device.
    */
-  private readonly controllerState$: Behavior<ControllerState>;
+  private readonly preferredDeviceId$ = state<string | undefined>(undefined);
+
+  /**
+   * The effective selected device, always valid against available devices.
+   */
+  private readonly selectedDeviceId$ = state<string | undefined>(undefined);
 
   /**
    * @inheritdoc
    */
-  public readonly available$: Behavior<Map<string, AudioOutputDeviceLabel>>;
+  public readonly available$: Behavior<Map<string, AudioOutputDeviceLabel>> =
+    computed(
+      () =>
+        new Map(
+          this.controlledDevices$.value.map((device) => [
+            device.id,
+            mapDeviceToLabel(device),
+          ]),
+        ),
+    );
 
   /**
    * Effective selected device, always valid against available devices.
@@ -86,14 +67,19 @@ export class AndroidControlledAudioOutput implements MediaDevice<
    * On android, we don't listen to the selected device from native code (control.setAudioDevice).
    * Instead, we determine the selected device ourselves based on the available devices and the user's selection (if any).
    */
-  public readonly selected$: Behavior<SelectedAudioOutputDevice | undefined>;
-
-  // COMMAND stream: user asks to select a device
-  private readonly selectDeviceCommand$ = new Subject<string | undefined>();
+  public readonly selected$: Behavior<SelectedAudioOutputDevice | undefined> =
+    computed(
+      () => {
+        const id = this.selectedDeviceId$.value;
+        /** virtualEarpiece is an iOS thing, always false for android */
+        return id === undefined ? undefined : { id, virtualEarpiece: false };
+      },
+      (a, b) => a?.id === b?.id,
+    );
 
   public select(id: string): void {
     this.logger.info(`select device: ${id}`);
-    this.selectDeviceCommand$.next(id);
+    this.preferredDeviceId$.value = id;
   }
 
   /**
@@ -106,138 +92,44 @@ export class AndroidControlledAudioOutput implements MediaDevice<
    * @param controls - The controls provided by the hosting application to control the audio routing and notify of user actions.
    */
   public constructor(
-    private readonly controlledDevices$: Observable<OutputDevice[]>,
-    private readonly scope: ObservableScope,
+    private readonly controlledDevices$: Behavior<OutputDevice[]>,
+    scope: ObservableScope,
     private initialIntent: RTCCallIntent | undefined = undefined,
     controls: Controls,
   ) {
-    this.controllerState$ = this.startObservingState$();
-
-    this.selected$ = this.effectiveSelectionFromState$(this.controllerState$);
-
-    this.available$ = scope.behavior(
-      this.controllerState$.pipe(
-        map((state) => {
-          this.logger.info("available devices updated:", state.devices);
-
-          return new Map<string, AudioOutputDeviceLabel>(
-            state.devices.map((outputDevice) => {
-              return [outputDevice.id, mapDeviceToLabel(outputDevice)];
-            }),
-          );
-        }),
-      ),
-    );
-
-    // Effect 1: notify host when effective selection changes
-    this.selected$
-      // It is a behavior so it has built-in distinct until change
-      .pipe(scope.bind())
-      .subscribe((device) => {
-        // Let the hosting application know which output device has been selected.
-        if (device !== undefined) {
-          this.logger.info("onAudioDeviceSelect called:", device);
-          controls.onAudioDeviceSelect?.(device.id);
-          // Also invoke the deprecated callback for backward compatibility
-          // TODO: it appears that on Android the hosting application is only using the deprecated callback (onOutputDeviceSelect)
-          // and not the new one (onAudioDeviceSelect), we should clean this up and only have one callback for audio device selection.
-          controls.onOutputDeviceSelect?.(device.id);
-        }
+    // Re-evaluate the selection whenever the devices or the preference change
+    let previousDevices: OutputDevice[] = [];
+    scope.effect(() => {
+      const availableDevices = this.controlledDevices$.value;
+      this.selectedDeviceId$.value = this.chooseEffectiveSelection({
+        previousDevices,
+        availableDevices,
+        currentSelectedId: this.selectedDeviceId$.peek(),
+        preferredDeviceId: this.preferredDeviceId$.value,
       });
-  }
+      previousDevices = availableDevices;
+    });
 
-  private startObservingState$(): Behavior<ControllerState> {
-    const initialState: ControllerState = {
-      devices: [],
-      preferredDeviceId: undefined,
-      selectedDeviceId: undefined,
-    };
+    scope.effect(() => {
+      this.logger.info(
+        "available devices updated:",
+        this.controlledDevices$.value,
+      );
+    });
 
-    // Merge the two possible inputs observable as a single
-    // stream of actions that will update the state of the controller.
-    const actions$: Observable<ControllerAction> = merge(
-      this.controlledDevices$.pipe(
-        map(
-          (devices) =>
-            ({ type: "deviceUpdated", devices }) satisfies ControllerAction,
-        ),
-      ),
-      this.selectDeviceCommand$.pipe(
-        map(
-          (deviceId) =>
-            ({ type: "selectDevice", deviceId }) satisfies ControllerAction,
-        ),
-      ),
-    );
-
-    const initialAction: ControllerAction = {
-      type: "deviceUpdated",
-      devices: [],
-    };
-
-    return this.scope.behavior(
-      actions$.pipe(
-        startWith(initialAction),
-        scan((state, action): ControllerState => {
-          switch (action.type) {
-            case "deviceUpdated": {
-              const chosenDevice = this.chooseEffectiveSelection({
-                previousDevices: state.devices,
-                availableDevices: action.devices,
-                currentSelectedId: state.selectedDeviceId,
-                preferredDeviceId: state.preferredDeviceId,
-              });
-
-              return {
-                ...state,
-                devices: action.devices,
-                selectedDeviceId: chosenDevice,
-              };
-            }
-            case "selectDevice": {
-              const chosenDevice = this.chooseEffectiveSelection({
-                previousDevices: state.devices,
-                availableDevices: state.devices,
-                currentSelectedId: state.selectedDeviceId,
-                preferredDeviceId: action.deviceId,
-              });
-
-              return {
-                ...state,
-                preferredDeviceId: action.deviceId,
-                selectedDeviceId: chosenDevice,
-              };
-            }
-          }
-        }, initialState),
-      ),
-    );
-  }
-
-  private effectiveSelectionFromState$(
-    state$: Observable<ControllerState>,
-  ): Behavior<SelectedAudioOutputDevice | undefined> {
-    return this.scope.behavior(
-      state$
-        .pipe(
-          map((state) => {
-            if (state.selectedDeviceId) {
-              return {
-                id: state.selectedDeviceId,
-                /** This is an iOS thing, always false for android*/
-                virtualEarpiece: false,
-              };
-            }
-            return undefined;
-          }),
-          distinctUntilChanged((a, b) => a?.id === b?.id),
-        )
-        .pipe(
-          tap((selected) => {
-            this.logger.debug(`selected device: ${selected?.id}`);
-          }),
-        ),
-    );
+    // Notify the host when the effective selection changes
+    scope.effect(() => {
+      const device = this.selected$.value;
+      this.logger.debug(`selected device: ${device?.id}`);
+      if (device !== undefined) {
+        this.logger.info("onAudioDeviceSelect called:", device);
+        controls.onAudioDeviceSelect?.(device.id);
+        // Also invoke the deprecated callback for backward compatibility
+        // TODO: it appears that on Android the hosting application is only using the deprecated callback (onOutputDeviceSelect)
+        // and not the new one (onAudioDeviceSelect), we should clean this up and only have one callback for audio device selection.
+        controls.onOutputDeviceSelect?.(device.id);
+      }
+    });
   }
 
   private chooseEffectiveSelection(args: {

@@ -18,7 +18,6 @@ import {
   EventType,
   RoomEvent as MatrixRoomEvent,
 } from "matrix-js-sdk";
-import { delay } from "rxjs";
 
 import {
   ElementCallReactionEventType,
@@ -60,19 +59,26 @@ export class ReactionsReader {
     private readonly scope: ObservableScope,
     private readonly rtcSession: MatrixRTCSession,
   ) {
-    // Hide reactions after a given time.
-    this.reactionsSubject$
-      .pipe(delay(REACTION_ACTIVE_TIME_MS), this.scope.bind())
-      .subscribe((reactions) => {
-        const date = new Date();
-        const nextEntries = Object.fromEntries(
-          Object.entries(reactions).filter(([_, hr]) => hr.expireAfter > date),
-        );
-        if (Object.keys(reactions).length === Object.keys(nextEntries).length) {
-          return;
-        }
-        this.reactionsSubject$.value = nextEntries;
-      });
+    // Hide reactions once they expire
+    this.scope.effect(() => {
+      const reactions = this.reactionsSubject$.value;
+      const nextExpiry = Math.min(
+        ...Object.values(reactions).map((r) => r.expireAfter.getTime()),
+      );
+      if (!isFinite(nextExpiry)) return;
+      const timer = setTimeout(
+        () => {
+          const now = new Date();
+          this.reactionsSubject$.value = Object.fromEntries(
+            Object.entries(this.reactionsSubject$.value).filter(
+              ([, r]) => r.expireAfter > now,
+            ),
+          );
+        },
+        Math.max(0, nextExpiry - Date.now()),
+      );
+      return (): void => clearTimeout(timer);
+    });
 
     // TODO: Convert this class to the functional reactive style and get rid of
     // all this manual setup and teardown for event listeners

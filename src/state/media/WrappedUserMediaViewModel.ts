@@ -5,19 +5,14 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { of, switchMap } from "rxjs";
-import {
-  type LocalParticipant,
-  ParticipantEvent,
-  type RemoteParticipant,
-} from "livekit-client";
-import { observeParticipantEvents } from "@livekit/components-core";
+import { type LocalParticipant, type RemoteParticipant } from "livekit-client";
 
 import { type ObservableScope } from "../ObservableScope.ts";
-import { type Behavior, computed } from "../Behavior.ts";
+import { type Behavior, computed, fromEvents } from "../Behavior.ts";
 import type { MediaDevices } from "../MediaDevices.ts";
-import { observeSpeaker$ } from "./observeSpeaker.ts";
-import { generateItems } from "../../utils/observable.ts";
+import { speaker$ } from "./speaker.ts";
+import { keyedItems } from "../keyedItems.ts";
+import { PUBLICATION_EVENTS } from "../trackReference.ts";
 import { type TaggedParticipant } from "../CallViewModel/remoteMembers/MatrixLivekitMembers.ts";
 import { type UserMediaViewModel } from "./UserMediaViewModel.ts";
 import { type ScreenShareViewModel } from "./ScreenShareViewModel.ts";
@@ -117,52 +112,39 @@ export function createWrappedUserMedia(
   const participant$: Behavior<LocalParticipant | RemoteParticipant | null> =
     participant.value$;
 
-  const screenShares$ = scope.behavior(
-    participant$.pipe(
-      switchMap((p) =>
-        p === null
-          ? of([])
-          : observeParticipantEvents(
-              p,
-              ParticipantEvent.TrackPublished,
-              ParticipantEvent.TrackUnpublished,
-              ParticipantEvent.LocalTrackPublished,
-              ParticipantEvent.LocalTrackUnpublished,
-            ).pipe(
-              // Technically more than one screen share might be possible... our
-              // MediaViewModels don't support it though since they look for a unique
-              // track for the given source. So generateItems here is a bit overkill.
-              generateItems(
-                `${inputs.id} screenShares$`,
-                function* (p) {
-                  if (p.isScreenShareEnabled)
-                    yield {
-                      keys: ["screen-share"],
-                      data: undefined,
-                    };
-                },
-                (scope, _data$, key) => {
-                  const id = `${inputs.id}:${key}`;
-                  return participant.type === "local"
-                    ? createLocalScreenShare(scope, {
-                        ...inputs,
-                        id,
-                        participant$: participant.value$,
-                      })
-                    : createRemoteScreenShare(scope, {
-                        ...inputs,
-                        id,
-                        participant$: participant.value$,
-                        pretendToBeDisconnected$,
-                      });
-                },
-              ),
-            ),
-      ),
-    ),
+  const screenShareEnabled$ = fromEvents(
+    scope,
+    participant$,
+    PUBLICATION_EVENTS,
+    (p) => p?.isScreenShareEnabled ?? false,
+  );
+  // Technically more than one screen share might be possible... our
+  // MediaViewModels don't support it though since they look for a unique
+  // track for the given source.
+  const screenShares$ = keyedItems(
+    scope,
+    `${inputs.id} screenShares$`,
+    screenShareEnabled$,
+    (enabled) =>
+      enabled ? [{ keys: ["screen-share"] as const, data: undefined }] : [],
+    (scope, _data$, key) => {
+      const id = `${inputs.id}:${key}`;
+      return participant.type === "local"
+        ? createLocalScreenShare(scope, {
+            ...inputs,
+            id,
+            participant$: participant.value$,
+          })
+        : createRemoteScreenShare(scope, {
+            ...inputs,
+            id,
+            participant$: participant.value$,
+            pretendToBeDisconnected$,
+          });
+    },
   );
 
-  const speaker$ = scope.behavior(observeSpeaker$(userMedia.speaking$));
+  const isSpeaker$ = speaker$(scope, userMedia.speaking$);
 
   return {
     ...userMedia,
@@ -173,7 +155,7 @@ export function createWrappedUserMedia(
           ? SortingBin.SelfAlwaysShown
           : SortingBin.SelfNotAlwaysShown;
       else if (screenShares$.value.length > 0) return SortingBin.Presenters;
-      else if (speaker$.value) return SortingBin.Speakers;
+      else if (isSpeaker$.value) return SortingBin.Speakers;
       else if (userMedia.handRaised$.value) return SortingBin.HandRaised;
       else if (userMedia.videoEnabled$.value) return SortingBin.Video;
       else return SortingBin.NoVideo;

@@ -15,7 +15,7 @@ import {
 import { type RTCCallIntent } from "matrix-js-sdk/lib/matrixrtc";
 import { map, mergeMap, NEVER, type Observable, startWith } from "rxjs";
 
-import { withTestScheduler } from "../../utils/test";
+import { withRxTestScheduler } from "../../utils/test";
 import {
   alice,
   aliceRtcMember,
@@ -70,7 +70,7 @@ function summarizeRingAttempts$(
 }
 
 test("no ring attempt when waitForCallPickup=false", () => {
-  withTestScheduler(({ scope, expectObservable, hot }) => {
+  withRxTestScheduler(({ scope, expectObservable, hot }) => {
     const { ringAttempts$ } = createCallNotificationLifecycle$({
       scope,
       ...defaultProps,
@@ -85,7 +85,7 @@ test("no ring attempt when waitForCallPickup=false", () => {
 });
 
 test("no ring attempt when notification type is not ring", () => {
-  withTestScheduler(({ scope, expectObservable, hot }) => {
+  withRxTestScheduler(({ scope, expectObservable, hot }) => {
     const { ringAttempts$ } = createCallNotificationLifecycle$({
       scope,
       ...defaultProps,
@@ -102,7 +102,7 @@ test("no ring attempt when notification type is not ring", () => {
 });
 
 test("no ring attempt if lifetime is missing", () => {
-  withTestScheduler(({ scope, expectObservable, hot }) => {
+  withRxTestScheduler(({ scope, expectObservable, hot }) => {
     const { ringAttempts$ } = createCallNotificationLifecycle$({
       scope,
       ...defaultProps,
@@ -116,7 +116,7 @@ test("no ring attempt if lifetime is missing", () => {
 });
 
 test("ring attempt times out after nobody joins", () => {
-  withTestScheduler(({ scope, expectObservable, hot }) => {
+  withRxTestScheduler(({ scope, expectObservable, hot }) => {
     const { ringAttempts$ } = createCallNotificationLifecycle$({
       scope,
       ...defaultProps,
@@ -135,7 +135,7 @@ test("ring attempt times out after nobody joins", () => {
 });
 
 test("ring attempt is accepted once recipient joins", () => {
-  withTestScheduler(({ scope, expectObservable, hot, behavior }) => {
+  withRxTestScheduler(({ scope, expectObservable, hot, behavior }) => {
     const { ringAttempts$ } = createCallNotificationLifecycle$({
       scope,
       ...defaultProps,
@@ -153,7 +153,7 @@ test("ring attempt is accepted once recipient joins", () => {
 });
 
 test("ring attempt is immediately accepted if recipient is already joined", () => {
-  withTestScheduler(({ scope, expectObservable, hot }) => {
+  withRxTestScheduler(({ scope, expectObservable, hot }) => {
     const { ringAttempts$ } = createCallNotificationLifecycle$({
       scope,
       ...defaultProps,
@@ -171,7 +171,7 @@ test("ring attempt is immediately accepted if recipient is already joined", () =
 });
 
 test("ring attempt can be declined", () => {
-  withTestScheduler(({ scope, expectObservable, hot }) => {
+  withRxTestScheduler(({ scope, expectObservable, hot }) => {
     const { ringAttempts$ } = createCallNotificationLifecycle$({
       scope,
       ...defaultProps,
@@ -206,7 +206,7 @@ test("ring attempt can be declined", () => {
 });
 
 test("ring attempt times out if recipient declines too late", () => {
-  withTestScheduler(({ scope, expectObservable, hot }) => {
+  withRxTestScheduler(({ scope, expectObservable, hot }) => {
     const { ringAttempts$ } = createCallNotificationLifecycle$({
       scope,
       ...defaultProps,
@@ -241,7 +241,7 @@ test("ring attempt times out if recipient declines too late", () => {
 });
 
 test("decline event relating to wrong event is ignored (times out)", () => {
-  withTestScheduler(({ scope, expectObservable, hot }) => {
+  withRxTestScheduler(({ scope, expectObservable, hot }) => {
     const { ringAttempts$ } = createCallNotificationLifecycle$({
       scope,
       ...defaultProps,
@@ -276,7 +276,7 @@ test("decline event relating to wrong event is ignored (times out)", () => {
 });
 
 test("decline event from wrong sender is ignored (times out)", () => {
-  withTestScheduler(({ scope, expectObservable, hot }) => {
+  withRxTestScheduler(({ scope, expectObservable, hot }) => {
     const { ringAttempts$ } = createCallNotificationLifecycle$({
       scope,
       ...defaultProps,

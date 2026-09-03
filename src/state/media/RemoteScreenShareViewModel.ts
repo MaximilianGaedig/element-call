@@ -7,7 +7,6 @@ Please see LICENSE in the repository root for full details.
 */
 
 import { Track, type RemoteParticipant } from "livekit-client";
-import { map, of, switchMap } from "rxjs";
 
 import { type Behavior, computed } from "../Behavior";
 import {
@@ -17,7 +16,7 @@ import {
 } from "./ScreenShareViewModel";
 import { type ObservableScope } from "../ObservableScope";
 import { createVolumeControls, type VolumeControls } from "../VolumeControls";
-import { observeTrackReference$ } from "../observeTrackReference";
+import { trackReference$ } from "../trackReference";
 
 export interface RemoteScreenShareViewModel
   extends BaseScreenShareViewModel, VolumeControls {
@@ -41,6 +40,11 @@ export function createRemoteScreenShare(
   scope: ObservableScope,
   { pretendToBeDisconnected$, ...inputs }: RemoteScreenShareInputs,
 ): RemoteScreenShareViewModel {
+  const audio$ = trackReference$(
+    scope,
+    inputs.participant$,
+    Track.Source.ScreenShareAudio,
+  );
   return {
     ...createBaseScreenShare(scope, inputs),
     ...createVolumeControls(scope, {
@@ -55,15 +59,6 @@ export function createRemoteScreenShare(
     }),
     local: false,
     videoEnabled$: computed(() => !pretendToBeDisconnected$.value),
-    audioEnabled$: scope.behavior(
-      inputs.participant$.pipe(
-        switchMap((p) =>
-          p
-            ? observeTrackReference$(p, Track.Source.ScreenShareAudio)
-            : of(null),
-        ),
-        map(Boolean),
-      ),
-    ),
+    audioEnabled$: computed(() => audio$.value !== undefined),
   };
 }

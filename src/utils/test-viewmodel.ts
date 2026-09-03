@@ -187,7 +187,7 @@ export function getBasicCallViewModelEnvironment(
   return {
     vm,
     footerVm,
-    developerSettingsVm: createDeveloperSettingsTabViewModel(testScope(), vm),
+    developerSettingsVm: createDeveloperSettingsTabViewModel(vm),
     rtcMemberships$,
     rtcSession,
     handRaisedSubject$: handRaisedSubject$,

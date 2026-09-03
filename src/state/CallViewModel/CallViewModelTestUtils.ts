@@ -12,14 +12,13 @@ import {
   ParticipantEvent,
   type RemoteParticipant,
   type Room as LivekitRoom,
+  type RemoteTrackPublication,
+  Track,
   type TrackPublication,
 } from "livekit-client";
 import { SyncState } from "matrix-js-sdk/lib/sync";
-import { combineLatest, map, of } from "rxjs";
-import { onTestFinished, vi } from "vitest";
 import { ClientEvent, type RoomMember, type MatrixClient } from "matrix-js-sdk";
 import EventEmitter from "events";
-import * as ComponentsCore from "@livekit/components-core";
 
 import type { CallMembership } from "matrix-js-sdk/lib/matrixrtc";
 import { E2eeType } from "../../e2ee/e2eeType";
@@ -145,55 +144,60 @@ export function withCallViewModel(mode: MatrixRTCMode) {
     const rtcSession = new MockRTCSession(room, []).withMemberships(
       rtcMembers$,
     );
-    const participantsSpy = vi
-      .spyOn(ComponentsCore, "connectedParticipantsObserver")
-      .mockReturnValue(remoteParticipants$);
-    const mediaSpy = vi
-      .spyOn(ComponentsCore, "observeParticipantMedia")
-      .mockImplementation((p) => {
-        return (videoEnabled.get(p) ?? constant(false)).pipe(
-          map((videoEnabled) => ({
-            participant: p,
-            isMicrophoneEnabled: false,
-            isCameraEnabled: videoEnabled,
-            isScreenShareEnabled: false,
-            cameraTrack: {
-              isMuted: !videoEnabled,
-            } as unknown as TrackPublication,
-          })),
+    // Drive the mock participants from the test's Behaviors, as LiveKit would.
+    // The mocks are shared between tests, so restore them afterwards.
+    const scope = testScope();
+    for (const p of new Set([
+      ...speaking.keys(),
+      ...videoEnabled.keys(),
+      ...sharingScreen.keys(),
+    ])) {
+      const { isSpeaking, isScreenShareEnabled, getTrackPublication } = p;
+      scope.onEnd(() =>
+        Object.assign(p, {
+          isSpeaking,
+          isScreenShareEnabled,
+          getTrackPublication,
+        }),
+      );
+    }
+    for (const [p, speaking$] of speaking)
+      scope.effect(() => {
+        (p as { isSpeaking: boolean }).isSpeaking = speaking$.value;
+        p.emit(ParticipantEvent.IsSpeakingChanged, speaking$.value);
+      });
+    for (const [p, enabled$] of videoEnabled)
+      scope.effect(() => {
+        const enabled = enabled$.value;
+        p.getTrackPublication = (source) =>
+          (source === Track.Source.Camera
+            ? { isMuted: !enabled }
+            : {}) as TrackPublication;
+        p.emit(
+          enabled ? ParticipantEvent.TrackUnmuted : ParticipantEvent.TrackMuted,
+          {} as TrackPublication,
         );
       });
-    const eventsSpy = vi
-      .spyOn(ComponentsCore, "observeParticipantEvents")
-      .mockImplementation((p, ...eventTypes) => {
-        return combineLatest([
-          (eventTypes.includes(ParticipantEvent.IsSpeakingChanged) &&
-            speaking.get(p)) ||
-            constant(false),
-          (eventTypes.includes(ParticipantEvent.TrackPublished) &&
-            sharingScreen.get(p)) ||
-            constant(false),
-        ]).pipe(
-          map(
-            ([isSpeaking, isScreenShareEnabled]) =>
-              ({ ...p, isSpeaking, isScreenShareEnabled }) as Participant,
-          ),
-        );
+    for (const [p, sharing$] of sharingScreen)
+      scope.effect(() => {
+        (p as { isScreenShareEnabled: boolean }).isScreenShareEnabled =
+          sharing$.value;
+        p.emit(ParticipantEvent.TrackPublished, {} as RemoteTrackPublication);
       });
 
-    const roomEventSelectorSpy = vi
-      .spyOn(ComponentsCore, "roomEventSelector")
-      .mockImplementation((_room, _eventType) => of());
     const muteStates = mockMuteStates();
     const raisedHands$ = state<Record<string, RaisedHandInfo>>({});
     const reactions$ = state<Record<string, ReactionInfo>>({});
 
     const livekitRoomFactory = (): LivekitRoom =>
-      mockLivekitRoom({
-        localParticipant,
-        disconnect: async () => Promise.resolve(),
-        setE2EEEnabled: async () => Promise.resolve(),
-      });
+      mockLivekitRoom(
+        {
+          localParticipant,
+          disconnect: async () => Promise.resolve(),
+          setE2EEEnabled: async () => Promise.resolve(),
+        },
+        { remoteParticipants$ },
+      );
 
     const vm = createCallViewModel$(
       testScope(),
@@ -246,13 +250,6 @@ export function withCallViewModel(mode: MatrixRTCMode) {
         supported: undefined,
       }),
     );
-
-    onTestFinished(() => {
-      participantsSpy.mockRestore();
-      mediaSpy.mockRestore();
-      eventsSpy.mockRestore();
-      roomEventSelectorSpy.mockRestore();
-    });
 
     continuation(vm, rtcSession, { raisedHands$: raisedHands$ }, setSyncState);
   };

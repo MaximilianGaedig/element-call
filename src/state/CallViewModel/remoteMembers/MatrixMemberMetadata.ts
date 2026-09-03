@@ -6,21 +6,19 @@ Please see LICENSE in the repository root for full details.
 */
 
 import { type RoomMember, RoomStateEvent } from "matrix-js-sdk";
-import { combineLatest, fromEvent, map } from "rxjs";
 import { type CallMembership } from "matrix-js-sdk/lib/matrixrtc";
 import { logger as rootLogger } from "matrix-js-sdk/lib/logger";
 import {
   KnownMembership,
   type Room as MatrixRoom,
 } from "matrix-js-sdk/lib/matrix";
-// eslint-disable-next-line rxjs/no-internal
 
 import { type ObservableScope } from "../../ObservableScope";
 import {
   calculateDisplayName,
   shouldDisambiguate,
 } from "../../../utils/displayname";
-import { type Behavior } from "../../Behavior";
+import { type Behavior, computed, fromEvents } from "../../Behavior";
 
 export type RoomMemberMap = Map<
   string,
@@ -44,11 +42,8 @@ export function createRoomMembers$(
   scope: ObservableScope,
   matrixRoom: MatrixRoom,
 ): Behavior<RoomMemberMap> {
-  return scope.behavior(
-    fromEvent(matrixRoom, RoomStateEvent.Members).pipe(
-      map(() => roomToMembersMap(matrixRoom)),
-    ),
-    roomToMembersMap(matrixRoom),
+  return fromEvents(scope, matrixRoom, [RoomStateEvent.Members], (room) =>
+    roomToMembersMap(room),
   );
 }
 
@@ -59,100 +54,62 @@ export function createRoomMembers$(
  *
  * @returns Map<userId, displayname> uses the Matrix user ID as the key.
  */
-// don't do this work more times than we need to. This is achieved by converting to a behavior:
 export const memberDisplaynames$ = (
-  scope: ObservableScope,
   memberships$: Behavior<Pick<CallMembership, "userId">[]>,
   roomMembers$: Behavior<RoomMemberMap>,
 ): Behavior<Map<string, string>> => {
   const logger = rootLogger.getChild("[MatrixMemberMetadata]");
-  // This map tracks userIds that at some point needed disambiguation.
-  // This is a memory leak bound to the number of participants.
-  // A call application will always increase the memory if there have been more members in a call.
-  // Its capped by room member participants.
-  const shouldDisambiguateTrackerMap = new Set<string>();
-  return scope.behavior(
-    combineLatest([
-      // Handle call membership changes
-      memberships$,
-      // Additionally handle display name changes (implicitly reacting to them)
-      roomMembers$,
-      // TODO: do we need: pauseWhen(this.pretendToBeDisconnected$),
-    ]).pipe(
-      map(([memberships, roomMembers]) => {
-        const displaynameMap = new Map<string, string>();
-        // We only consider RTC members for disambiguation as they are the only visible members.
-        for (const rtcMember of memberships) {
-          const member = roomMembers.get(rtcMember.userId);
-          if (!member) {
-            logger.error(`Could not find member for user ${rtcMember.userId}`);
-            continue;
-          }
-          const disambiguateComputed = shouldDisambiguate(
-            member,
-            memberships,
-            roomMembers,
-          );
-
-          const disambiguate =
-            shouldDisambiguateTrackerMap.has(rtcMember.userId) ||
-            disambiguateComputed;
-          if (disambiguate) shouldDisambiguateTrackerMap.add(rtcMember.userId);
-          displaynameMap.set(
-            rtcMember.userId,
-            calculateDisplayName(member, disambiguate),
-          );
-        }
-        return displaynameMap;
-      }),
-    ),
-  );
+  // Users that at some point needed disambiguation stay disambiguated, so that
+  // names don't flip back and forth as people come and go. This grows with the
+  // number of members that have ever been in the call.
+  const everDisambiguated = new Set<string>();
+  return computed(() => {
+    const memberships = memberships$.value;
+    const roomMembers = roomMembers$.value;
+    const displaynameMap = new Map<string, string>();
+    // We only consider RTC members for disambiguation as they are the only visible members.
+    for (const rtcMember of memberships) {
+      const member = roomMembers.get(rtcMember.userId);
+      if (!member) {
+        logger.error(`Could not find member for user ${rtcMember.userId}`);
+        continue;
+      }
+      const disambiguate =
+        everDisambiguated.has(rtcMember.userId) ||
+        shouldDisambiguate(member, memberships, roomMembers);
+      if (disambiguate) everDisambiguated.add(rtcMember.userId);
+      displaynameMap.set(
+        rtcMember.userId,
+        calculateDisplayName(member, disambiguate),
+      );
+    }
+    return displaynameMap;
+  });
 };
 
 export const createMatrixMemberMetadata$ = (
-  scope: ObservableScope,
   memberships$: Behavior<Pick<CallMembership, "userId">[]>,
   roomMembers$: Behavior<RoomMemberMap>,
 ): {
-  createDisplayNameBehavior$: (
-    scope: ObservableScope,
-    userId: string,
-  ) => Behavior<string | undefined>;
-  createAvatarUrlBehavior$: (
-    scope: ObservableScope,
-    userId: string,
-  ) => Behavior<string | undefined>;
+  displayName$: (userId: string) => Behavior<string | undefined>;
+  avatarUrl$: (userId: string) => Behavior<string | undefined>;
   displaynameMap$: Behavior<Map<string, string>>;
   avatarMap$: Behavior<Map<string, string | undefined>>;
 } => {
-  const displaynameMap$ = memberDisplaynames$(
-    scope,
-    memberships$,
-    roomMembers$,
-  );
-  const avatarMap$ = scope.behavior(
-    roomMembers$.pipe(
-      map((roomMembers) =>
-        Array.from(roomMembers.keys()).reduce((acc, key) => {
-          acc.set(key, roomMembers.get(key)?.getMxcAvatarUrl());
-          return acc;
-        }, new Map<string, string | undefined>()),
+  const displaynameMap$ = memberDisplaynames$(memberships$, roomMembers$);
+  const avatarMap$ = computed(
+    () =>
+      new Map(
+        [...roomMembers$.value].map(([userId, member]) => [
+          userId,
+          member.getMxcAvatarUrl(),
+        ]),
       ),
-    ),
   );
   return {
-    createDisplayNameBehavior$: (scope: ObservableScope, userId: string) =>
-      scope.behavior(
-        displaynameMap$.pipe(
-          map((displaynameMap) => displaynameMap.get(userId)),
-        ),
-      ),
-    createAvatarUrlBehavior$: (scope: ObservableScope, userId: string) =>
-      scope.behavior(
-        roomMembers$.pipe(
-          map((roomMembers) => roomMembers.get(userId)?.getMxcAvatarUrl()),
-        ),
-      ),
+    displayName$: (userId) => computed(() => displaynameMap$.value.get(userId)),
+    avatarUrl$: (userId) =>
+      computed(() => roomMembers$.value.get(userId)?.getMxcAvatarUrl()),
     // mostly for testing purposes
     displaynameMap$,
     avatarMap$,

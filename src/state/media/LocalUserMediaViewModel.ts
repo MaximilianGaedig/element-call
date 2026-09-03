@@ -12,10 +12,9 @@ import {
   LocalVideoTrack,
   TrackEvent,
 } from "livekit-client";
-import { fromEvent, map, merge, of, startWith, switchMap } from "rxjs";
 import { logger } from "matrix-js-sdk/lib/logger";
 
-import { type Behavior, computed } from "../Behavior";
+import { type Behavior, computed, state } from "../Behavior";
 import {
   type BaseUserMediaInputs,
   type BaseUserMediaViewModel,
@@ -62,30 +61,35 @@ export function createLocalUserMedia(
    * The local video track and the direction its camera faces, updated whenever
    * the track changes, the camera is switched, or the track is muted.
    */
-  const videoTrack$ = scope.behavior<{
+  const videoTrack$ = state<{
     track: LocalVideoTrack;
     facingMode: string | undefined;
-  } | null>(
-    baseUserMedia.video$.pipe(
-      switchMap((v) => {
-        const track = v?.publication.track;
-        if (!(track instanceof LocalVideoTrack)) return of(null);
-        return merge(
-          // Watch for track restarts because they indicate a camera switch.
-          // This event is also emitted when unmuting the track object.
-          fromEvent(track, TrackEvent.Restarted).pipe(
-            startWith(null),
-            map(() => ({
-              track,
-              facingMode: facingModeFromLocalTrack(track).facingMode,
-            })),
-          ),
-          // When the track object is muted, reset it to null.
-          fromEvent(track, TrackEvent.Muted).pipe(map(() => null)),
-        );
-      }),
-    ),
-  );
+  } | null>(null);
+  scope.effect(() => {
+    const track = baseUserMedia.video$.value?.publication.track;
+    if (!(track instanceof LocalVideoTrack)) {
+      videoTrack$.value = null;
+      return;
+    }
+    const update = (): void => {
+      videoTrack$.value = {
+        track,
+        facingMode: facingModeFromLocalTrack(track).facingMode,
+      };
+    };
+    const mute = (): void => {
+      videoTrack$.value = null;
+    };
+    update();
+    // Track restarts indicate a camera switch. This event is also emitted when
+    // unmuting the track object.
+    track.on(TrackEvent.Restarted, update);
+    track.on(TrackEvent.Muted, mute);
+    return (): void => {
+      track.off(TrackEvent.Restarted, update);
+      track.off(TrackEvent.Muted, mute);
+    };
+  });
 
   return {
     ...baseUserMedia,

@@ -42,6 +42,7 @@ import {
   type RemoteParticipant,
   type RemoteTrackPublication,
   type Room as LivekitRoom,
+  RoomEvent,
   Track,
 } from "livekit-client";
 import { randomUUID } from "crypto";
@@ -60,7 +61,7 @@ import {
 } from "../config/ConfigOptions";
 import { Config } from "../config/Config";
 import { type MediaDevices } from "../state/MediaDevices";
-import { type Behavior, constant } from "../state/Behavior";
+import { type Behavior, constant, state, type State } from "../state/Behavior";
 import { ObservableScope } from "../state/ObservableScope";
 import { MuteStates } from "../state/MuteStates";
 import {
@@ -91,13 +92,6 @@ export async function flushPromises(): Promise<void> {
   await new Promise<void>((resolve) => window.setTimeout(resolve));
 }
 
-export type NodeEventHandler = (...args: unknown[]) => void;
-
-export interface NodeStyleEventEmitter {
-  addListener(eventName: string | symbol, handler: NodeEventHandler): this;
-  removeListener(eventName: string | symbol, handler: NodeEventHandler): this;
-}
-
 export interface OurRunHelpers extends RunHelpers {
   /**
    * Schedules a sequence of actions to happen, as described by a marble
@@ -126,9 +120,10 @@ export function testScope(): ObservableScope {
 }
 
 /**
- * Run Observables with a scheduler that virtualizes time, for testing purposes.
+ * Run rxjs Observables with a scheduler that virtualizes time. Only for tests
+ * of code that still emits rxjs errors; prefer withTestScheduler.
  */
-export function withTestScheduler(
+export function withRxTestScheduler(
   continuation: (helpers: OurRunHelpers) => void,
 ): void {
   const scheduler = new TestScheduler((actual, expected) => {
@@ -184,6 +179,149 @@ export function withTestScheduler(
   scope.end();
 }
 
+/**
+ * Parses an rxjs-style marble diagram into the frame (millisecond) at which
+ * each marble occurs. Supports `-`, `(ab)` groups, and `Nms `/`Ns ` time
+ * progression; `|`, `^` and `#` are accepted and ignored.
+ */
+export function parseMarbles(
+  marbles: string,
+): { frame: number; marble: string }[] {
+  const result: { frame: number; marble: string }[] = [];
+  let frame = 0;
+  let groupStart = -1;
+  for (let i = 0; i < marbles.length; i++) {
+    let next = frame;
+    const c = marbles[i];
+    switch (c) {
+      case " ":
+        break;
+      case "(":
+        groupStart = frame;
+        next++;
+        break;
+      case ")":
+        groupStart = -1;
+        next++;
+        break;
+      case "-":
+      case "|":
+      case "^":
+      case "#":
+        next++;
+        break;
+      default: {
+        const progression =
+          (i === 0 || marbles[i - 1] === " ") &&
+          /^(\d+(?:\.\d+)?)(ms|s|m) /.exec(marbles.slice(i));
+        if (progression) {
+          i += progression[0].length - 1;
+          const n = parseFloat(progression[1]);
+          next += { ms: n, s: n * 1000, m: n * 60000 }[progression[2]]!;
+          break;
+        }
+        result.push({
+          frame: groupStart === -1 ? frame : groupStart,
+          marble: c,
+        });
+        next++;
+      }
+    }
+    frame = next;
+  }
+  return result;
+}
+
+export interface MarbleHelpers {
+  /** A scope which ends when the test ends. */
+  scope: ObservableScope;
+  /** Schedules actions to happen at the frames given by a marble diagram. */
+  schedule: (marbles: string, actions: Record<string, () => void>) => void;
+  /** A Behavior taking the values given by a marble diagram over time. */
+  behavior: <T>(marbles: string, values?: Record<string, T>) => State<T>;
+  /**
+   * Asserts that a Behavior takes the values given by a marble diagram. With
+   * `settled`, only the last of several synchronous changes within one frame
+   * is recorded.
+   */
+  expectObservable: <T>(
+    behavior$: Observable<T>,
+    options?: { settled?: boolean },
+  ) => {
+    toBe: (marbles: string, values?: Record<string, T>) => void;
+  };
+  /** Runs all pending timers now, to make assertions part-way through. */
+  flush: () => void;
+}
+
+/**
+ * Runs a test against virtual time, with marble diagrams describing when
+ * things happen. One frame is one millisecond. Timers are faked for the
+ * duration of the test, all pending timers are run once the continuation
+ * returns, and only then are the expectations checked.
+ */
+export function withTestScheduler(
+  continuation: (helpers: MarbleHelpers) => void,
+): void {
+  const ownsTimers = !vi.isFakeTimers();
+  if (ownsTimers) vi.useFakeTimers();
+  const start = Date.now();
+  const scope = new ObservableScope();
+  const expectations: (() => void)[] = [];
+  const subscriptions: (() => void)[] = [];
+  const marbleValue = <T>(marble: string, values?: Record<string, T>): T =>
+    values === undefined ? (marble as T) : values[marble];
+  try {
+    continuation({
+      scope,
+      flush: () => vi.runAllTimers(),
+      schedule(marbles, actions) {
+        for (const { frame, marble } of parseMarbles(marbles))
+          setTimeout(() => actions[marble](), frame);
+      },
+      behavior<T>(marbles: string, values?: Record<string, T>) {
+        const [initial, ...rest] = parseMarbles(marbles);
+        if (initial === undefined)
+          throw new Error("Behavior must have an initial value");
+        const state$ = state(marbleValue(initial.marble, values));
+        for (const { frame, marble } of rest)
+          setTimeout(() => {
+            state$.value = marbleValue(marble, values);
+          }, frame);
+        return state$;
+      },
+      expectObservable<T>(behavior$: Observable<T>, { settled = false } = {}) {
+        const actual: { frame: number; value: T }[] = [];
+        const subscription = behavior$.subscribe((value) => {
+          const frame = Date.now() - start;
+          if (settled && actual.at(-1)?.frame === frame) actual.pop();
+          actual.push({ frame, value });
+        });
+        subscriptions.push(() => subscription.unsubscribe());
+        return {
+          toBe(marbles: string, values?: Record<string, T>) {
+            expectations.push(() => {
+              const expected = parseMarbles(marbles).map(
+                ({ frame, marble }) => ({
+                  frame,
+                  value: marbleValue(marble, values),
+                }),
+              );
+              expect(actual).toStrictEqual(expected);
+            });
+          },
+        };
+      },
+    });
+    vi.runAllTimers();
+    for (const check of expectations) check();
+  } finally {
+    for (const unsubscribe of subscriptions) unsubscribe();
+    scope.end();
+    if (ownsTimers) vi.useRealTimers();
+  }
+}
+
 interface EmitterMock<T> {
   on: (...args: unknown[]) => T;
   off: (...args: unknown[]) => T;
@@ -194,6 +332,8 @@ interface EmitterMock<T> {
 
 export function mockEmitter<T>(): EmitterMock<T> {
   const ee = new EventEmitter();
+  // Each Behavior derived from the emitter adds listeners; that's not a leak
+  ee.setMaxListeners(0);
   return {
     on: ee.on.bind(ee) as unknown as (...args: unknown[]) => T,
     off: ee.off.bind(ee) as unknown as (...args: unknown[]) => T,
@@ -302,22 +442,22 @@ export function mockLivekitRoom(
   room: Partial<LivekitRoom>,
   {
     remoteParticipants$,
-  }: { remoteParticipants$?: Observable<RemoteParticipant[]> } = {},
+  }: { remoteParticipants$?: Behavior<RemoteParticipant[]> } = {},
 ): LivekitRoom {
   const livekitRoom = {
     options: {},
     setE2EEEnabled: vi.fn(),
-
+    remoteParticipants: new Map(),
     ...mockEmitter(),
     ...room,
   } as Partial<LivekitRoom> as LivekitRoom;
   if (remoteParticipants$) {
-    livekitRoom.remoteParticipants = new Map();
     remoteParticipants$.subscribe((newRemoteParticipants) => {
       livekitRoom.remoteParticipants.clear();
       newRemoteParticipants.forEach((p) => {
         livekitRoom.remoteParticipants.set(p.identity, p);
       });
+      livekitRoom.emit(RoomEvent.ParticipantConnected, null!);
     });
   }
 
@@ -387,7 +527,7 @@ export function mockRemoteMedia(
   livekitRoom: LivekitRoom | undefined = mockLivekitRoom(
     {},
     {
-      remoteParticipants$: of(participant ? [participant] : []),
+      remoteParticipants$: constant(participant ? [participant] : []),
     },
   ),
 ): RemoteUserMediaViewModel {
@@ -415,7 +555,7 @@ export function mockRemoteScreenShare(
   livekitRoom: LivekitRoom | undefined = mockLivekitRoom(
     {},
     {
-      remoteParticipants$: of(participant ? [participant] : []),
+      remoteParticipants$: constant(participant ? [participant] : []),
     },
   ),
 ): RemoteScreenShareViewModel {

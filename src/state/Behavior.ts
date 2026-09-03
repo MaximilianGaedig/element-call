@@ -15,6 +15,8 @@ import {
   type Signal,
 } from "@preact/signals-core";
 
+import { type ObservableScope } from "./ObservableScope";
+
 const noError = Symbol("noError");
 const nothing = Symbol("nothing");
 
@@ -154,4 +156,57 @@ export function computed<T>(
 
 export function constant<T>(value: T): Behavior<T> {
   return state(value);
+}
+
+/**
+ * Anything with Node-style `on`/`off`, such as a LiveKit Room or Participant or
+ * a matrix-js-sdk emitter.
+ */
+export interface Emitter {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  on(event: any, listener: (...args: any[]) => void): unknown;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  off(event: any, listener: (...args: any[]) => void): unknown;
+}
+
+/**
+ * A Behavior holding the result of `read`, re-read whenever the emitter emits
+ * any of `events`, until the scope ends. The emitter may itself be a Behavior
+ * (for example a participant that comes and goes), in which case the listeners
+ * follow it and `read` is also re-run whenever it changes.
+ */
+export function fromEvents<E extends Emitter, T>(
+  scope: ObservableScope,
+  emitter: E,
+  events: readonly (string | symbol)[],
+  read: (emitter: E) => T,
+): Behavior<T>;
+export function fromEvents<E extends Emitter, T>(
+  scope: ObservableScope,
+  emitter$: Behavior<E | null | undefined>,
+  events: readonly (string | symbol)[],
+  read: (emitter: E | null | undefined) => T,
+): Behavior<T>;
+export function fromEvents<E extends Emitter, T>(
+  scope: ObservableScope,
+  emitter: E | Behavior<E | null | undefined>,
+  events: readonly (string | symbol)[],
+  read: (emitter: E | null | undefined) => T,
+): Behavior<T> {
+  const emitter$ =
+    emitter instanceof Observable ? emitter : constant<E | null>(emitter);
+  const value$ = state<T>(undefined as T);
+  scope.effect(() => {
+    const e = emitter$.value;
+    const update = (): void => {
+      value$.value = untracked(() => read(e));
+    };
+    update();
+    if (!e) return;
+    for (const event of events) e.on(event, update);
+    return (): void => {
+      for (const event of events) e.off(event, update);
+    };
+  });
+  return value$;
 }

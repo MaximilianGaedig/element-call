@@ -6,13 +6,13 @@ Please see LICENSE in the repository root for full details.
 */
 
 import { it, vi, expect, beforeEach, afterEach, describe } from "vitest";
-import { firstValueFrom, of, Subject, take, toArray } from "rxjs";
 import { type RTCCallIntent } from "matrix-js-sdk/lib/matrixrtc";
 
 import { AndroidControlledAudioOutput } from "./AndroidControlledAudioOutput.ts";
 import type { Controls, OutputDevice } from "../controls";
 import { ObservableScope } from "./ObservableScope";
 import { withTestScheduler } from "../utils/test";
+import { constant, state, type State } from "./Behavior";
 
 // All the following device types are real device types that have been observed in the wild on Android devices,
 // gathered from logs.
@@ -113,17 +113,15 @@ afterEach(() => {
 });
 
 describe("Default selection", () => {
-  it("Default to speaker for video calls", async () => {
+  it("Default to speaker for video calls", () => {
     const controlledAudioOutput = new AndroidControlledAudioOutput(
-      of(BASE_DEVICE_LIST),
+      constant(BASE_DEVICE_LIST),
       testScope,
       "video",
       mockControls,
     );
 
-    const emissions = await firstValueFrom(
-      controlledAudioOutput.selected$.pipe(take(1), toArray()),
-    );
+    const emissions = [controlledAudioOutput.selected$.value];
 
     expect(emissions).toEqual([
       { id: SPEAKER_DEVICE.id, virtualEarpiece: false },
@@ -138,17 +136,15 @@ describe("Default selection", () => {
     });
   });
 
-  it("Default to earpiece for audio calls for base config", async () => {
+  it("Default to earpiece for audio calls for base config", () => {
     const controlledAudioOutput = new AndroidControlledAudioOutput(
-      of(BASE_DEVICE_LIST),
+      constant(BASE_DEVICE_LIST),
       testScope,
       "audio",
       mockControls,
     );
 
-    const emissions = await firstValueFrom(
-      controlledAudioOutput.selected$.pipe(take(1), toArray()),
-    );
+    const emissions = [controlledAudioOutput.selected$.value];
 
     expect(emissions).toEqual([
       { id: EARPIECE_DEVICE.id, virtualEarpiece: false },
@@ -164,17 +160,15 @@ describe("Default selection", () => {
   });
 
   ["audio", "video"].forEach((callIntent) => {
-    it(`Default to BT headset for ${callIntent} calls if present`, async () => {
+    it(`Default to BT headset for ${callIntent} calls if present`, () => {
       const controlledAudioOutput = new AndroidControlledAudioOutput(
-        of(BT_HEADSET_BASE_DEVICE_LIST),
+        constant(BT_HEADSET_BASE_DEVICE_LIST),
         testScope,
         callIntent,
         mockControls,
       );
 
-      const emissions = await firstValueFrom(
-        controlledAudioOutput.selected$.pipe(take(1), toArray()),
-      );
+      const emissions = [controlledAudioOutput.selected$.value];
 
       expect(emissions).toEqual([
         { id: BT_HEADSET_DEVICE.id, virtualEarpiece: false },
@@ -191,17 +185,15 @@ describe("Default selection", () => {
   });
 
   ["audio", "video"].forEach((callIntent) => {
-    it(`Default to wired headset for ${callIntent} calls if present`, async () => {
+    it(`Default to wired headset for ${callIntent} calls if present`, () => {
       const controlledAudioOutput = new AndroidControlledAudioOutput(
-        of(WIRED_HEADSET_BASE_DEVICE_LIST),
+        constant(WIRED_HEADSET_BASE_DEVICE_LIST),
         testScope,
         callIntent,
         mockControls,
       );
 
-      const emissions = await firstValueFrom(
-        controlledAudioOutput.selected$.pipe(take(1), toArray()),
-      );
+      const emissions = [controlledAudioOutput.selected$.value];
 
       expect(emissions).toEqual([
         { id: WIRED_HEADSET_DEVICE.id, virtualEarpiece: false },
@@ -218,17 +210,15 @@ describe("Default selection", () => {
 });
 
 describe("Test mappings", () => {
-  it("Should map output device to correct AudioDeviceLabel", async () => {
+  it("Should map output device to correct AudioDeviceLabel", () => {
     const controlledAudioOutput = new AndroidControlledAudioOutput(
-      of(FULL_DEVICE_LIST),
+      constant(FULL_DEVICE_LIST),
       testScope,
       undefined,
       mockControls,
     );
 
-    const availableDevices = await firstValueFrom(
-      controlledAudioOutput.available$.pipe(take(1)),
-    );
+    const availableDevices = controlledAudioOutput.available$.value;
 
     expect(availableDevices).toEqual(
       new Map([
@@ -254,9 +244,9 @@ describe("Test mappings", () => {
 
 describe("Test select a device", () => {
   it(`Switch to correct device`, () => {
-    withTestScheduler(({ cold, schedule, expectObservable, flush }) => {
+    withTestScheduler(({ behavior, schedule, expectObservable, flush }) => {
       const controlledAudioOutput = new AndroidControlledAudioOutput(
-        cold("a", { a: FULL_DEVICE_LIST }),
+        behavior("a", { a: FULL_DEVICE_LIST }),
         testScope,
         undefined,
         mockControls,
@@ -293,9 +283,9 @@ describe("Test select a device", () => {
   });
 
   it(`manually switch then a bt headset is added`, () => {
-    withTestScheduler(({ cold, schedule, expectObservable, flush }) => {
+    withTestScheduler(({ behavior, schedule, expectObservable, flush }) => {
       const controlledAudioOutput = new AndroidControlledAudioOutput(
-        cold("a--b", {
+        behavior("a--b", {
           a: BASE_DEVICE_LIST,
           b: BT_HEADSET_BASE_DEVICE_LIST,
         }),
@@ -332,9 +322,9 @@ describe("Test select a device", () => {
   });
 
   it(`Go back to the previously selected after the auto-switch device goes away`, () => {
-    withTestScheduler(({ cold, schedule, expectObservable, flush }) => {
+    withTestScheduler(({ behavior, schedule, expectObservable, flush }) => {
       const controlledAudioOutput = new AndroidControlledAudioOutput(
-        cold("a--b-c", {
+        behavior("a--b-c", {
           a: BASE_DEVICE_LIST,
           b: BT_HEADSET_BASE_DEVICE_LIST,
           c: BASE_DEVICE_LIST,
@@ -375,7 +365,7 @@ describe("Test select a device", () => {
 });
 
 describe("Available device changes", () => {
-  let availableSource$: Subject<OutputDevice[]>;
+  let availableSource$: State<OutputDevice[]>;
 
   const createAudioControlledOutput = (
     intent: RTCCallIntent,
@@ -389,14 +379,14 @@ describe("Available device changes", () => {
   };
 
   beforeEach(() => {
-    availableSource$ = new Subject<OutputDevice[]>();
+    availableSource$ = state<OutputDevice[]>([]);
   });
 
   it("When a BT headset is added, control should switch to use it", () => {
     createAudioControlledOutput("video");
 
     // Emit the base device list, the speaker should be selected
-    availableSource$.next(BASE_DEVICE_LIST);
+    availableSource$.value = BASE_DEVICE_LIST;
     // Initially speaker would be selected
     [
       mockControls.onOutputDeviceSelect,
@@ -407,7 +397,7 @@ describe("Available device changes", () => {
     });
 
     // Emit a new device list with a BT device, the control should switch to it
-    availableSource$.next([BT_HEADSET_DEVICE, ...BASE_DEVICE_LIST]);
+    availableSource$.value = [BT_HEADSET_DEVICE, ...BASE_DEVICE_LIST];
     [
       mockControls.onOutputDeviceSelect,
       mockControls.onAudioDeviceSelect,
@@ -418,13 +408,12 @@ describe("Available device changes", () => {
   });
 
   // Android does not set `isExternalHeadset` to true for wired headphones, so we can't test this case.'
-  it.skip("When a wired headset is added, control should switch to use it", async () => {
-    const controlledAudioOutput = createAudioControlledOutput("video");
+  it.skip("When a wired headset is added, control should switch to use it", () => {
+    createAudioControlledOutput("video");
 
     // Emit the base device list, the speaker should be selected
-    availableSource$.next(BASE_DEVICE_LIST);
+    availableSource$.value = BASE_DEVICE_LIST;
 
-    await firstValueFrom(controlledAudioOutput.selected$.pipe(take(1)));
     // Initially speaker would be selected
     [
       mockControls.onOutputDeviceSelect,
@@ -435,7 +424,7 @@ describe("Available device changes", () => {
     });
 
     // Emit a new device list with a wired headset, the control should switch to it
-    availableSource$.next([WIRED_HEADPHONE_DEVICE, ...BASE_DEVICE_LIST]);
+    availableSource$.value = [WIRED_HEADPHONE_DEVICE, ...BASE_DEVICE_LIST];
     [
       mockControls.onOutputDeviceSelect,
       mockControls.onAudioDeviceSelect,
@@ -449,7 +438,7 @@ describe("Available device changes", () => {
     createAudioControlledOutput("audio");
 
     // Emit the BT headset device list, the BT headset should be selected
-    availableSource$.next(BT_HEADSET_BASE_DEVICE_LIST);
+    availableSource$.value = BT_HEADSET_BASE_DEVICE_LIST;
     // Initially speaker would be selected
     [
       mockControls.onOutputDeviceSelect,
@@ -461,7 +450,7 @@ describe("Available device changes", () => {
 
     // Emit a new device list without the BT headset, the control should switch to the earpiece for
     // audio calls
-    availableSource$.next(BASE_DEVICE_LIST);
+    availableSource$.value = BASE_DEVICE_LIST;
     [
       mockControls.onOutputDeviceSelect,
       mockControls.onAudioDeviceSelect,
@@ -474,7 +463,7 @@ describe("Available device changes", () => {
   it("When the active bt headset is removed on video call, control should switch to speaker", () => {
     createAudioControlledOutput("video");
 
-    availableSource$.next(BT_HEADSET_BASE_DEVICE_LIST);
+    availableSource$.value = BT_HEADSET_BASE_DEVICE_LIST;
 
     // Initially bt headset would be selected
     [
@@ -486,7 +475,7 @@ describe("Available device changes", () => {
     });
 
     // Emit a new device list without the BT headset, the control should switch to speaker for video call
-    availableSource$.next(BASE_DEVICE_LIST);
+    availableSource$.value = BASE_DEVICE_LIST;
     [
       mockControls.onOutputDeviceSelect,
       mockControls.onAudioDeviceSelect,
@@ -499,11 +488,11 @@ describe("Available device changes", () => {
   it("Do not repeatidly set the same device", () => {
     createAudioControlledOutput("video");
 
-    availableSource$.next(BT_HEADSET_BASE_DEVICE_LIST);
-    availableSource$.next(BT_HEADSET_BASE_DEVICE_LIST);
-    availableSource$.next(BT_HEADSET_BASE_DEVICE_LIST);
-    availableSource$.next(BT_HEADSET_BASE_DEVICE_LIST);
-    availableSource$.next(BT_HEADSET_BASE_DEVICE_LIST);
+    availableSource$.value = BT_HEADSET_BASE_DEVICE_LIST;
+    availableSource$.value = BT_HEADSET_BASE_DEVICE_LIST;
+    availableSource$.value = BT_HEADSET_BASE_DEVICE_LIST;
+    availableSource$.value = BT_HEADSET_BASE_DEVICE_LIST;
+    availableSource$.value = BT_HEADSET_BASE_DEVICE_LIST;
 
     // Initially bt headset would be selected
     [
@@ -520,7 +509,7 @@ describe("Scope management", () => {
   it("Should stop emitting when scope ends", () => {
     const aScope = new ObservableScope();
     const controlledAudioOutput = new AndroidControlledAudioOutput(
-      of(BASE_DEVICE_LIST),
+      constant(BASE_DEVICE_LIST),
       aScope,
       undefined,
       mockControls,
@@ -538,7 +527,7 @@ describe("Scope management", () => {
 
   it("Should stop updating when scope ends", () => {
     const aScope = new ObservableScope();
-    const availableSource$ = new Subject<OutputDevice[]>();
+    const availableSource$ = state<OutputDevice[]>([]);
     new AndroidControlledAudioOutput(
       availableSource$,
       aScope,
@@ -546,7 +535,7 @@ describe("Scope management", () => {
       mockControls,
     );
 
-    availableSource$.next(BT_HEADSET_BASE_DEVICE_LIST);
+    availableSource$.value = BT_HEADSET_BASE_DEVICE_LIST;
     expect(mockControls.onAudioDeviceSelect).toHaveBeenCalledOnce();
     expect(mockControls.onAudioDeviceSelect).toHaveBeenCalledWith(
       BT_HEADSET_DEVICE.id,
@@ -554,7 +543,7 @@ describe("Scope management", () => {
 
     aScope.end();
 
-    availableSource$.next(BASE_DEVICE_LIST);
+    availableSource$.value = BASE_DEVICE_LIST;
 
     expect(mockControls.onAudioDeviceSelect).not.toHaveBeenCalledTimes(2);
     // Should have been called only once with the initial BT_HEADSET_DEVICE.id

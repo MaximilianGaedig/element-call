@@ -6,14 +6,13 @@ Please see LICENSE in the repository root for full details.
 */
 
 import { logger as rootLogger } from "matrix-js-sdk/lib/logger";
-import { combineLatest, merge, startWith, Subject, tap } from "rxjs";
 
 import type { RTCCallIntent } from "matrix-js-sdk/lib/matrixrtc";
 import {
   availableOutputDevices$ as controlledAvailableOutputDevices$,
   outputDevice$ as controlledOutputSelection$,
 } from "../controls.ts";
-import type { Behavior } from "./Behavior.ts";
+import { type Behavior, computed, state } from "./Behavior.ts";
 import type { ObservableScope } from "./ObservableScope.ts";
 import {
   type AudioOutputDeviceLabel,
@@ -47,65 +46,56 @@ export class IOSControlledAudioOutput implements MediaDevice<
     this.logger,
   );
 
-  public readonly available$ = this.scope.behavior(
-    combineLatest(
-      [controlledAvailableOutputDevices$.pipe(startWith([])), iosDeviceMenu$],
-      (availableRaw, iosDeviceMenu) => {
-        const available = new Map<string, AudioOutputDeviceLabel>(
-          availableRaw.map(
-            ({ id, name, isEarpiece, isSpeaker /*,isExternalHeadset*/ }) => {
-              let deviceLabel: AudioOutputDeviceLabel;
-              // if (isExternalHeadset) // Do we want this?
-              if (isEarpiece) deviceLabel = { type: "earpiece" };
-              else if (isSpeaker) deviceLabel = { type: "speaker" };
-              else deviceLabel = { type: "name", name };
-              return [id, deviceLabel];
-            },
-          ),
+  public readonly available$: Behavior<Map<string, AudioOutputDeviceLabel>> =
+    computed(() => {
+      const availableRaw = controlledAvailableOutputDevices$.value;
+      const available = new Map<string, AudioOutputDeviceLabel>(
+        availableRaw.map(
+          ({ id, name, isEarpiece, isSpeaker /*,isExternalHeadset*/ }) => {
+            let deviceLabel: AudioOutputDeviceLabel;
+            // if (isExternalHeadset) // Do we want this?
+            if (isEarpiece) deviceLabel = { type: "earpiece" };
+            else if (isSpeaker) deviceLabel = { type: "speaker" };
+            else deviceLabel = { type: "name", name };
+            return [id, deviceLabel];
+          },
+        ),
+      );
+
+      // Create a virtual earpiece device in case a non-earpiece device is
+      // designated for this purpose
+      if (iosDeviceMenu$.value && availableRaw.some((d) => d.forEarpiece)) {
+        this.logger.info(
+          `IOS Add virtual earpiece device with id ${EARPIECE_CONFIG_ID}`,
         );
+        available.set(EARPIECE_CONFIG_ID, { type: "earpiece" });
+      }
 
-        // Create a virtual earpiece device in case a non-earpiece device is
-        // designated for this purpose
-        if (iosDeviceMenu && availableRaw.some((d) => d.forEarpiece)) {
-          this.logger.info(
-            `IOS Add virtual earpiece device with id ${EARPIECE_CONFIG_ID}`,
-          );
-          available.set(EARPIECE_CONFIG_ID, { type: "earpiece" });
-        }
+      return available;
+    });
 
-        return available;
-      },
-    ),
-  );
-
-  private readonly deviceSelection$ = new Subject<string>();
+  /**
+   * The most recent explicit selection, whether from the user or the host.
+   */
+  private readonly preferredId$ = state<string | undefined>(undefined);
 
   public select(id: string): void {
     this.logger.info(`select device: ${id}`);
-    this.deviceSelection$.next(id);
+    this.preferredId$.value = id;
   }
 
-  public readonly selected$ = this.scope.behavior(
-    combineLatest(
-      [
-        this.available$,
-        merge(
-          controlledOutputSelection$.pipe(startWith(undefined)),
-          this.deviceSelection$,
-        ),
-      ],
-      (available, preferredId) => {
-        const id = preferredId ?? this.chooseDefaultId(available);
+  public readonly selected$: Behavior<SelectedAudioOutputDevice | undefined> =
+    computed(
+      () => {
+        const id =
+          this.preferredId$.value ??
+          this.chooseDefaultId(this.available$.value);
         return id === undefined
           ? undefined
           : { id, virtualEarpiece: id === EARPIECE_CONFIG_ID };
       },
-    ).pipe(
-      tap((selected) => {
-        this.logger.debug(`selected device: ${selected?.id}`);
-      }),
-    ),
-  );
+      (a, b) => a?.id === b?.id,
+    );
 
   /**
    * Chooses the default output device when no explicit selection (from the user
@@ -143,7 +133,13 @@ export class IOSControlledAudioOutput implements MediaDevice<
     private readonly scope: ObservableScope,
     private readonly initialIntent: RTCCallIntent | undefined = undefined,
   ) {
-    this.selected$.subscribe((device) => {
+    // The host's selection takes effect like a user selection
+    this.scope.effect(() => {
+      this.preferredId$.value = controlledOutputSelection$.value;
+    });
+    this.scope.effect(() => {
+      const device = this.selected$.value;
+      this.logger.debug(`selected device: ${device?.id}`);
       // Let the hosting application know which output device has been selected.
       // This information is probably only of interest if the earpiece mode has
       // been selected - for example, Element X iOS listens to this to determine
@@ -155,11 +151,11 @@ export class IOSControlledAudioOutput implements MediaDevice<
         window.controls.onOutputDeviceSelect?.(device.id);
       }
     });
-    this.available$.subscribe((available) => {
-      this.logger.debug("available devices:", available);
+    this.scope.effect(() => {
+      this.logger.debug("available devices:", this.available$.value);
     });
-    this.availableRaw$.subscribe((availableRaw) => {
-      this.logger.debug("available raw devices:", availableRaw);
+    this.scope.effect(() => {
+      this.logger.debug("available raw devices:", this.availableRaw$.value);
     });
   }
 }

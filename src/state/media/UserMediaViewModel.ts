@@ -6,15 +6,10 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { combineLatest, map, of, switchMap } from "rxjs";
-import {
-  observeParticipantEvents,
-  observeParticipantMedia,
-} from "@livekit/components-core";
 import { ParticipantEvent, Track } from "livekit-client";
 
 import { type ReactionOption } from "../../reactions";
-import { type Behavior, computed, state } from "../Behavior";
+import { type Behavior, computed, fromEvents, state } from "../Behavior";
 import { type LocalUserMediaViewModel } from "./LocalUserMediaViewModel";
 import {
   createMemberMedia,
@@ -24,7 +19,8 @@ import {
 import { type RemoteUserMediaViewModel } from "./RemoteUserMediaViewModel";
 import { type ObservableScope } from "../ObservableScope";
 import { showConnectionStats } from "../../settings/settings";
-import { observeRtpStreamStats$ } from "./observeRtpStreamStats";
+import { rtpStreamStats$, type RtpStreamStats } from "./rtpStreamStats";
+import { MEDIA_EVENTS } from "../trackReference";
 
 /**
  * A participant's user media (i.e. their microphone and camera feed).
@@ -45,12 +41,8 @@ export interface BaseUserMediaViewModel extends BaseMemberMediaViewModel {
   rtcBackendIdentity: string;
   handRaised$: Behavior<Date | null>;
   reaction$: Behavior<ReactionOption | null>;
-  audioStreamStats$: Behavior<
-    RTCInboundRtpStreamStats | RTCOutboundRtpStreamStats | undefined
-  >;
-  videoStreamStats$: Behavior<
-    RTCInboundRtpStreamStats | RTCOutboundRtpStreamStats | undefined
-  >;
+  audioStreamStats$: Behavior<RtpStreamStats | undefined>;
+  videoStreamStats$: Behavior<RtpStreamStats | undefined>;
   /**
    * Set the aspect ratio of the video track to determine the orientation.
    */
@@ -78,26 +70,23 @@ export function createBaseUserMedia(
   }: BaseUserMediaInputs,
 ): BaseUserMediaViewModel {
   const { participant$ } = inputs;
-  const media$ = scope.behavior(
-    participant$.pipe(
-      switchMap((p) => (p && observeParticipantMedia(p)) ?? of(undefined)),
-    ),
-  );
   const videoAspectRatio$ = state(NaN);
+  const trackEnabled$ = (source: Track.Source): Behavior<boolean> =>
+    fromEvents(
+      scope,
+      participant$,
+      MEDIA_EVENTS,
+      (p) => p?.getTrackPublication(source)?.isMuted === false,
+    );
   const streamStats$ = (
-    scope: ObservableScope,
     source: Track.Source,
-  ): Behavior<
-    RTCInboundRtpStreamStats | RTCOutboundRtpStreamStats | undefined
-  > =>
-    scope.behavior(
-      combineLatest([participant$, showConnectionStats.value$]).pipe(
-        switchMap(([p, showConnectionStats]) =>
-          !p || !showConnectionStats
-            ? of(undefined)
-            : observeRtpStreamStats$(p, source, statsType),
-        ),
-      ),
+  ): Behavior<RtpStreamStats | undefined> =>
+    rtpStreamStats$(
+      scope,
+      participant$,
+      source,
+      statsType,
+      showConnectionStats.value$,
     );
 
   return {
@@ -107,30 +96,22 @@ export function createBaseUserMedia(
       videoSource: Track.Source.Camera,
     }),
     type: "user",
-    speaking$: scope.behavior(
-      participant$.pipe(
-        switchMap((p) =>
-          p
-            ? observeParticipantEvents(
-                p,
-                ParticipantEvent.IsSpeakingChanged,
-              ).pipe(map((p) => p.isSpeaking))
-            : of(false),
-        ),
-      ),
+    speaking$: fromEvents(
+      scope,
+      participant$,
+      [ParticipantEvent.IsSpeakingChanged],
+      (p) => p?.isSpeaking ?? false,
     ),
-    audioEnabled$: computed(
-      () => media$.value?.microphoneTrack?.isMuted === false,
-    ),
-    videoEnabled$: computed(() => media$.value?.cameraTrack?.isMuted === false),
+    audioEnabled$: trackEnabled$(Track.Source.Microphone),
+    videoEnabled$: trackEnabled$(Track.Source.Camera),
     videoOrientation$: computed(() =>
       videoAspectRatio$.value > 1 ? "landscape" : "portrait",
     ),
     rtcBackendIdentity,
     handRaised$,
     reaction$,
-    audioStreamStats$: streamStats$(scope, Track.Source.Microphone),
-    videoStreamStats$: streamStats$(scope, Track.Source.Camera),
+    audioStreamStats$: streamStats$(Track.Source.Microphone),
+    videoStreamStats$: streamStats$(Track.Source.Camera),
     setVideoAspectRatio: (ratio) => (videoAspectRatio$.value = ratio),
   };
 }

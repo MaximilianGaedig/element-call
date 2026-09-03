@@ -9,14 +9,12 @@ import {
   type Observable,
   audit,
   combineLatest,
-  concat,
   defer,
   filter,
   finalize,
   map,
   of,
   scan,
-  takeWhile,
   tap,
   withLatestFrom,
   type OperatorFunction,
@@ -45,29 +43,6 @@ export function finalizeValue<T>(callback: (finalValue: T) => void) {
         }),
       );
     });
-}
-
-const switchSymbol = Symbol("switch");
-
-/**
- * RxJS operator which behaves like the input Observable (A) until it emits a
- * value satisfying the given predicate, then behaves like Observable B.
- *
- * The switch is immediate; the value that triggers the switch will not be
- * present in the output.
- */
-export function switchWhen<A, B>(
-  predicate: (a: A, index: number) => boolean,
-  b$: Observable<B>,
-) {
-  return (a$: Observable<A>): Observable<A | B> =>
-    concat(
-      a$.pipe(
-        map((a, index) => (predicate(a, index) ? switchSymbol : a)),
-        takeWhile((a) => a !== switchSymbol),
-      ) as Observable<A>,
-      b$,
-    );
 }
 
 /**

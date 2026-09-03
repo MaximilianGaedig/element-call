@@ -6,7 +6,7 @@ Please see LICENSE in the repository root for full details.
 */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { type Observable, of } from "rxjs";
+import { Room as LivekitRoom } from "livekit-client";
 
 import { ObservableScope } from "./ObservableScope";
 import { constant } from "./Behavior";
@@ -23,13 +23,9 @@ import {
 } from "./IOSControlledAudioOutput";
 
 // `vi.mock` calls are hoisted above all imports, so the static imports below
-// already see these mocks. Force the iOS platform so that the virtual earpiece
-// is available, and stub the livekit device observer (only subscribed for its
-// side effects).
+// already see this mock. Force the iOS platform so that the virtual earpiece
+// is available.
 vi.mock("../Platform", () => ({ platform: "ios" }));
-vi.mock("@livekit/components-core", () => ({
-  createMediaDeviceObserver: (): Observable<MediaDeviceInfo[]> => of([]),
-}));
 
 // On iOS the host reports a single device for the current route. When output is
 // on the loudspeaker it is flagged `forEarpiece`, which makes the controller
@@ -52,6 +48,10 @@ let testScope: ObservableScope;
 
 beforeEach(() => {
   testScope = new ObservableScope();
+  // Device enumeration is only used for its side effects here
+  vi.spyOn(LivekitRoom, "getLocalDevices").mockResolvedValue([]);
+  availableOutputDevices$.value = [];
+  outputDevice$.value = undefined;
   window.controls = {
     onAudioDeviceSelect: vi.fn(),
     onOutputDeviceSelect: vi.fn(),
@@ -60,6 +60,7 @@ beforeEach(() => {
 
 afterEach(() => {
   testScope.end();
+  vi.restoreAllMocks();
 });
 
 /**
@@ -85,7 +86,7 @@ describe("Default selection", () => {
     );
     const selected = latestSelection(output);
 
-    availableOutputDevices$.next([SPEAKER]);
+    availableOutputDevices$.value = [SPEAKER];
 
     expect(selected()).toEqual({
       id: EARPIECE_CONFIG_ID,
@@ -104,7 +105,7 @@ describe("Default selection", () => {
     );
     const selected = latestSelection(output);
 
-    availableOutputDevices$.next([SPEAKER]);
+    availableOutputDevices$.value = [SPEAKER];
 
     expect(selected()).toEqual({ id: SPEAKER.id, virtualEarpiece: false });
   });
@@ -119,7 +120,7 @@ describe("Default selection", () => {
 
     // The host proposes the headset as the route (listed first), even though a
     // forEarpiece device is also present so the virtual earpiece exists.
-    availableOutputDevices$.next([HEADSET, SPEAKER]);
+    availableOutputDevices$.value = [HEADSET, SPEAKER];
 
     expect(selected()).toEqual({ id: HEADSET.id, virtualEarpiece: false });
   });
@@ -134,7 +135,7 @@ describe("Explicit selection", () => {
     );
     const selected = latestSelection(output);
 
-    availableOutputDevices$.next([SPEAKER]);
+    availableOutputDevices$.value = [SPEAKER];
     // Earpiece by default for a voice call...
     expect(selected()).toEqual({
       id: EARPIECE_CONFIG_ID,
@@ -154,8 +155,8 @@ describe("Explicit selection", () => {
     );
     const selected = latestSelection(output);
 
-    availableOutputDevices$.next([SPEAKER]);
-    outputDevice$.next(SPEAKER.id);
+    availableOutputDevices$.value = [SPEAKER];
+    outputDevice$.value = SPEAKER.id;
 
     expect(selected()).toEqual({ id: SPEAKER.id, virtualEarpiece: false });
   });

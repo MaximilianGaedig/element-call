@@ -20,19 +20,20 @@ import {
   afterAll,
   beforeEach,
 } from "vitest";
-import { map, of } from "rxjs";
+import { map } from "rxjs";
 import { logger } from "matrix-js-sdk/lib/logger";
-import { type LocalParticipant, type LocalTrack } from "livekit-client";
+import { type LocalTrack } from "livekit-client";
 
 import { PosthogAnalytics } from "../../../analytics/PosthogAnalytics";
 import { MatrixRTCMode } from "../../../config/ConfigOptions";
 import { type HomeserverDisconnectReason } from "./HomeserverConnected";
 import {
+  mockLocalParticipant,
   flushPromises,
   mockConfig,
   mockLivekitRoom,
   mockMuteStates,
-  withTestScheduler,
+  withRxTestScheduler,
   ownMemberMock,
 } from "../../../utils/test";
 import {
@@ -63,11 +64,6 @@ initializeWidget();
 const MATRIX_RTC_MODE = MatrixRTCMode.Compatibility;
 const getUrlParams = vi.hoisted(() => vi.fn(() => ({})));
 vi.mock("../../../UrlParams", () => ({ getUrlParams }));
-vi.mock("@livekit/components-core", () => ({
-  observeParticipantEvents: vi
-    .fn()
-    .mockReturnValue(of({ isScreenShareEnabled: false })),
-}));
 
 describe("LocalMembership", () => {
   describe("enterRTCSession", () => {
@@ -203,7 +199,7 @@ describe("LocalMembership", () => {
   };
 
   it("throws error on missing RTC config error", () => {
-    withTestScheduler(({ scope, hot, behavior, expectObservable }) => {
+    withRxTestScheduler(({ scope, hot, behavior, expectObservable }) => {
       const localTransport$ = scope.behavior<null | LivekitTransportConfig>(
         hot("1ms #", {}, new MatrixRTCTransportMissingError("domain.com")),
         null,
@@ -236,7 +232,7 @@ describe("LocalMembership", () => {
   });
 
   it("Should not publish to active transport if advertised has errors", () => {
-    withTestScheduler(({ scope, hot, behavior, expectObservable }) => {
+    withRxTestScheduler(({ scope, hot, behavior, expectObservable }) => {
       const advertised$ = scope.behavior<null | LivekitTransportConfig>(
         hot("--#", {}, new FailToGetOpenIdToken(new Error("foo"))),
         null,
@@ -348,10 +344,10 @@ describe("LocalMembership", () => {
 
   const connectionTransportAConnected = {
     livekitRoom: mockLivekitRoom({
-      localParticipant: {
+      localParticipant: mockLocalParticipant({
         isScreenShareEnabled: false,
-        trackPublications: [],
-      } as unknown as LocalParticipant,
+        trackPublications: new Map(),
+      }),
     }),
     state$: constant(ConnectionState.LivekitConnected),
     transport: aTransport,

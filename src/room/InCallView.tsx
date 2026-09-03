@@ -171,7 +171,7 @@ export const ActiveCall: FC<ActiveCallProps> = (props) => {
       `${props.client.getUserId()}:${props.client.getDeviceId()}`,
     );
     setFooterVm(footerVm);
-    setDeveloperSettingsVm(createDeveloperSettingsTabViewModel(scope, vm));
+    setDeveloperSettingsVm(createDeveloperSettingsTabViewModel(vm));
 
     return (): void => {
       scope.end();

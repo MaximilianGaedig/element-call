@@ -61,7 +61,7 @@ import {
 import { Config } from "../../config/Config";
 import { MatrixRTCMode } from "../../config/ConfigOptions";
 import { isFirefox, platform } from "../../Platform";
-import { setPipEnabled$ } from "../../controls";
+import { callActive$, pipEnabled$ } from "../../controls";
 import { TileStore } from "../TileStore";
 import { gridLikeLayout } from "../GridLikeLayout";
 import { spotlightExpandedLayout } from "../SpotlightExpandedLayout";
@@ -627,7 +627,6 @@ export function createCallViewModel$(
 
   const matrixRoomMembers$ = createRoomMembers$(scope, matrixRoom);
   const matrixMemberMetadataStore = createMatrixMemberMetadata$(
-    scope,
     memberships$,
     matrixRoomMembers$,
   );
@@ -726,16 +725,10 @@ export function createCallViewModel$(
         mediaDevices,
         pretendToBeDisconnected$: localMembership.reconnecting$,
         displayName$: (() => {
-          const name$ = matrixMemberMetadataStore.createDisplayNameBehavior$(
-            scope,
-            userId,
-          );
+          const name$ = matrixMemberMetadataStore.displayName$(userId);
           return computed(() => name$.value ?? userId);
         })(),
-        mxcAvatarUrl$: matrixMemberMetadataStore.createAvatarUrlBehavior$(
-          scope,
-          userId,
-        ),
+        mxcAvatarUrl$: matrixMemberMetadataStore.avatarUrl$(userId),
         handRaised$: computed(() => handsRaised$.value[mediaId]?.time ?? null),
         reaction$: computed(() => reactions$.value[mediaId] ?? undefined),
       }),
@@ -761,11 +754,7 @@ export function createCallViewModel$(
                     matrixRoomMembers$.value.get(userId)?.rawDisplayName ||
                     userId,
                 ),
-                mxcAvatarUrl$:
-                  matrixMemberMetadataStore.createAvatarUrlBehavior$(
-                    scope,
-                    userId,
-                  ),
+                mxcAvatarUrl$: matrixMemberMetadataStore.avatarUrl$(userId),
                 pickupState$,
                 intent,
               }),
@@ -930,7 +919,12 @@ export function createCallViewModel$(
     spotlight$.value.some((vm) => vm.type === "screen share" && !vm.local),
   );
 
-  const pipEnabled$ = scope.behavior(setPipEnabled$, false);
+  // Let the embedding app know that its picture-in-picture controls can be used
+  callActive$.value = true;
+  scope.onEnd(() => {
+    callActive$.value = false;
+    pipEnabled$.value = false;
+  });
 
   const windowSize$ =
     options.windowSize$ ??

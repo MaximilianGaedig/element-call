@@ -133,20 +133,16 @@ test("bob, carl, then bob joining no tracks yet", () => {
       a: expect.toSatisfy((items: RemoteMatrixLivekitMember[]) => {
         expect(items.length).toBe(1);
         const item = items[0]!;
-        expectObservable(item.membership$).toBe("a", {
-          a: bobMembership,
-        });
-        expectObservable(item.connection$).toBe("a", {
-          a: expect.toSatisfy((co) =>
+        expect(item.membership$.value).toEqual(bobMembership);
+        expect(item.connection$.value).toEqual(
+          expect.toSatisfy((co) =>
             areLivekitTransportsEqual(
               co.transport,
               bobMembership.transports[0]! as LivekitTransportConfig,
             ),
           ),
-        });
-        expectObservable(item.participant.value$).toBe("a", {
-          a: null,
-        });
+        );
+        expect(item.participant.value$.value).toEqual(null);
         return true;
       }),
       b: expect.toSatisfy((items: RemoteMatrixLivekitMember[]) => {
@@ -154,25 +150,17 @@ test("bob, carl, then bob joining no tracks yet", () => {
 
         {
           const item = items[0]!;
-          expectObservable(item.membership$).toBe("a", {
-            a: bobMembership,
-          });
-          expectObservable(item.participant.value$).toBe("a", {
-            a: null,
-          });
+          expect(item.membership$.value).toEqual(bobMembership);
+          expect(item.participant.value$.value).toEqual(null);
         }
 
         {
           const item = items[1]!;
 
-          expectObservable(item.membership$).toBe("a", {
-            a: carlMembership,
-          });
-          expectObservable(item.participant.value$).toBe("a", {
-            a: null,
-          });
-          expectObservable(item.connection$).toBe("a", {
-            a: expect.toSatisfy((connection) => {
+          expect(item.membership$.value).toEqual(carlMembership);
+          expect(item.participant.value$.value).toEqual(null);
+          expect(item.connection$.value).toEqual(
+            expect.toSatisfy((connection) => {
               expect(
                 areLivekitTransportsEqual(
                   connection.transport,
@@ -181,27 +169,21 @@ test("bob, carl, then bob joining no tracks yet", () => {
               ).toBe(true);
               return true;
             }),
-          });
+          );
         }
         return true;
       }),
       c: expect.toSatisfy((items: RemoteMatrixLivekitMember[]) => {
         expect(items.length).toBe(3);
 
-        expectObservable(items[0].membership$).toBe("a", {
-          a: bobMembership,
-        });
-        expectObservable(items[1].membership$).toBe("b", {
-          a: carlMembership,
-        });
+        expect(items[0].membership$.value).toEqual(bobMembership);
+        expect(items[1].membership$.value).toEqual(carlMembership);
 
         {
           const item = items[2]!;
-          expectObservable(item.membership$).toBe("a", {
-            a: daveMembership,
-          });
-          expectObservable(item.connection$).toBe("a", {
-            a: expect.toSatisfy((connection) => {
+          expect(item.membership$.value).toEqual(daveMembership);
+          expect(item.connection$.value).toEqual(
+            expect.toSatisfy((connection) => {
               expect(
                 areLivekitTransportsEqual(
                   connection.transport,
@@ -210,10 +192,8 @@ test("bob, carl, then bob joining no tracks yet", () => {
               ).toBe(true);
               return true;
             }),
-          });
-          expectObservable(item.participant.value$).toBe("a", {
-            a: null,
-          });
+          );
+          expect(item.participant.value$.value).toEqual(null);
         }
         return true;
       }),

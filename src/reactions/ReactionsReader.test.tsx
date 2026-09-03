@@ -263,13 +263,13 @@ test("handles a reaction", () => {
   vitest.useFakeTimers();
   vitest.setSystemTime(0);
 
-  withTestScheduler(({ schedule, time, expectObservable }) => {
+  withTestScheduler(({ schedule, expectObservable }) => {
     renderHook(() => {
       const { reactions$ } = new ReactionsReader(
         testScope(),
         rtcSession.asMockedSession(),
       );
-      schedule(`abc`, {
+      schedule(`ab`, {
         a: () => {},
         b: () => {
           rtcSession.room.emit(
@@ -293,9 +293,6 @@ test("handles a reaction", () => {
             {} as IRoomTimelineData,
           );
         },
-        c: () => {
-          vitest.advanceTimersByTime(REACTION_ACTIVE_TIME_MS);
-        },
       });
       expectObservable(reactions$).toBe(
         `ab ${REACTION_ACTIVE_TIME_MS - 1}ms c`,
@@ -304,7 +301,8 @@ test("handles a reaction", () => {
           b: {
             [`${localRtcMember.userId}:${localRtcMember.deviceId}`]: {
               reactionOption: reaction,
-              expireAfter: new Date(REACTION_ACTIVE_TIME_MS),
+              // The reaction arrives at frame 1
+              expireAfter: new Date(1 + REACTION_ACTIVE_TIME_MS),
             },
           },
           // Expect reaction to expire.
@@ -453,7 +451,7 @@ test("that reactions cannot be spammed", () => {
         testScope(),
         rtcSession.asMockedSession(),
       );
-      schedule("abcd", {
+      schedule("abc", {
         a: () => {},
         b: () => {
           rtcSession.room.emit(
@@ -499,9 +497,6 @@ test("that reactions cannot be spammed", () => {
             {} as IRoomTimelineData,
           );
         },
-        d: () => {
-          vitest.advanceTimersByTime(REACTION_ACTIVE_TIME_MS);
-        },
       });
       expectObservable(reactions$).toBe(
         `ab- ${REACTION_ACTIVE_TIME_MS - 2}ms d`,
@@ -510,7 +505,8 @@ test("that reactions cannot be spammed", () => {
           b: {
             [`${localRtcMember.userId}:${localRtcMember.deviceId}`]: {
               reactionOption: reactionA,
-              expireAfter: new Date(REACTION_ACTIVE_TIME_MS),
+              // The reaction arrives at frame 1
+              expireAfter: new Date(1 + REACTION_ACTIVE_TIME_MS),
             },
           },
           d: {},

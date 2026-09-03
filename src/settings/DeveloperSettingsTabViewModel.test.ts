@@ -7,7 +7,6 @@ Please see LICENSE in the repository root for full details.
 
 import { describe, expect, it } from "vitest";
 
-import { testScope } from "../utils/test";
 import { type CallViewModel } from "../state/CallViewModel/CallViewModel";
 import {
   createDeveloperSettingsTabViewModel,
@@ -19,7 +18,7 @@ describe("createDeveloperSettingsTabViewModel", () => {
   it("projects the key rotation state of the call", () => {
     const keyRotationSuppressed$ = state(false);
     const participantCount$ = state(5);
-    const vm = createDeveloperSettingsTabViewModel(testScope(), {
+    const vm = createDeveloperSettingsTabViewModel({
       keyRotationSuppressed$,
       participantCount$,
     } as unknown as CallViewModel);

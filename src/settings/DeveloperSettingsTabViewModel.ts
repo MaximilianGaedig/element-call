@@ -5,10 +5,8 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { combineLatest } from "rxjs";
-
 import { type CallViewModel } from "../state/CallViewModel/CallViewModel.ts";
-import { type ObservableScope } from "../state/ObservableScope.ts";
+import { computed } from "../state/Behavior.ts";
 import { createStaticViewModel, type ViewModel } from "../state/ViewModel.ts";
 import { type DeveloperSettingsSnapshot } from "./DeveloperSettingsTab.tsx";
 
@@ -18,20 +16,16 @@ import { type DeveloperSettingsSnapshot } from "./DeveloperSettingsTab.tsx";
  * Only the call state the tab actually renders is projected here, so that the
  * tab does not need to know about the CallViewModel.
  *
- * @param scope - ObservableScope that bounds the lifetime of derived behaviors.
  * @param callModel - The root CallViewModel; provides the key rotation state.
  */
 export function createDeveloperSettingsTabViewModel(
-  scope: ObservableScope,
   callModel: CallViewModel,
 ): ViewModel<DeveloperSettingsSnapshot> {
   return {
-    keyRotation$: scope.behavior(
-      combineLatest(
-        [callModel.keyRotationSuppressed$, callModel.participantCount$],
-        (suppressed, participantCount) => ({ suppressed, participantCount }),
-      ),
-    ),
+    keyRotation$: computed(() => ({
+      suppressed: callModel.keyRotationSuppressed$.value,
+      participantCount: callModel.participantCount$.value,
+    })),
   };
 }
 

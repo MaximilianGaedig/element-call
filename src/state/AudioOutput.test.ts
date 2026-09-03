@@ -5,12 +5,13 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { afterEach, beforeEach, describe, vi, it } from "vitest";
-import * as ComponentsCore from "@livekit/components-core";
+import { afterEach, beforeEach, describe, expect, vi, it } from "vitest";
+import { Room as LivekitRoom } from "livekit-client";
 
 import { ObservableScope } from "./ObservableScope";
-import { AudioOutput } from "./MediaDevices";
-import { withTestScheduler } from "../utils/test";
+import { AudioOutput, type AudioOutputDeviceLabel } from "./MediaDevices";
+import { flushPromises } from "../utils/test";
+import { constant } from "./Behavior";
 
 const BT_SPEAKER = {
   deviceId: "f9fc8f5f94578fe3abd89e086c1e78c08477aa564dd9e917950f0e7ebb37a6a2",
@@ -84,110 +85,77 @@ function toBlankDevice(device: MediaDeviceInfo): MediaDeviceInfo {
   };
 }
 
-vi.mock("@livekit/components-core", () => ({
-  createMediaDeviceObserver: vi.fn(),
-}));
+const mediaDevices = new EventTarget();
+Object.defineProperty(navigator, "mediaDevices", {
+  value: mediaDevices,
+  configurable: true,
+});
+
+/** Makes the next device enumeration return the given devices. */
+async function devicesChange(devices: MediaDeviceInfo[]): Promise<void> {
+  vi.mocked(LivekitRoom.getLocalDevices).mockResolvedValue(devices);
+  mediaDevices.dispatchEvent(new Event("devicechange"));
+  await flushPromises();
+}
 
 describe("AudioOutput Tests", () => {
   let testScope: ObservableScope;
 
   beforeEach(() => {
     testScope = new ObservableScope();
+    vi.spyOn(LivekitRoom, "getLocalDevices").mockResolvedValue([]);
   });
 
   afterEach(() => {
     testScope.end();
+    vi.restoreAllMocks();
   });
 
-  it("should select the default audio output device", () => {
+  it("should select the default audio output device", async () => {
     // In a real life setup there would be first a blanked list
     // then the real one.
-    withTestScheduler(({ behavior, cold, expectObservable }) => {
-      vi.mocked(ComponentsCore.createMediaDeviceObserver).mockReturnValue(
-        cold("ab", {
-          // In a real life setup there would be first a blanked list
-          // then the real one.
-          a: AMAC_DEVICE_LIST_WITH_DEFAULT.map(toBlankDevice),
-          b: AMAC_DEVICE_LIST_WITH_DEFAULT,
-        }),
-      );
-
-      const audioOutput = new AudioOutput(
-        behavior("a", { a: true }),
-        testScope,
-      );
-
-      expectObservable(audioOutput.selected$).toBe("ab", {
-        a: undefined,
-        b: { id: "default", virtualEarpiece: false },
-      });
+    const audioOutput = new AudioOutput(constant(true), testScope);
+    await devicesChange(AMAC_DEVICE_LIST_WITH_DEFAULT.map(toBlankDevice));
+    expect(audioOutput.selected$.value).toBeUndefined();
+    await devicesChange(AMAC_DEVICE_LIST_WITH_DEFAULT);
+    expect(audioOutput.selected$.value).toEqual({
+      id: "default",
+      virtualEarpiece: false,
     });
   });
 
-  it("Select the correct device when requested", () => {
-    // In a real life setup there would be first a blanked list
-    // then the real one.
-    withTestScheduler(({ behavior, cold, schedule, expectObservable }) => {
-      vi.mocked(ComponentsCore.createMediaDeviceObserver).mockReturnValue(
-        cold("ab", {
-          // In a real life setup there would be first a blanked list
-          // then the real one.
-          a: DEVICE_LIST_B.map(toBlankDevice),
-          b: DEVICE_LIST_B,
-        }),
-      );
-
-      const audioOutput = new AudioOutput(
-        behavior("a", { a: true }),
-        testScope,
-      );
-
-      schedule("--abc", {
-        a: () => audioOutput.select(MONITOR_SPEAKER.deviceId),
-        b: () => audioOutput.select(LAPTOP_SPEAKER.deviceId),
-        c: () => audioOutput.select(MONITOR_SPEAKER.deviceId),
-      });
-
-      expectObservable(audioOutput.selected$).toBe("abcde", {
-        a: undefined,
-        b: { id: LAPTOP_SPEAKER.deviceId, virtualEarpiece: false },
-        c: { id: MONITOR_SPEAKER.deviceId, virtualEarpiece: false },
-        d: { id: LAPTOP_SPEAKER.deviceId, virtualEarpiece: false },
-        e: { id: MONITOR_SPEAKER.deviceId, virtualEarpiece: false },
-      });
+  it("Select the correct device when requested", async () => {
+    const audioOutput = new AudioOutput(constant(true), testScope);
+    await devicesChange(DEVICE_LIST_B.map(toBlankDevice));
+    expect(audioOutput.selected$.value).toBeUndefined();
+    await devicesChange(DEVICE_LIST_B);
+    expect(audioOutput.selected$.value).toEqual({
+      id: LAPTOP_SPEAKER.deviceId,
+      virtualEarpiece: false,
     });
+
+    for (const device of [MONITOR_SPEAKER, LAPTOP_SPEAKER, MONITOR_SPEAKER]) {
+      audioOutput.select(device.deviceId);
+      expect(audioOutput.selected$.value).toEqual({
+        id: device.deviceId,
+        virtualEarpiece: false,
+      });
+    }
   });
 
-  it("Test mappings", () => {
-    // In a real life setup there would be first a blanked list
-    // then the real one.
-    withTestScheduler(({ behavior, cold, schedule, expectObservable }) => {
-      vi.mocked(ComponentsCore.createMediaDeviceObserver).mockReturnValue(
-        cold("a", {
-          // In a real life setup there would be first a blanked list
-          // then the real one.
-          a: AMAC_HS_DEVICE_LIST,
-        }),
-      );
+  it("Test mappings", async () => {
+    const audioOutput = new AudioOutput(constant(true), testScope);
+    await devicesChange(AMAC_HS_DEVICE_LIST);
 
-      const audioOutput = new AudioOutput(
-        behavior("a", { a: true }),
-        testScope,
-      );
-
-      const expectedMappings = new Map([
-        [`default`, { type: "name", name: asDefault(BT_HEADSET).label }],
-        [BT_SPEAKER.deviceId, { type: "name", name: BT_SPEAKER.label }],
-        [BT_HEADSET.deviceId, { type: "name", name: BT_HEADSET.label }],
-        [
-          BUILT_IN_SPEAKER.deviceId,
-          { type: "name", name: BUILT_IN_SPEAKER.label },
-        ],
-      ]);
-
-      expectObservable(audioOutput.available$).toBe("a", {
-        a: expectedMappings,
-      });
-    });
+    const expectedMappings = new Map<string, AudioOutputDeviceLabel>([
+      [`default`, { type: "name", name: asDefault(BT_HEADSET).label }],
+      [BT_SPEAKER.deviceId, { type: "name", name: BT_SPEAKER.label }],
+      [BT_HEADSET.deviceId, { type: "name", name: BT_HEADSET.label }],
+      [
+        BUILT_IN_SPEAKER.deviceId,
+        { type: "name", name: BUILT_IN_SPEAKER.label },
+      ],
+    ]);
+    expect(audioOutput.available$.value).toEqual(expectedMappings);
   });
 });

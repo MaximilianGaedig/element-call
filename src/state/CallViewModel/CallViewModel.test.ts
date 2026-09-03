@@ -7,16 +7,7 @@ Please see LICENSE in the repository root for full details.
 */
 
 import { test, vi, onTestFinished, it, describe, expect } from "vitest";
-import {
-  combineLatest,
-  debounceTime,
-  distinctUntilChanged,
-  map,
-  NEVER,
-  type Observable,
-  of,
-  switchMap,
-} from "rxjs";
+import { map, NEVER, type Observable, of } from "rxjs";
 import { SyncState } from "matrix-js-sdk";
 import {
   ConnectionState,
@@ -60,7 +51,8 @@ import {
 } from "../../utils/test-fixtures.ts";
 import { MediaDevices } from "../MediaDevices.ts";
 import { getValue } from "../../utils/observable.ts";
-import { type Behavior, constant, state } from "../Behavior.ts";
+import { type Behavior, computed, constant, state } from "../Behavior.ts";
+import { type MediaViewModel } from "../media/MediaViewModel.ts";
 import {
   localParticipant,
   withCallViewModel as withCallViewModelInMode,
@@ -169,79 +161,60 @@ export type LayoutSummary =
   | OneOnOnePortraitLayoutSummary
   | PipLayoutSummary;
 
-function summarizeLayout$(l$: Observable<Layout>): Observable<LayoutSummary> {
-  return l$.pipe(
-    switchMap((l) => {
-      switch (l.type) {
-        case "grid":
-          return combineLatest(
-            [
-              l.spotlight?.media$ ?? constant(undefined),
-              ...l.grid.map((vm) => vm.media$),
-            ],
-            (spotlight, ...grid) => ({
-              type: l.type,
-              spotlight: spotlight?.map((vm) => vm.id),
-              grid: grid.map((vm) => vm.id),
-            }),
-          );
-        case "spotlight-landscape":
-        case "spotlight-portrait":
-          return combineLatest(
-            [l.spotlight.media$, ...l.grid.map((vm) => vm.media$)],
-            (spotlight, ...grid) => ({
-              type: l.type,
-              spotlight: spotlight.map((vm) => vm.id),
-              grid: grid.map((vm) => vm.id),
-            }),
-          );
-        case "spotlight-expanded":
-          return combineLatest(
-            [l.spotlight.media$, l.pip?.media$ ?? constant(undefined)],
-            (spotlight, pip) => ({
-              type: l.type,
-              spotlight: spotlight.map((vm) => vm.id),
-              pip: pip?.id,
-            }),
-          );
-        case "one-on-one-desktop":
-          return combineLatest(
-            [l.spotlight.media$, l.pip.media$],
-            (spotlight, pip) => ({
-              type: l.type,
-              spotlight: spotlight.id,
-              pip: pip.id,
-            }),
-          );
-        case "one-on-one-mobile":
-          return combineLatest(
-            [
-              l.spotlight.media$,
-              l.pip?.media$ ?? constant(undefined),
-              l.pipSize$,
-            ],
-            (spotlight, pip, pipSize) => ({
-              type: l.type,
-              spotlight: spotlight.map((vm) => vm.id),
-              pip: pip?.id,
-              pipSize,
-            }),
-          );
-        case "pip":
-          return l.spotlight.media$.pipe(
-            map((spotlight) => ({
-              type: l.type,
-              spotlight: spotlight.map((vm) => vm.id),
-            })),
-          );
-      }
-    }),
-    // Sometimes there can be multiple (synchronous) updates per frame. We only
-    // care about the most recent value for each time step, so discard these
-    // extra values.
-    debounceTime(0),
-    distinctUntilChanged(deepCompare),
-  );
+function summarizeLayout$(l$: Behavior<Layout>): Behavior<LayoutSummary> {
+  const ids = (media$: Behavior<MediaViewModel[]>): string[] =>
+    media$.value.map((vm) => vm.id);
+  return computed<LayoutSummary>(() => {
+    const l = l$.value;
+    switch (l.type) {
+      case "grid":
+        return {
+          type: l.type,
+          spotlight: l.spotlight && ids(l.spotlight.media$),
+          grid: l.grid.map((vm) => vm.media$.value.id),
+        };
+      case "spotlight-landscape":
+      case "spotlight-portrait":
+        return {
+          type: l.type,
+          spotlight: ids(l.spotlight.media$),
+          grid: l.grid.map((vm) => vm.media$.value.id),
+        };
+      case "spotlight-expanded":
+        return {
+          type: l.type,
+          spotlight: ids(l.spotlight.media$),
+          pip: l.pip?.media$.value.id,
+        };
+      case "one-on-one-desktop":
+        return {
+          type: l.type,
+          spotlight: l.spotlight.media$.value.id,
+          pip: l.pip.media$.value.id,
+        };
+      case "one-on-one-mobile":
+        return {
+          type: l.type,
+          spotlight: ids(l.spotlight.media$),
+          pip: l.pip?.media$.value.id,
+          pipSize: l.pipSize$.value,
+        };
+      case "pip":
+        return { type: l.type, spotlight: ids(l.spotlight.media$) };
+    }
+  }, deepCompare);
+}
+
+/**
+ * Counts the deeply-distinct values a Behavior has taken so far.
+ */
+function countChanges$<T>(behavior$: Behavior<T>): Behavior<number> {
+  let count = 0;
+  const distinct$ = computed(() => behavior$.value, deepCompare);
+  return computed(() => {
+    void distinct$.value;
+    return ++count;
+  });
 }
 
 function mockRingEvent(
@@ -284,16 +257,15 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
           }),
         },
         (vm) => {
-          expectObservable(summarizeLayout$(vm.layout$)).toBe(
-            expectedLayoutMarbles,
-            {
-              a: {
-                type: "grid",
-                spotlight: undefined,
-                grid: [`${localId}:0`, `${aliceId}:0`, `${bobId}:0`],
-              },
+          expectObservable(summarizeLayout$(vm.layout$), {
+            settled: true,
+          }).toBe(expectedLayoutMarbles, {
+            a: {
+              type: "grid",
+              spotlight: undefined,
+              grid: [`${localId}:0`, `${aliceId}:0`, `${bobId}:0`],
             },
-          );
+          });
         },
       );
     });
@@ -328,49 +300,48 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
             g: () => vm.layoutSwitchVm$.value!.setLayout("grid"),
           });
 
-          expectObservable(summarizeLayout$(vm.layout$)).toBe(
-            expectedLayoutMarbles,
-            {
-              a: {
-                type: "grid",
-                spotlight: undefined,
-                grid: [`${localId}:0`, `${aliceId}:0`, `${bobId}:0`],
-              },
-              b: {
-                type: "spotlight-landscape",
-                spotlight: [`${aliceId}:0:screen-share`],
-                grid: [`${localId}:0`, `${aliceId}:0`, `${bobId}:0`],
-              },
-              c: {
-                type: "spotlight-landscape",
-                spotlight: [
-                  `${aliceId}:0:screen-share`,
-                  `${bobId}:0:screen-share`,
-                ],
-                grid: [`${localId}:0`, `${aliceId}:0`, `${bobId}:0`],
-              },
-              d: {
-                type: "spotlight-landscape",
-                spotlight: [`${bobId}:0:screen-share`],
-                grid: [`${localId}:0`, `${aliceId}:0`, `${bobId}:0`],
-              },
-              e: {
-                type: "spotlight-landscape",
-                spotlight: [`${aliceId}:0`],
-                grid: [`${localId}:0`, `${bobId}:0`],
-              },
-              f: {
-                type: "spotlight-landscape",
-                spotlight: [`${aliceId}:0:screen-share`],
-                grid: [`${localId}:0`, `${bobId}:0`, `${aliceId}:0`],
-              },
-              g: {
-                type: "grid",
-                spotlight: undefined,
-                grid: [`${localId}:0`, `${bobId}:0`, `${aliceId}:0`],
-              },
+          expectObservable(summarizeLayout$(vm.layout$), {
+            settled: true,
+          }).toBe(expectedLayoutMarbles, {
+            a: {
+              type: "grid",
+              spotlight: undefined,
+              grid: [`${localId}:0`, `${aliceId}:0`, `${bobId}:0`],
             },
-          );
+            b: {
+              type: "spotlight-landscape",
+              spotlight: [`${aliceId}:0:screen-share`],
+              grid: [`${localId}:0`, `${aliceId}:0`, `${bobId}:0`],
+            },
+            c: {
+              type: "spotlight-landscape",
+              spotlight: [
+                `${aliceId}:0:screen-share`,
+                `${bobId}:0:screen-share`,
+              ],
+              grid: [`${localId}:0`, `${aliceId}:0`, `${bobId}:0`],
+            },
+            d: {
+              type: "spotlight-landscape",
+              spotlight: [`${bobId}:0:screen-share`],
+              grid: [`${localId}:0`, `${aliceId}:0`, `${bobId}:0`],
+            },
+            e: {
+              type: "spotlight-landscape",
+              spotlight: [`${aliceId}:0`],
+              grid: [`${localId}:0`, `${bobId}:0`],
+            },
+            f: {
+              type: "spotlight-landscape",
+              spotlight: [`${aliceId}:0:screen-share`],
+              grid: [`${localId}:0`, `${bobId}:0`, `${aliceId}:0`],
+            },
+            g: {
+              type: "grid",
+              spotlight: undefined,
+              grid: [`${localId}:0`, `${bobId}:0`, `${aliceId}:0`],
+            },
+          });
           expectObservable(vm.showSpeakingIndicators$).toBe(
             expectedShowSpeakingMarbles,
             yesNo,
@@ -395,21 +366,20 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
           ]),
         },
         (vm) => {
-          expectObservable(summarizeLayout$(vm.layout$)).toBe(
-            expectedLayoutMarbles,
-            {
-              a: {
-                type: "grid",
-                spotlight: undefined,
-                grid: [`${localId}:0`, `${aliceId}:0`, `${bobId}:0`],
-              },
-              b: {
-                type: "grid",
-                spotlight: [`${localId}:0:screen-share`],
-                grid: [`${localId}:0`, `${aliceId}:0`, `${bobId}:0`],
-              },
+          expectObservable(summarizeLayout$(vm.layout$), {
+            settled: true,
+          }).toBe(expectedLayoutMarbles, {
+            a: {
+              type: "grid",
+              spotlight: undefined,
+              grid: [`${localId}:0`, `${aliceId}:0`, `${bobId}:0`],
             },
-          );
+            b: {
+              type: "grid",
+              spotlight: [`${localId}:0:screen-share`],
+              grid: [`${localId}:0`, `${aliceId}:0`, `${bobId}:0`],
+            },
+          });
         },
       );
     });
@@ -430,21 +400,20 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
           ]),
         },
         (vm) => {
-          expectObservable(summarizeLayout$(vm.layout$)).toBe(
-            expectedLayoutMarbles,
-            {
-              a: {
-                type: "one-on-one-desktop",
-                pip: `${localId}:0`,
-                spotlight: `${aliceId}:0`,
-              },
-              b: {
-                type: "grid",
-                spotlight: [`${localId}:0:screen-share`],
-                grid: [`${localId}:0`, `${aliceId}:0`],
-              },
+          expectObservable(summarizeLayout$(vm.layout$), {
+            settled: true,
+          }).toBe(expectedLayoutMarbles, {
+            a: {
+              type: "one-on-one-desktop",
+              pip: `${localId}:0`,
+              spotlight: `${aliceId}:0`,
             },
-          );
+            b: {
+              type: "grid",
+              spotlight: [`${localId}:0:screen-share`],
+              grid: [`${localId}:0`, `${aliceId}:0`],
+            },
+          });
         },
       );
     });
@@ -473,29 +442,28 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
           schedule(tapScreenInputMarbles, { a: () => vm.tapScreen() });
 
           expectObservable(vm.edgeToEdge$).toBe("y", yesNo); // Edge-to-edge-layout
-          expectObservable(summarizeLayout$(vm.layout$)).toBe(
-            expectedLayoutMarbles,
-            {
-              a: {
-                type: "one-on-one-mobile",
-                spotlight: [`${aliceId}:0`],
-                pip: undefined,
-                pipSize: "lg",
-              },
-              b: {
-                type: "one-on-one-mobile",
-                spotlight: [`${aliceId}:0`],
-                pip: `${localId}:0`,
-                pipSize: "lg",
-              },
-              c: {
-                type: "one-on-one-mobile",
-                spotlight: [`${aliceId}:0`],
-                pip: `${localId}:0`,
-                pipSize: "sm",
-              },
+          expectObservable(summarizeLayout$(vm.layout$), {
+            settled: true,
+          }).toBe(expectedLayoutMarbles, {
+            a: {
+              type: "one-on-one-mobile",
+              spotlight: [`${aliceId}:0`],
+              pip: undefined,
+              pipSize: "lg",
             },
-          );
+            b: {
+              type: "one-on-one-mobile",
+              spotlight: [`${aliceId}:0`],
+              pip: `${localId}:0`,
+              pipSize: "lg",
+            },
+            c: {
+              type: "one-on-one-mobile",
+              spotlight: [`${aliceId}:0`],
+              pip: `${localId}:0`,
+              pipSize: "sm",
+            },
+          });
         },
       );
     });
@@ -513,7 +481,9 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
         },
         (vm) => {
           // Uses one-on-one mobile layout
-          expectObservable(summarizeLayout$(vm.layout$)).toBe("a", {
+          expectObservable(summarizeLayout$(vm.layout$), {
+            settled: true,
+          }).toBe("a", {
             a: {
               type: "one-on-one-mobile",
               spotlight: [`${aliceId}:0`],
@@ -559,27 +529,26 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
           windowSize$: constant({ width: 700, height: 380 }), // Mobile phone in landscape
         },
         (vm) => {
-          expectObservable(summarizeLayout$(vm.layout$)).toBe(
-            expectedLayoutMarbles,
-            {
-              a: {
-                type: "one-on-one-mobile",
-                spotlight: [`${aliceId}:0`],
-                pip: undefined,
-                pipSize: "sm",
-              },
-              b: {
-                type: "spotlight-landscape",
-                spotlight: [`${aliceId}:0:screen-share`],
-                grid: [`${localId}:0`, `${aliceId}:0`],
-              },
-              c: {
-                type: "spotlight-landscape",
-                spotlight: [`${aliceId}:0`],
-                grid: [`${localId}:0`, `${bobId}:0`],
-              },
+          expectObservable(summarizeLayout$(vm.layout$), {
+            settled: true,
+          }).toBe(expectedLayoutMarbles, {
+            a: {
+              type: "one-on-one-mobile",
+              spotlight: [`${aliceId}:0`],
+              pip: undefined,
+              pipSize: "sm",
             },
-          );
+            b: {
+              type: "spotlight-landscape",
+              spotlight: [`${aliceId}:0:screen-share`],
+              grid: [`${localId}:0`, `${aliceId}:0`],
+            },
+            c: {
+              type: "spotlight-landscape",
+              spotlight: [`${aliceId}:0`],
+              grid: [`${localId}:0`, `${bobId}:0`],
+            },
+          });
           expectObservable(
             vm.layoutSwitchVm$.pipe(map((vm) => vm !== null)),
           ).toBe(expectedLayoutSwitchMarbles, yesNo);
@@ -596,10 +565,10 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
       const bSpeakingInputMarbles = " ny 1998ms n 1999ms -";
       const dSpeakingInputMarbles = " n- 1998ms y 1999ms n";
       // Nothing should change when Bob speaks, because Bob is already on screen.
-      // When Dave speaks he should switch with Alice because she's the one who
-      // hasn't spoken at all. Then when Alice speaks, she should return to her
-      // place at the top.
-      const expectedLayoutMarbles = " a  1999ms b 1999ms a 57999ms c 1999ms a";
+      // When Dave has spoken for a second he should switch with Alice because
+      // she's the one who hasn't spoken at all. Then when Alice has spoken for
+      // a second, she should return to her place at the top.
+      const expectedLayoutMarbles = " a  2999ms b 1999ms a 56999ms c 1999ms a";
 
       withCallViewModel(
         {
@@ -631,41 +600,40 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
             },
           });
 
-          expectObservable(summarizeLayout$(vm.layout$)).toBe(
-            expectedLayoutMarbles,
-            {
-              a: {
-                type: "grid",
-                spotlight: undefined,
-                grid: [
-                  `${localId}:0`,
-                  `${aliceId}:0`,
-                  `${bobId}:0`,
-                  `${daveId}:0`,
-                ],
-              },
-              b: {
-                type: "grid",
-                spotlight: undefined,
-                grid: [
-                  `${localId}:0`,
-                  `${daveId}:0`,
-                  `${bobId}:0`,
-                  `${aliceId}:0`,
-                ],
-              },
-              c: {
-                type: "grid",
-                spotlight: undefined,
-                grid: [
-                  `${localId}:0`,
-                  `${aliceId}:0`,
-                  `${daveId}:0`,
-                  `${bobId}:0`,
-                ],
-              },
+          expectObservable(summarizeLayout$(vm.layout$), {
+            settled: true,
+          }).toBe(expectedLayoutMarbles, {
+            a: {
+              type: "grid",
+              spotlight: undefined,
+              grid: [
+                `${localId}:0`,
+                `${aliceId}:0`,
+                `${bobId}:0`,
+                `${daveId}:0`,
+              ],
             },
-          );
+            b: {
+              type: "grid",
+              spotlight: undefined,
+              grid: [
+                `${localId}:0`,
+                `${daveId}:0`,
+                `${bobId}:0`,
+                `${aliceId}:0`,
+              ],
+            },
+            c: {
+              type: "grid",
+              spotlight: undefined,
+              grid: [
+                `${localId}:0`,
+                `${aliceId}:0`,
+                `${daveId}:0`,
+                `${bobId}:0`,
+              ],
+            },
+          });
         },
       );
     });
@@ -679,9 +647,10 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
       const bSpeakingInputMarbles = " ny";
       const dSpeakingInputMarbles = " ny";
       // Nothing should change when Bob or Dave initially speak, because they are
-      // on screen. When the screen becomes smaller Alice should move off screen
-      // to make way for the speakers (specifically, she should swap with Dave).
-      const expectedLayoutMarbles = " a-b";
+      // on screen. Once the screen has become smaller and they have spoken for a
+      // second, Alice should move off screen to make way for the speakers
+      // (specifically, she should swap with Dave).
+      const expectedLayoutMarbles = " a 1000ms b";
 
       withCallViewModel(
         {
@@ -712,31 +681,30 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
             b: () => setVisibleTiles!(3),
           });
 
-          expectObservable(summarizeLayout$(vm.layout$)).toBe(
-            expectedLayoutMarbles,
-            {
-              a: {
-                type: "grid",
-                spotlight: undefined,
-                grid: [
-                  `${localId}:0`,
-                  `${aliceId}:0`,
-                  `${bobId}:0`,
-                  `${daveId}:0`,
-                ],
-              },
-              b: {
-                type: "grid",
-                spotlight: undefined,
-                grid: [
-                  `${localId}:0`,
-                  `${daveId}:0`,
-                  `${bobId}:0`,
-                  `${aliceId}:0`,
-                ],
-              },
+          expectObservable(summarizeLayout$(vm.layout$), {
+            settled: true,
+          }).toBe(expectedLayoutMarbles, {
+            a: {
+              type: "grid",
+              spotlight: undefined,
+              grid: [
+                `${localId}:0`,
+                `${aliceId}:0`,
+                `${bobId}:0`,
+                `${daveId}:0`,
+              ],
             },
-          );
+            b: {
+              type: "grid",
+              spotlight: undefined,
+              grid: [
+                `${localId}:0`,
+                `${daveId}:0`,
+                `${bobId}:0`,
+                `${aliceId}:0`,
+              ],
+            },
+          });
         },
       );
     });
@@ -757,29 +725,28 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
           }),
         },
         (vm) => {
-          expectObservable(summarizeLayout$(vm.layout$)).toBe(
-            expectedLayoutMarbles,
-            {
-              a: {
-                // This is the expected one-on-one layout for a narrow window
-                type: "one-on-one-mobile",
-                spotlight: [`${aliceId}:0`],
-                pip: undefined,
-                pipSize: "lg",
-              },
-              b: {
-                // In a larger window, expect the one-on-one desktop layout
-                type: "one-on-one-desktop",
-                pip: `${localId}:0`,
-                spotlight: `${aliceId}:0`,
-              },
-              c: {
-                // In a PiP-sized window, we of course expect a PiP layout
-                type: "pip",
-                spotlight: [`${aliceId}:0`],
-              },
+          expectObservable(summarizeLayout$(vm.layout$), {
+            settled: true,
+          }).toBe(expectedLayoutMarbles, {
+            a: {
+              // This is the expected one-on-one layout for a narrow window
+              type: "one-on-one-mobile",
+              spotlight: [`${aliceId}:0`],
+              pip: undefined,
+              pipSize: "lg",
             },
-          );
+            b: {
+              // In a larger window, expect the one-on-one desktop layout
+              type: "one-on-one-desktop",
+              pip: `${localId}:0`,
+              spotlight: `${aliceId}:0`,
+            },
+            c: {
+              // In a PiP-sized window, we of course expect a PiP layout
+              type: "pip",
+              spotlight: [`${aliceId}:0`],
+            },
+          });
         },
       );
     });
@@ -823,31 +790,30 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
             s: () => vm.layoutSwitchVm$.value!.setLayout("spotlight"),
           });
 
-          expectObservable(summarizeLayout$(vm.layout$)).toBe(
-            expectedLayoutMarbles,
-            {
-              a: {
-                type: "spotlight-landscape",
-                spotlight: [`${aliceId}:0`],
-                grid: [`${localId}:0`, `${bobId}:0`, `${daveId}:0`],
-              },
-              b: {
-                type: "spotlight-landscape",
-                spotlight: [`${bobId}:0`],
-                grid: [`${localId}:0`, `${aliceId}:0`, `${daveId}:0`],
-              },
-              c: {
-                type: "spotlight-landscape",
-                spotlight: [`${daveId}:0`],
-                grid: [`${localId}:0`, `${aliceId}:0`, `${bobId}:0`],
-              },
-              d: {
-                type: "spotlight-landscape",
-                spotlight: [`${aliceId}:0`],
-                grid: [`${localId}:0`, `${daveId}:0`, `${bobId}:0`],
-              },
+          expectObservable(summarizeLayout$(vm.layout$), {
+            settled: true,
+          }).toBe(expectedLayoutMarbles, {
+            a: {
+              type: "spotlight-landscape",
+              spotlight: [`${aliceId}:0`],
+              grid: [`${localId}:0`, `${bobId}:0`, `${daveId}:0`],
             },
-          );
+            b: {
+              type: "spotlight-landscape",
+              spotlight: [`${bobId}:0`],
+              grid: [`${localId}:0`, `${aliceId}:0`, `${daveId}:0`],
+            },
+            c: {
+              type: "spotlight-landscape",
+              spotlight: [`${daveId}:0`],
+              grid: [`${localId}:0`, `${aliceId}:0`, `${bobId}:0`],
+            },
+            d: {
+              type: "spotlight-landscape",
+              spotlight: [`${aliceId}:0`],
+              grid: [`${localId}:0`, `${daveId}:0`, `${bobId}:0`],
+            },
+          });
 
           // While we expect the media on tiles to change, layout$ itself should
           // *never* meaningfully change. That is, we expect there to be no layout
@@ -856,13 +822,11 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
           // their media swapped out. This is meaningful for keeping the interface
           // not too visually distracting during back-and-forth conversations,
           // while still animating tiles to express people joining, leaving, etc.
-          expectObservable(
-            vm.layout$.pipe(
-              distinctUntilChanged(deepCompare),
-              debounceTime(0),
-              map(() => "x"),
-            ),
-          ).toBe("x"); // Expect just one emission
+          // The layout settles within the first frame and never changes after
+          expectObservable(countChanges$(vm.layout$), { settled: true }).toBe(
+            "a",
+            { a: expect.any(Number) },
+          );
         },
       );
     });
@@ -886,20 +850,19 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
             d: () => window.controls.disablePip(),
           });
 
-          expectObservable(summarizeLayout$(vm.layout$)).toBe(
-            expectedLayoutMarbles,
-            {
-              a: {
-                type: "grid",
-                spotlight: undefined,
-                grid: [`${localId}:0`, `${aliceId}:0`, `${bobId}:0`],
-              },
-              b: {
-                type: "pip",
-                spotlight: [`${aliceId}:0`],
-              },
+          expectObservable(summarizeLayout$(vm.layout$), {
+            settled: true,
+          }).toBe(expectedLayoutMarbles, {
+            a: {
+              type: "grid",
+              spotlight: undefined,
+              grid: [`${localId}:0`, `${aliceId}:0`, `${bobId}:0`],
             },
-          );
+            b: {
+              type: "pip",
+              spotlight: [`${aliceId}:0`],
+            },
+          });
         },
       );
     });
@@ -1033,26 +996,25 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
             a: () => vm.toggleSpotlightExpanded$.value!(),
           });
 
-          expectObservable(summarizeLayout$(vm.layout$)).toBe(
-            expectedLayoutMarbles,
-            {
-              a: {
-                type: "spotlight-expanded",
-                spotlight: [`${aliceId}:0:screen-share`],
-                pip: `${aliceId}:0`,
-              },
-              b: {
-                type: "spotlight-expanded",
-                spotlight: [`${aliceId}:0:screen-share`],
-                pip: `${bobId}:0`,
-              },
-              c: {
-                type: "spotlight-expanded",
-                spotlight: [`${aliceId}:0:screen-share`],
-                pip: `${daveId}:0`,
-              },
+          expectObservable(summarizeLayout$(vm.layout$), {
+            settled: true,
+          }).toBe(expectedLayoutMarbles, {
+            a: {
+              type: "spotlight-expanded",
+              spotlight: [`${aliceId}:0:screen-share`],
+              pip: `${aliceId}:0`,
             },
-          );
+            b: {
+              type: "spotlight-expanded",
+              spotlight: [`${aliceId}:0:screen-share`],
+              pip: `${bobId}:0`,
+            },
+            c: {
+              type: "spotlight-expanded",
+              spotlight: [`${aliceId}:0:screen-share`],
+              pip: `${daveId}:0`,
+            },
+          });
 
           // While we expect the media on the PiP tile to change, layout$ itself
           // should *never* meaningfully change. That is, we expect the same PiP
@@ -1060,13 +1022,11 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
           // when the speaker changes, rather than for tiles to animate in/out.
           // This is meaningful for keeping the interface not too visually
           // distracting during back-and-forth conversations.
-          expectObservable(
-            vm.layout$.pipe(
-              distinctUntilChanged(deepCompare),
-              debounceTime(0),
-              map(() => "x"),
-            ),
-          ).toBe("x"); // Expect just one emission
+          // The layout settles within the first frame and never changes after
+          expectObservable(countChanges$(vm.layout$), { settled: true }).toBe(
+            "a",
+            { a: expect.any(Number) },
+          );
         },
       );
     });
@@ -1103,21 +1063,20 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
             a: () => vm.toggleSpotlightExpanded$.value!(),
           });
 
-          expectObservable(summarizeLayout$(vm.layout$)).toBe(
-            expectedLayoutMarbles,
-            {
-              a: {
-                type: "spotlight-expanded",
-                spotlight: [`${localId}:0`],
-                pip: undefined,
-              },
-              b: {
-                type: "spotlight-expanded",
-                spotlight: [`${aliceId}:0`],
-                pip: `${localId}:0`,
-              },
+          expectObservable(summarizeLayout$(vm.layout$), {
+            settled: true,
+          }).toBe(expectedLayoutMarbles, {
+            a: {
+              type: "spotlight-expanded",
+              spotlight: [`${localId}:0`],
+              pip: undefined,
             },
-          );
+            b: {
+              type: "spotlight-expanded",
+              spotlight: [`${aliceId}:0`],
+              pip: `${localId}:0`,
+            },
+          });
         },
       );
     });
@@ -1144,7 +1103,9 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
           });
 
           // Layout should show remote tile only
-          expectObservable(summarizeLayout$(vm.layout$)).toBe("a", {
+          expectObservable(summarizeLayout$(vm.layout$), {
+            settled: true,
+          }).toBe("a", {
             a: {
               type: "spotlight-expanded",
               spotlight: [`${aliceId}:0`],
@@ -1181,31 +1142,30 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
             a: () => vm.toggleSpotlightExpanded$.value!(),
           });
 
-          expectObservable(summarizeLayout$(vm.layout$)).toBe(
-            expectedLayoutMarbles,
-            {
-              a: {
-                type: "spotlight-landscape",
-                spotlight: [`${aliceId}:0`],
-                grid: [`${localId}:0`, `${bobId}:0`],
-              },
-              b: {
-                type: "spotlight-expanded",
-                spotlight: [`${aliceId}:0`],
-                pip: undefined,
-              },
-              c: {
-                type: "grid",
-                spotlight: undefined,
-                grid: [`${localId}:0`, `${aliceId}:0`, `${bobId}:0`],
-              },
-              d: {
-                type: "grid",
-                spotlight: undefined,
-                grid: [`${localId}:0`, `${bobId}:0`, `${aliceId}:0`],
-              },
+          expectObservable(summarizeLayout$(vm.layout$), {
+            settled: true,
+          }).toBe(expectedLayoutMarbles, {
+            a: {
+              type: "spotlight-landscape",
+              spotlight: [`${aliceId}:0`],
+              grid: [`${localId}:0`, `${bobId}:0`],
             },
-          );
+            b: {
+              type: "spotlight-expanded",
+              spotlight: [`${aliceId}:0`],
+              pip: undefined,
+            },
+            c: {
+              type: "grid",
+              spotlight: undefined,
+              grid: [`${localId}:0`, `${aliceId}:0`, `${bobId}:0`],
+            },
+            d: {
+              type: "grid",
+              spotlight: undefined,
+              grid: [`${localId}:0`, `${bobId}:0`, `${aliceId}:0`],
+            },
+          });
         },
       );
     });
@@ -1242,26 +1202,25 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
         },
         (vm) => {
           vm.layoutSwitchVm$.value!.setLayout("grid");
-          expectObservable(summarizeLayout$(vm.layout$)).toBe(
-            expectedLayoutMarbles,
-            {
-              a: {
-                type: "grid",
-                spotlight: undefined,
-                grid: [`${localId}:0`],
-              },
-              b: {
-                type: "one-on-one-desktop",
-                pip: `${localId}:0`,
-                spotlight: `${aliceId}:0`,
-              },
-              c: {
-                type: "grid",
-                spotlight: undefined,
-                grid: [`${localId}:0`, `${aliceId}:0`, `${daveId}:0`],
-              },
+          expectObservable(summarizeLayout$(vm.layout$), {
+            settled: true,
+          }).toBe(expectedLayoutMarbles, {
+            a: {
+              type: "grid",
+              spotlight: undefined,
+              grid: [`${localId}:0`],
             },
-          );
+            b: {
+              type: "one-on-one-desktop",
+              pip: `${localId}:0`,
+              spotlight: `${aliceId}:0`,
+            },
+            c: {
+              type: "grid",
+              spotlight: undefined,
+              grid: [`${localId}:0`, `${aliceId}:0`, `${daveId}:0`],
+            },
+          });
         },
       );
     });
@@ -1285,31 +1244,30 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
         },
         (vm) => {
           vm.layoutSwitchVm$.value!.setLayout("grid");
-          expectObservable(summarizeLayout$(vm.layout$)).toBe(
-            expectedLayoutMarbles,
-            {
-              a: {
-                type: "grid",
-                spotlight: undefined,
-                grid: [`${localId}:0`],
-              },
-              b: {
-                type: "one-on-one-desktop",
-                pip: `${localId}:0`,
-                spotlight: `${aliceId}:0`,
-              },
-              c: {
-                type: "grid",
-                spotlight: undefined,
-                grid: [`${localId}:0`, `${aliceId}:0`, `${daveId}:0`],
-              },
-              d: {
-                type: "one-on-one-desktop",
-                pip: `${localId}:0`,
-                spotlight: `${daveId}:0`,
-              },
+          expectObservable(summarizeLayout$(vm.layout$), {
+            settled: true,
+          }).toBe(expectedLayoutMarbles, {
+            a: {
+              type: "grid",
+              spotlight: undefined,
+              grid: [`${localId}:0`],
             },
-          );
+            b: {
+              type: "one-on-one-desktop",
+              pip: `${localId}:0`,
+              spotlight: `${aliceId}:0`,
+            },
+            c: {
+              type: "grid",
+              spotlight: undefined,
+              grid: [`${localId}:0`, `${aliceId}:0`, `${daveId}:0`],
+            },
+            d: {
+              type: "one-on-one-desktop",
+              pip: `${localId}:0`,
+              spotlight: `${daveId}:0`,
+            },
+          });
         },
       );
     });
@@ -1345,30 +1303,29 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
               };
             },
           });
-          expectObservable(summarizeLayout$(vm.layout$)).toBe(
-            expectedLayoutMarbles,
-            {
-              a: {
-                type: "grid",
-                spotlight: undefined,
-                grid: [
-                  `${localId}:0`,
-                  "@alice:example.org:AAAA:0",
-                  "@bob:example.org:BBBB:0",
-                ],
-              },
-              b: {
-                type: "grid",
-                spotlight: undefined,
-                grid: [
-                  `${localId}:0`,
-                  // Bob shifts up!
-                  "@bob:example.org:BBBB:0",
-                  "@alice:example.org:AAAA:0",
-                ],
-              },
+          expectObservable(summarizeLayout$(vm.layout$), {
+            settled: true,
+          }).toBe(expectedLayoutMarbles, {
+            a: {
+              type: "grid",
+              spotlight: undefined,
+              grid: [
+                `${localId}:0`,
+                "@alice:example.org:AAAA:0",
+                "@bob:example.org:BBBB:0",
+              ],
             },
-          );
+            b: {
+              type: "grid",
+              spotlight: undefined,
+              grid: [
+                `${localId}:0`,
+                // Bob shifts up!
+                "@bob:example.org:BBBB:0",
+                "@alice:example.org:AAAA:0",
+              ],
+            },
+          });
         },
       );
     });
@@ -1526,7 +1483,9 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
           });
           // Layout should show placeholder media for the participant we're
           // ringing the entire time (even once timed out)
-          expectObservable(summarizeLayout$(vm.layout$)).toBe("a", {
+          expectObservable(summarizeLayout$(vm.layout$), {
+            settled: true,
+          }).toBe("a", {
             a: {
               type: "one-on-one-desktop",
               spotlight: `${localId}:0`,
@@ -1572,7 +1531,9 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
           });
           // Layout should show placeholder media for the participant we're
           // ringing the entire time
-          expectObservable(summarizeLayout$(vm.layout$)).toBe("a 20ms b", {
+          expectObservable(summarizeLayout$(vm.layout$), {
+            settled: true,
+          }).toBe("a 20ms b", {
             a: {
               type: "one-on-one-desktop",
               spotlight: `${localId}:0`,
