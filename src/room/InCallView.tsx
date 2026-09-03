@@ -143,7 +143,11 @@ export const ActiveCall: FC<ActiveCallProps> = (props) => {
     vm.join();
     setVm(vm);
 
-    vm.leave$.pipe(scope.bind()).subscribe(props.onLeft);
+    const onLeft = props.onLeft;
+    scope.effect(() => {
+      const reason = vm.leaveReason$.value;
+      if (reason !== null) onLeft(reason);
+    });
 
     return (): void => {
       scope.end();

@@ -13,6 +13,7 @@ import { useAudioContext } from "../useAudioContext";
 import { prefetchSounds } from "../soundUtils";
 import { useLatest } from "../useLatest";
 import { type CallViewModel } from "../state/CallViewModel/CallViewModel";
+import { useBehaviorChange } from "../useBehavior";
 
 const soundMap = Object.fromEntries([
   ...ReactionSet.filter((v) => v.sound !== undefined).map((v) => [
@@ -50,20 +51,16 @@ export function ReactionsAudioRenderer({
     setSoundCache(prefetchSounds(soundMap));
   }, [soundCache, shouldPlay]);
 
-  useEffect(() => {
-    const sub = vm.audibleReactions$.subscribe((newReactions) => {
-      for (const reactionName of newReactions) {
-        if (soundMap[reactionName]) {
-          void audioEngineRef.current?.playSound(reactionName);
-        } else {
-          // Fallback sounds.
-          void audioEngineRef.current?.playSound("generic");
-        }
-      }
-    });
-    return (): void => {
-      sub.unsubscribe();
-    };
-  }, [vm, audioEngineRef]);
+  // Play each reaction as it appears (once per distinct reaction, even if
+  // several people react at the same time)
+  useBehaviorChange(vm.reactions$, (reactions, previous) => {
+    if (!shouldPlay) return;
+    const alreadyPlaying = new Set(Object.values(previous).map((r) => r.name));
+    for (const name of new Set(Object.values(reactions).map((r) => r.name))) {
+      if (alreadyPlaying.has(name)) continue;
+      // Fall back to a generic sound for reactions without their own
+      void audioEngineRef.current?.playSound(soundMap[name] ? name : "generic");
+    }
+  });
   return null;
 }

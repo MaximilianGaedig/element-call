@@ -12,34 +12,17 @@ import {
   MatrixRTCSessionEvent,
   type RTCCallIntent,
 } from "matrix-js-sdk/lib/matrixrtc";
-import {
-  filter,
-  fromEvent,
-  map,
-  merge,
-  NEVER,
-  type Observable,
-  of,
-  pairwise,
-  switchMap,
-  timer,
-  EMPTY,
-  race,
-  take,
-} from "rxjs";
-import {
-  type EventTimelineSetHandlerMap,
-  EventType,
-  type Room as MatrixRoom,
-  RoomEvent,
-} from "matrix-js-sdk";
+import { EventType, type MatrixEvent, RoomEvent } from "matrix-js-sdk";
 import { logger as rootLogger } from "matrix-js-sdk/lib/logger";
+import { untracked } from "@preact/signals-core";
 
-import { type Behavior } from "../Behavior";
-import { type ObservableScope } from "../ObservableScope";
+import { type Behavior, type Emitter, state } from "../Behavior";
+import { ObservableScope } from "../ObservableScope";
 import { type RoomMemberMap } from "./remoteMembers/MatrixMemberMetadata";
 
 export type AutoLeaveReason = "allOthersLeft" | "timeout" | "decline";
+
+export type RingOutcome = "accept" | "decline" | "timeout";
 
 export interface RingAttempt {
   intent: RTCCallIntent;
@@ -48,45 +31,46 @@ export interface RingAttempt {
    */
   recipient: string;
   /**
-   * The eventual outcome of the ringing attempt. (Emits a single value.)
+   * How the ringing attempt is going, and eventually how it ended.
    */
   // TODO: Include a callback for attempting ringing again in case of a timeout
-  outcome$: Observable<"accept" | "decline" | "timeout">;
+  outcome$: Behavior<"ringing" | RingOutcome>;
 }
 
 export type CallNotificationWrapper = {
   event_id: string;
 } & IRTCNotificationContent;
 
+/**
+ * The most recent call notification that we sent, if any.
+ */
 export function createSentCallNotification$(
   scope: ObservableScope,
   matrixRTCSession: MatrixRTCSession,
 ): Behavior<CallNotificationWrapper | null> {
-  const sentCallNotification$ = scope.behavior(
-    fromEvent(matrixRTCSession, MatrixRTCSessionEvent.DidSendCallNotification),
-    null,
-  ) as Behavior<CallNotificationWrapper | null>;
-  return sentCallNotification$;
-}
-
-export function createReceivedDecline$(
-  matrixRoom: MatrixRoom,
-): Observable<Parameters<EventTimelineSetHandlerMap[RoomEvent.Timeline]>> {
-  return (
-    fromEvent(matrixRoom, RoomEvent.Timeline) as Observable<
-      Parameters<EventTimelineSetHandlerMap[RoomEvent.Timeline]>
-    >
-  ).pipe(filter(([event]) => event.getType() === EventType.RTCDecline));
+  const sent$ = state<CallNotificationWrapper | null>(null);
+  scope.effect(() => {
+    const onSent = (notification: CallNotificationWrapper): void => {
+      sent$.value = notification;
+    };
+    matrixRTCSession.on(MatrixRTCSessionEvent.DidSendCallNotification, onSent);
+    return (): void => {
+      matrixRTCSession.off(
+        MatrixRTCSessionEvent.DidSendCallNotification,
+        onSent,
+      );
+    };
+  });
+  return sent$;
 }
 
 export interface Props {
   scope: ObservableScope;
   memberships$: Behavior<CallMembership[]>;
   matrixRoomMembers$: Behavior<RoomMemberMap>;
-  sentCallNotification$: Observable<CallNotificationWrapper | null>;
-  receivedDecline$: Observable<
-    Parameters<EventTimelineSetHandlerMap[RoomEvent.Timeline]>
-  >;
+  sentCallNotification$: Behavior<CallNotificationWrapper | null>;
+  /** The Matrix room, whose timeline is watched for decline events. */
+  matrixRoom: Emitter;
   options: { waitForCallPickup?: boolean; autoLeaveWhenOthersLeft?: boolean };
   localUser: { deviceId: string; userId: string };
 }
@@ -96,103 +80,105 @@ export function createCallNotificationLifecycle$({
   memberships$,
   matrixRoomMembers$,
   sentCallNotification$,
-  receivedDecline$,
+  matrixRoom,
   options,
   localUser,
 }: Props): {
   /**
-   * An observable of attempts to ring the remote participant's devices.
+   * The current attempt to ring the remote participant's devices, if any.
    */
-  ringAttempts$: Observable<RingAttempt>;
+  ringAttempt$: Behavior<RingAttempt | null>;
   /**
-   * An observable that emits when the call should be automatically left.
-   *  - if options.autoLeaveWhenOthersLeft is set to true it emits when all others left.
-   *  - if options.waitForCallPickup is set to true it emits if noone picked up the ring or if the ring got declined.
-   *  - if options.autoLeaveWhenOthersLeft && options.waitForCallPickup is false it will never emit.
+   * Set once the call should be automatically left:
+   *  - if options.autoLeaveWhenOthersLeft is set to true, when all others left.
+   *  - if options.waitForCallPickup is set to true, if no one picked up the ring or if the ring got declined.
+   *  - if options.autoLeaveWhenOthersLeft && options.waitForCallPickup is false it will never be set.
    */
-  autoLeave$: Observable<AutoLeaveReason>;
+  autoLeaveReason$: Behavior<AutoLeaveReason | null>;
 } {
   const logger = rootLogger.getChild("[CallNotificationLifecycle]");
-  let ringAttempts$: Observable<RingAttempt> = NEVER;
+  const ringAttempt$ = state<RingAttempt | null>(null);
+  const autoLeaveReason$ = state<AutoLeaveReason | null>(null);
+  const autoLeave = (reason: AutoLeaveReason): void => {
+    if (autoLeaveReason$.peek() === null) autoLeaveReason$.value = reason;
+  };
+
   if (options.waitForCallPickup)
-    ringAttempts$ = sentCallNotification$.pipe(
-      filter(
-        (
-          notificationEvent: CallNotificationWrapper | null,
-        ): notificationEvent is CallNotificationWrapper =>
-          // only care about new events (legacy do not have decline pattern)
-          notificationEvent?.notification_type === "ring" &&
-          notificationEvent.lifetime > 0,
-      ),
-      switchMap((notificationEvent) => {
-        // We assume that there is only one other user in the room when ringing
-        // TODO: Respect io.element.functional_members
-        const recipient = [...matrixRoomMembers$.value.keys()].find(
+    scope.effect(() => {
+      const notification = sentCallNotification$.value;
+      // only care about new events (legacy do not have decline pattern)
+      if (
+        notification?.notification_type !== "ring" ||
+        !(notification.lifetime > 0)
+      )
+        return;
+      // We assume that there is only one other user in the room when ringing
+      // TODO: Respect io.element.functional_members
+      const recipient = untracked(() =>
+        [...matrixRoomMembers$.value.keys()].find(
           (userId) => userId !== localUser.userId,
-        );
-        if (recipient === undefined) {
-          logger.warn("No recipient for notification event; not ringing.");
-          return EMPTY;
-        }
-
-        // Ringing times out after lifetime ms have passed
-        const timeout$ = timer(notificationEvent.lifetime).pipe(
-          map(() => "timeout" as const),
-        );
-        // Call is accepted when the recipient joins
-        const accept$ = memberships$.pipe(
-          filter((ms) => ms.some((m) => m.userId === recipient)),
-          map(() => "accept" as const),
-        );
-        // Call is declined when we receive a decline event
-        const decline$ = receivedDecline$.pipe(
-          filter(
-            ([event]) =>
-              event.getRelation()?.rel_type === "m.reference" &&
-              event.getRelation()?.event_id === notificationEvent.event_id &&
-              event.getSender() === recipient,
-          ),
-          map(() => "decline" as const),
-        );
-
-        return of({
-          intent: notificationEvent["m.call.intent"] ?? "audio",
-          recipient,
-          outcome$: race(timeout$, accept$, decline$).pipe(
-            take(1),
-            // Make this observable 'hot' to avoid running multiple timers. This
-            // is not actually a resource leak since there will be at most one
-            // active ring attempt at any given time.
-            // eslint-disable-next-line element-call/no-observablescope-leak
-            scope.share,
-          ),
-        });
-      }),
-      scope.share,
-    );
-
-  const allOthersLeft$ = memberships$.pipe(
-    pairwise(),
-    filter(
-      ([prev, current]) =>
-        current.every((m) => m.userId === localUser.userId) &&
-        prev.some((m) => m.userId !== localUser.userId),
-    ),
-    map(() => {}),
-  );
-
-  const autoLeave$ = merge(
-    options.autoLeaveWhenOthersLeft === true
-      ? allOthersLeft$.pipe(map(() => "allOthersLeft" as const))
-      : NEVER,
-    ringAttempts$.pipe(
-      switchMap(({ outcome$ }) =>
-        outcome$.pipe(
-          filter((outcome) => outcome === "timeout" || outcome === "decline"),
         ),
-      ),
-    ),
-  );
+      );
+      if (recipient === undefined) {
+        logger.warn("No recipient for notification event; not ringing.");
+        return;
+      }
 
-  return { ringAttempts$, autoLeave$ };
+      const outcome$ = state<"ringing" | RingOutcome>("ringing");
+      const attempt = new ObservableScope();
+      const settle = (outcome: RingOutcome): void => {
+        outcome$.value = outcome;
+        attempt.end();
+      };
+      // Ringing times out after lifetime ms have passed
+      const timeout = setTimeout(
+        () => settle("timeout"),
+        notification.lifetime,
+      );
+      attempt.onEnd(() => clearTimeout(timeout));
+      // Call is accepted when the recipient joins
+      attempt.effect(() => {
+        if (memberships$.value.some((m) => m.userId === recipient))
+          settle("accept");
+      });
+      // Call is declined when we receive a decline event
+      const onTimeline = (event: MatrixEvent): void => {
+        if (
+          event.getType() === EventType.RTCDecline &&
+          event.getRelation()?.rel_type === "m.reference" &&
+          event.getRelation()?.event_id === notification.event_id &&
+          event.getSender() === recipient
+        )
+          settle("decline");
+      };
+      matrixRoom.on(RoomEvent.Timeline, onTimeline);
+      attempt.onEnd(() => matrixRoom.off(RoomEvent.Timeline, onTimeline));
+
+      ringAttempt$.value = {
+        intent: notification["m.call.intent"] ?? "audio",
+        recipient,
+        outcome$,
+      };
+      return (): void => attempt.end();
+    });
+
+  scope.effect(() => {
+    const outcome = ringAttempt$.value?.outcome$.value;
+    if (outcome === "timeout" || outcome === "decline") autoLeave(outcome);
+  });
+
+  if (options.autoLeaveWhenOthersLeft === true) {
+    let previous = memberships$.value;
+    scope.effect(() => {
+      const current = memberships$.value;
+      if (
+        current.every((m) => m.userId === localUser.userId) &&
+        previous.some((m) => m.userId !== localUser.userId)
+      )
+        autoLeave("allOthersLeft");
+      previous = current;
+    });
+  }
+
+  return { ringAttempt$, autoLeaveReason$ };
 }

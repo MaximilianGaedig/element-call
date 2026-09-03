@@ -45,8 +45,8 @@ it.each([[MatrixRTCMode.Compatibility], [MatrixRTCMode.Matrix_2_0]])(
         rtcMembers$: constant([localRtcMember]),
       },
       (vm: CallViewModel) => {
-        vm.leave$.subscribe((s: string) => {
-          pr.resolve(s);
+        vm.leaveReason$.subscribe((reason) => {
+          if (reason !== null) pr.resolve(reason);
         });
 
         widget!.lazyActions!.emit(

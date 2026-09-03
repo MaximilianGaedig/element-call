@@ -43,7 +43,6 @@ import {
   useTrackProcessorSync,
 } from "../livekit/TrackProcessorContext";
 import { usePageTitle } from "../usePageTitle";
-import { getValue } from "../utils/observable";
 import { useBehavior } from "../useBehavior";
 import { CallFooter, type FooterSnapshot } from "../components/CallFooter";
 import { useCallViewKeyboardShortcuts } from "../useCallViewKeyboardShortcuts";
@@ -133,7 +132,7 @@ export const LobbyView: FC<Props> = ({
   const initialAudioOptions = useInitial(
     () =>
       audioEnabled && {
-        deviceId: getValue(devices.audioInput.selected$)?.id,
+        deviceId: devices.audioInput.selected$.value?.id,
       },
   );
 

@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { type ReactNode, useEffect } from "react";
+import { type ReactNode, useRef } from "react";
 
 import { type CallViewModel } from "../state/CallViewModel/CallViewModel";
 import joinCallSoundMp3 from "../sound/join_call.mp3";
@@ -23,6 +23,7 @@ import timeoutOgg from "../sound/call_timeout.ogg?url";
 import { useAudioContext } from "../useAudioContext";
 import { prefetchSounds } from "../soundUtils";
 import { useLatest } from "../useLatest";
+import { useBehaviorChange } from "../useBehavior";
 
 export const callEventAudioSounds = prefetchSounds({
   join: {
@@ -53,6 +54,10 @@ export const callEventAudioSounds = prefetchSounds({
 
 export type CallEventSounds = keyof Awaited<typeof callEventAudioSounds>;
 
+// Do not play any sounds if the participant count has exceeded this number.
+export const MAX_PARTICIPANT_COUNT_FOR_SOUND = 8;
+export const THROTTLE_SOUND_EFFECT_MS = 500;
+
 export function CallEventAudioRenderer({
   vm,
   muted,
@@ -66,28 +71,28 @@ export function CallEventAudioRenderer({
     muted,
   });
   const audioEngineRef = useLatest(audioEngineCtx);
+  const play = (sound: CallEventSounds): void =>
+    void audioEngineRef.current?.playSound(sound);
 
-  useEffect(() => {
-    const joinSub = vm.joinSoundEffect$.subscribe(
-      () => void audioEngineRef.current?.playSound("join"),
-    );
-    const leftSub = vm.leaveSoundEffect$.subscribe(
-      () => void audioEngineRef.current?.playSound("left"),
-    );
-    const handRaisedSub = vm.newHandRaised$.subscribe(
-      () => void audioEngineRef.current?.playSound("raiseHand"),
-    );
-    const screenshareSub = vm.newScreenShare$.subscribe(
-      () => void audioEngineRef.current?.playSound("screenshareStarted"),
-    );
-
-    return (): void => {
-      joinSub.unsubscribe();
-      leftSub.unsubscribe();
-      handRaisedSub.unsubscribe();
-      screenshareSub.unsubscribe();
-    };
-  }, [audioEngineRef, vm]);
+  // People joining and leaving, at most once every THROTTLE_SOUND_EFFECT_MS
+  const lastPresenceSound = useRef(-Infinity);
+  useBehaviorChange(vm.participantCount$, (count, previous) => {
+    if (count > MAX_PARTICIPANT_COUNT_FOR_SOUND) return;
+    // Avoid doubling up on any auto-leave sounds (e.g. the decline sound),
+    // which are handled elsewhere
+    if (count < previous && vm.leaveReason$.value !== null) return;
+    const now = Date.now();
+    if (now - lastPresenceSound.current < THROTTLE_SOUND_EFFECT_MS) return;
+    lastPresenceSound.current = now;
+    play(count > previous ? "join" : "left");
+  });
+  useBehaviorChange(vm.handsRaised$, (hands, previous) => {
+    if (Object.keys(hands).length > Object.keys(previous).length)
+      play("raiseHand");
+  });
+  useBehaviorChange(vm.screenShares$, (shares, previous) => {
+    if (shares.length > previous.length) play("screenshareStarted");
+  });
 
   return <></>;
 }

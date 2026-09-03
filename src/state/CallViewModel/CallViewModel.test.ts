@@ -50,7 +50,6 @@ import {
   localRtcMemberDevice2,
 } from "../../utils/test-fixtures.ts";
 import { MediaDevices } from "../MediaDevices.ts";
-import { getValue } from "../../utils/observable.ts";
 import { type Behavior, computed, constant, state } from "../Behavior.ts";
 import { type MediaViewModel } from "../media/MediaViewModel.ts";
 import {
@@ -1370,7 +1369,7 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
     });
   }
 
-  test("autoLeave$ emits only when autoLeaveWhenOthersLeft option is enabled", () => {
+  test("leaveReason$ is set only when autoLeaveWhenOthersLeft option is enabled", () => {
     withTestScheduler(({ behavior, expectObservable }) => {
       withCallViewModel(
         {
@@ -1378,7 +1377,8 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
           rtcMembers$: rtcMemberJoinLeave$(behavior),
         },
         (vm) => {
-          expectObservable(vm.autoLeave$).toBe("------a", {
+          expectObservable(vm.leaveReason$).toBe("n-----a", {
+            n: null,
             a: "allOthersLeft",
           });
         },
@@ -1390,7 +1390,7 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
     });
   });
 
-  test("autoLeave$ never emits autoLeaveWhenOthersLeft option is enabled but no-one is there", () => {
+  test("leaveReason$ is never set when autoLeaveWhenOthersLeft option is enabled but no-one is there", () => {
     withTestScheduler(({ behavior, expectObservable }) => {
       withCallViewModel(
         {
@@ -1398,7 +1398,7 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
           rtcMembers$: nooneEverThere$(behavior),
         },
         (vm) => {
-          expectObservable(vm.autoLeave$).toBe("-");
+          expectObservable(vm.leaveReason$).toBe("n", { n: null });
         },
         {
           autoLeaveWhenOthersLeft: true,
@@ -1408,7 +1408,7 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
     });
   });
 
-  test("autoLeave$ doesn't emit when autoLeaveWhenOthersLeft option is disabled and all others left", () => {
+  test("leaveReason$ is not set when autoLeaveWhenOthersLeft option is disabled and all others left", () => {
     withTestScheduler(({ behavior, expectObservable }) => {
       withCallViewModel(
         {
@@ -1416,7 +1416,7 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
           rtcMembers$: rtcMemberJoinLeave$(behavior),
         },
         (vm) => {
-          expectObservable(vm.autoLeave$).toBe("-");
+          expectObservable(vm.leaveReason$).toBe("n", { n: null });
         },
         {
           autoLeaveWhenOthersLeft: false,
@@ -1426,7 +1426,7 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
     });
   });
 
-  test("autoLeave$ emits when autoLeaveWhenOthersLeft option is enabled and all others left", () => {
+  test("leaveReason$ is set when autoLeaveWhenOthersLeft option is enabled and all others left", () => {
     withTestScheduler(({ behavior, expectObservable }) => {
       withCallViewModel(
         {
@@ -1444,7 +1444,8 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
           }),
         },
         (vm) => {
-          expectObservable(vm.autoLeave$).toBe("------a", {
+          expectObservable(vm.leaveReason$).toBe("n-----a", {
+            n: null,
             a: "allOthersLeft",
           });
         },
@@ -1573,7 +1574,7 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
 
       withCallViewModel({ mediaDevices: devices }, (vm) => {
         schedule(toggleInputMarbles, {
-          a: () => getValue(vm.audioOutputSwitcher$)?.switch(),
+          a: () => vm.audioOutputSwitcher$.value?.switch(),
         });
         expectObservable(vm.earpieceMode$).toBe(
           expectedEarpieceModeMarbles,

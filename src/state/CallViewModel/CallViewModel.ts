@@ -14,28 +14,6 @@ import {
   type RoomOptions,
 } from "livekit-client";
 import { type Room as MatrixRoom } from "matrix-js-sdk";
-import {
-  combineLatest,
-  filter,
-  fromEvent,
-  map,
-  merge,
-  NEVER,
-  type Observable,
-  of,
-  pairwise,
-  race,
-  scan,
-  startWith,
-  Subject,
-  switchMap,
-  switchScan,
-  take,
-  tap,
-  throttleTime,
-  timer,
-  takeUntil,
-} from "rxjs";
 import { type Logger, logger as rootLogger } from "matrix-js-sdk/lib/logger";
 import {
   MembershipManagerEvent,
@@ -45,18 +23,8 @@ import {
 import { type IWidgetApiRequest } from "matrix-widget-api";
 import { type CallMembershipIdentityParts } from "matrix-js-sdk/lib/matrixrtc/EncryptionManager";
 import { v4 as uuidv4 } from "uuid";
-import { type IMembershipManager } from "matrix-js-sdk/lib/matrixrtc/IMembershipManager";
 
-import {
-  filterBehavior,
-  generateItems,
-  pauseWhen,
-} from "../../utils/observable";
-import {
-  duplicateTiles,
-  playReactionsSound,
-  showReactions,
-} from "../../settings/settings";
+import { duplicateTiles, showReactions } from "../../settings/settings";
 import { Config } from "../../config/Config";
 import { MatrixRTCMode } from "../../config/ConfigOptions";
 import { isFirefox, platform } from "../../Platform";
@@ -75,7 +43,13 @@ import {
 } from "../../reactions";
 import { shallowEquals as shallowArrayEquals } from "../../utils/array";
 import { type MediaDevices } from "../MediaDevices";
-import { type Behavior, computed, constant, state } from "../Behavior";
+import {
+  type Behavior,
+  computed,
+  constant,
+  fromEvents,
+  state,
+} from "../Behavior";
 import { E2eeType } from "../../e2ee/e2eeType";
 import { MatrixKeyProvider } from "../../e2ee/matrixKeyProvider";
 import { type MuteStates } from "../MuteStates";
@@ -129,7 +103,6 @@ import {
 import {
   type AutoLeaveReason,
   createCallNotificationLifecycle$,
-  createReceivedDecline$,
   createSentCallNotification$,
 } from "./CallNotificationLifecycle.ts";
 import {
@@ -188,11 +161,6 @@ export interface CallViewModelOptions {
   toggleScreensharing?: () => void;
 }
 
-// Do not play any sounds if the participant count has exceeded this
-// number.
-export const MAX_PARTICIPANT_COUNT_FOR_SOUND = 8;
-export const THROTTLE_SOUND_EFFECT_MS = 500;
-
 // This is the number of participants that we think constitutes a "small" call
 // on mobile. No spotlight tile should be shown below this threshold.
 const smallMobileCallThreshold = 3;
@@ -226,7 +194,6 @@ export type LivekitRoomItem = {
  */
 export interface CallViewModel {
   // lifecycle
-  autoLeave$: Observable<AutoLeaveReason>;
   /**
    * View model for info relating to ringing, timing out, calling back, etc.
    */
@@ -235,14 +202,16 @@ export interface CallViewModel {
    * Which visual element the ringing status should be shown in.
    */
   ringingStatusLocation: "app_bar" | "tile";
-  /** Observable that emits when the user should leave the call (hangup pressed, widget action, error).
+  /**
+   * Why the user should leave the call (hangup pressed, widget action, timeout,
+   * decline, everyone else left), once that is the case.
    * THIS DOES NOT LEAVE THE CALL YET. The only way to leave the call (send the hangup event) is
    *  - by ending the scope
    *  - or calling requestDisconnect
    *
-   * TODO: it seems more reasonable to add a leave() method (that calls requestDisconnect) that will then update leave$ and remove the hangup pattern
+   * TODO: it seems more reasonable to add a leave() method (that calls requestDisconnect) that will then update leaveReason$ and remove the hangup pattern
    */
-  leave$: Observable<"user" | AutoLeaveReason>;
+  leaveReason$: Behavior<"user" | AutoLeaveReason | null>;
   /** Call to initiate hangup. Use in conbination with reconnection state track the async hangup process. */
   hangup: () => void;
 
@@ -314,26 +283,12 @@ export interface CallViewModel {
   handsRaised$: Behavior<Record<string, RaisedHandInfo>>;
   /** List of reactions. Keys are: membership.membershipId (currently predefined as: `${membershipEvent.userId}:${membershipEvent.deviceId}`)*/
   reactions$: Behavior<Record<string, ReactionOption>>;
-
-  // sounds and events
-  joinSoundEffect$: Observable<void>;
-  leaveSoundEffect$: Observable<void>;
   /**
-   * Emits an event every time a new hand is raised in
-   * the call.
+   * All screen shares in the call.
    */
-  newHandRaised$: Observable<{ value: number; playSounds: boolean }>;
+  screenShares$: Behavior<ScreenShareViewModel[]>;
   /**
-   * Emits an event every time a new screenshare is started in
-   * the call.
-   */
-  newScreenShare$: Observable<{ value: number; playSounds: boolean }>;
-  /**
-   * Emits an array of reactions that should be played.
-   */
-  audibleReactions$: Observable<string[]>;
-  /**
-   * Emits an array of reactions that should be visible on the screen.
+   * The reactions that should be visible on the screen.
    */
   // DISCUSSION move this into a reaction file
   visibleReactions$: Behavior<
@@ -419,8 +374,8 @@ export function createCallViewModel$(
   mediaDevices: MediaDevices,
   muteStates: MuteStates,
   options: CallViewModelOptions,
-  handsRaisedSubject$: Observable<Record<string, RaisedHandInfo>>,
-  reactionsSubject$: Observable<Record<string, ReactionInfo>>,
+  handsRaisedSubject$: Behavior<Record<string, RaisedHandInfo>>,
+  reactionsSubject$: Behavior<Record<string, ReactionInfo>>,
   trackProcessorState$: Behavior<ProcessorState>,
 ): CallViewModel {
   const logger = rootLogger.getChild("[CallViewModel]");
@@ -486,15 +441,11 @@ export function createCallViewModel$(
         scope: scope,
         ownMembershipIdentity,
         client,
-        delayId$: scope.behavior(
-          (
-            fromEvent(
-              matrixRTCSession,
-              MembershipManagerEvent.DelayIdChanged,
-              // The type of reemitted event includes the original emitted as the second arg.
-            ) as Observable<[string | undefined, IMembershipManager]>
-          ).pipe(map(([delayId]) => delayId ?? null)),
-          matrixRTCSession.delayId ?? null,
+        delayId$: fromEvents(
+          scope,
+          matrixRTCSession,
+          [MembershipManagerEvent.DelayIdChanged],
+          (session) => session.delayId ?? null,
         ),
         roomId: matrixRoom.roomId,
         forceJwtEndpoint:
@@ -583,24 +534,29 @@ export function createCallViewModel$(
       ) ?? null,
   );
 
-  const localMatrixLivekitMember$: Behavior<LocalMatrixLivekitMember | null> =
-    scope.behavior(
-      localRtcMembership$.pipe(
-        filterBehavior((membership) => membership !== null),
-        map((membership$) => {
-          if (membership$ === null) return null;
-          return {
-            membership$,
-            participant: {
-              type: "local" as const,
-              value$: localMembership.participant$,
-            },
-            connection$: localMembership.connection$,
-            userId,
-          };
-        }),
-      ),
-    );
+  // The local member exists for as long as we have a membership; its
+  // membership$ follows ours over that time.
+  const localMatrixLivekitMembers$ = keyedItems(
+    scope,
+    "CallViewModel localMatrixLivekitMember$",
+    localRtcMembership$,
+    (membership) =>
+      membership === null
+        ? []
+        : [{ keys: ["local"] as const, data: membership }],
+    (_scope, membership$): LocalMatrixLivekitMember => ({
+      membership$,
+      participant: {
+        type: "local" as const,
+        value$: localMembership.participant$,
+      },
+      connection$: localMembership.connection$,
+      userId,
+    }),
+  );
+  const localMatrixLivekitMember$ = computed(
+    () => localMatrixLivekitMembers$.value[0] ?? null,
+  );
 
   const matrixLivekitMembers$ = computed(() => {
     const local = localMatrixLivekitMember$.value;
@@ -624,12 +580,12 @@ export function createCallViewModel$(
 
   // TODO if we are in "unknown" state we need a loading rendering (or empty screen)
   // Otherwise it looks like we already connected and only than the ringing starts which is weird.
-  const { ringAttempts$, autoLeave$ } = createCallNotificationLifecycle$({
+  const { ringAttempt$, autoLeaveReason$ } = createCallNotificationLifecycle$({
     scope,
     memberships$,
     matrixRoomMembers$,
     sentCallNotification$: createSentCallNotification$(scope, matrixRTCSession),
-    receivedDecline$: createReceivedDecline$(matrixRoom),
+    matrixRoom,
     options,
     localUser: { userId, deviceId },
   });
@@ -658,22 +614,22 @@ export function createCallViewModel$(
     return items;
   });
 
-  const handsRaised$ = scope.behavior(
-    handsRaisedSubject$.pipe(pauseWhen(localMembership.reconnecting$)),
+  // Reactions and raised hands hold still while we're reconnecting
+  const handsRaised$ = pauseWhile(
+    scope,
+    handsRaisedSubject$,
+    localMembership.reconnecting$,
   );
-
-  const reactions$ = scope.behavior(
-    reactionsSubject$.pipe(
-      map((v) =>
-        Object.fromEntries(
-          Object.entries(v).map(([a, { reactionOption }]) => [
-            a,
-            reactionOption,
-          ]),
+  const reactions$ = pauseWhile(
+    scope,
+    computed(() =>
+      Object.fromEntries(
+        Object.entries(reactionsSubject$.value).map(
+          ([a, { reactionOption }]) => [a, reactionOption],
         ),
       ),
-      pauseWhen(localMembership.reconnecting$),
     ),
+    localMembership.reconnecting$,
   );
 
   /**
@@ -722,36 +678,40 @@ export function createCallViewModel$(
       }),
   );
 
-  const ringingMedia$ = scope.behavior<RingingMediaViewModel | null>(
-    ringAttempts$.pipe(
-      switchMap(({ intent, recipient, outcome$ }) =>
-        outcome$.pipe(
-          startWith("ringing" as const),
-          generateItems(
-            "CallViewModel ringingMedia$",
-            function* (pickupState) {
-              if (pickupState !== "accept")
-                yield { keys: [intent, recipient], data: pickupState };
+  // Placeholder media for the person we're ringing, until they answer
+  const ringingMediaItems$ = keyedItems(
+    scope,
+    "CallViewModel ringingMedia$",
+    computed(() => {
+      const attempt = ringAttempt$.value;
+      const outcome = attempt?.outcome$.value;
+      return attempt && outcome !== undefined && outcome !== "accept"
+        ? { intent: attempt.intent, recipient: attempt.recipient, outcome }
+        : null;
+    }),
+    (attempt) =>
+      attempt === null
+        ? []
+        : [
+            {
+              keys: [attempt.intent, attempt.recipient] as const,
+              data: attempt.outcome,
             },
-            (scope, pickupState$, intent, userId) =>
-              createRingingMedia({
-                id: `ringing:${userId}`,
-                userId,
-                displayName$: computed(
-                  () =>
-                    matrixRoomMembers$.value.get(userId)?.rawDisplayName ||
-                    userId,
-                ),
-                mxcAvatarUrl$: matrixMemberMetadataStore.avatarUrl$(userId),
-                pickupState$,
-                intent,
-              }),
-          ),
-          map(([media]) => media ?? null),
+          ],
+    (_scope, pickupState$, intent, userId) =>
+      createRingingMedia({
+        id: `ringing:${userId}`,
+        userId,
+        displayName$: computed(
+          () => matrixRoomMembers$.value.get(userId)?.rawDisplayName || userId,
         ),
-      ),
-      startWith(null),
-    ),
+        mxcAvatarUrl$: matrixMemberMetadataStore.avatarUrl$(userId),
+        pickupState$,
+        intent,
+      }),
+  );
+  const ringingMedia$ = computed<RingingMediaViewModel | null>(
+    () => ringingMediaItems$.value[0] ?? null,
   );
 
   /**
@@ -759,17 +719,6 @@ export function createCallViewModel$(
    */
   const screenShares$ = computed<ScreenShareViewModel[]>(() =>
     userMedia$.value.flatMap((m) => m.screenShares$.value),
-  );
-
-  const joinSoundEffect$ = userMedia$.pipe(
-    pairwise(),
-    filter(
-      ([prev, current]) =>
-        current.length <= MAX_PARTICIPANT_COUNT_FOR_SOUND &&
-        current.length > prev.length,
-    ),
-    map(() => {}),
-    throttleTime(THROTTLE_SOUND_EFFECT_MS),
   );
 
   /**
@@ -786,41 +735,25 @@ export function createCallViewModel$(
     matrixRTCSession,
   );
 
-  const leaveSoundEffect$ = userMedia$.pipe(
-    pairwise(),
-    filter(
-      ([prev, current]) =>
-        current.length <= MAX_PARTICIPANT_COUNT_FOR_SOUND &&
-        current.length < prev.length,
-    ),
-    map(() => {}),
-    throttleTime(THROTTLE_SOUND_EFFECT_MS),
-    // Avoid doubling up on any auto-leave sounds (e.g. the decline sound),
-    // which are handled elsewhere
-    takeUntil(autoLeave$),
-  );
-
-  const userHangup$ = new Subject<void>();
-
-  const widgetHangup$ =
-    widget === null
-      ? NEVER
-      : (
-          fromEvent(
-            widget.lazyActions,
-            ElementWidgetActions.HangupCall,
-          ) as Observable<CustomEvent<IWidgetApiRequest>>
-        ).pipe(
-          tap((ev) => {
-            widget!.api.transport.reply(ev.detail, {});
-          }),
-        );
-
-  const leave$: Observable<"user" | "timeout" | "decline" | "allOthersLeft"> =
-    merge(
-      autoLeave$,
-      merge(userHangup$, widgetHangup$).pipe(map(() => "user" as const)),
-    ).pipe(scope.share);
+  // Why we should leave the call, once we should. The first reason wins.
+  const leaveReason$ = state<"user" | AutoLeaveReason | null>(null);
+  const leave = (reason: "user" | AutoLeaveReason): void => {
+    if (leaveReason$.peek() === null) leaveReason$.value = reason;
+  };
+  scope.effect(() => {
+    const reason = autoLeaveReason$.value;
+    if (reason !== null) leave(reason);
+  });
+  if (widget !== null) {
+    const onHangup = (ev: CustomEvent<IWidgetApiRequest>): void => {
+      widget!.api.transport.reply(ev.detail, {});
+      leave("user");
+    };
+    widget.lazyActions.on(ElementWidgetActions.HangupCall, onHangup);
+    scope.onEnd(() =>
+      widget!.lazyActions.off(ElementWidgetActions.HangupCall, onHangup),
+    );
+  }
 
   let prevSpotlightSpeaker: WrappedUserMediaViewModel | undefined;
   const spotlightSpeaker$ = computed<WrappedUserMediaViewModel | undefined>(
@@ -914,14 +847,7 @@ export function createCallViewModel$(
     pipEnabled$.value = false;
   });
 
-  const windowSize$ =
-    options.windowSize$ ??
-    scope.behavior<{ width: number; height: number }>(
-      fromEvent(window, "resize").pipe(
-        startWith(null),
-        map(() => ({ width: window.innerWidth, height: window.innerHeight })),
-      ),
-    );
+  const windowSize$ = options.windowSize$ ?? createWindowSize$(scope);
 
   // A guess at what the window's mode should be based on its size and shape.
   const naturalWindowMode$ = computed<WindowMode>(() => {
@@ -1143,68 +1069,70 @@ export function createCallViewModel$(
     }
   });
 
-  const screenTap$ = new Subject<void>();
-  const controlsTap$ = new Subject<void>();
-  const screenHover$ = new Subject<void>();
-  const screenUnhover$ = new Subject<void>();
-
-  const naturallyShowFooter$ = scope.behavior<boolean>(
-    edgeToEdge$.pipe(
-      switchMap((edgeToEdge) => {
-        if (!edgeToEdge) return of(true);
-
-        // Sadly Firefox has some layering glitches that prevent the footer
-        // from appearing properly. They happen less often if we never hide
-        // the footer.
-        if (isFirefox()) return of(true);
-
-        // Layout is edge-to-edge; show/hide the footer in response to interactions
-        return windowMode$.pipe(
-          switchMap((mode) => {
-            if (mode === "pip" && platform !== "desktop") {
-              // No controls are shown in mobile pip as interactions are disabled
-              return of(false);
-            }
-            const showInitially = mode !== "flat";
-            const timeout$ = mode === "flat" ? timer(showFooterMs) : NEVER;
-
-            return merge(
-              screenTap$.pipe(map(() => "tap screen" as const)),
-              controlsTap$.pipe(map(() => "tap controls" as const)),
-              screenHover$.pipe(map(() => "hover" as const)),
-            ).pipe(
-              switchScan((state, interaction) => {
-                switch (interaction) {
-                  case "tap screen":
-                    return state
-                      ? // Toggle visibility on tap
-                        of(false)
-                      : // Hide after a timeout
-                        timeout$.pipe(
-                          map(() => false),
-                          startWith(true),
-                        );
-                  case "tap controls":
-                    // The user is interacting with things, so reset the timeout
-                    return timeout$.pipe(
-                      map(() => false),
-                      startWith(true),
-                    );
-                  case "hover":
-                    // Show on hover and hide after a timeout
-                    return race(timeout$, screenUnhover$.pipe(take(1))).pipe(
-                      map(() => false),
-                      startWith(true),
-                    );
-                }
-              }, showInitially),
-              startWith(showInitially),
-            );
-          }),
-        );
-      }),
-    ),
-  );
+  // In edge-to-edge layouts the footer is an overlay that shows and hides in
+  // response to interactions, unless we're in a mode where that isn't wanted.
+  const naturallyShowFooter$ = state(true);
+  let footerInteractive = false;
+  let footerTimeout: ReturnType<typeof setTimeout> | undefined;
+  let hideFooterOnUnhover = false;
+  // Hide after a timeout only in flat windows
+  let footerTimeoutMs: number | null = null;
+  const showFooterFor = (ms: number | null): void => {
+    naturallyShowFooter$.value = true;
+    clearTimeout(footerTimeout);
+    if (ms !== null)
+      footerTimeout = setTimeout(() => {
+        naturallyShowFooter$.value = false;
+      }, ms);
+  };
+  scope.effect(() => {
+    const mode = windowMode$.value;
+    clearTimeout(footerTimeout);
+    hideFooterOnUnhover = false;
+    // Sadly Firefox has some layering glitches that prevent the footer
+    // from appearing properly. They happen less often if we never hide
+    // the footer.
+    if (!edgeToEdge$.value || isFirefox()) {
+      footerInteractive = false;
+      naturallyShowFooter$.value = true;
+    } else if (mode === "pip" && platform !== "desktop") {
+      // No controls are shown in mobile pip as interactions are disabled
+      footerInteractive = false;
+      naturallyShowFooter$.value = false;
+    } else {
+      footerInteractive = true;
+      footerTimeoutMs = mode === "flat" ? showFooterMs : null;
+      naturallyShowFooter$.value = mode !== "flat";
+    }
+  });
+  scope.onEnd(() => clearTimeout(footerTimeout));
+  const tapScreen = (): void => {
+    if (!footerInteractive) return;
+    hideFooterOnUnhover = false;
+    // Toggle visibility on tap
+    if (naturallyShowFooter$.value) {
+      clearTimeout(footerTimeout);
+      naturallyShowFooter$.value = false;
+    } else showFooterFor(footerTimeoutMs);
+  };
+  const tapControls = (): void => {
+    if (!footerInteractive) return;
+    // The user is interacting with things, so reset the timeout
+    hideFooterOnUnhover = false;
+    showFooterFor(footerTimeoutMs);
+  };
+  const hoverScreen = (): void => {
+    if (!footerInteractive) return;
+    // Show on hover and hide after a timeout or when the hover ends
+    hideFooterOnUnhover = true;
+    showFooterFor(footerTimeoutMs);
+  };
+  const unhoverScreen = (): void => {
+    if (!hideFooterOnUnhover) return;
+    hideFooterOnUnhover = false;
+    clearTimeout(footerTimeout);
+    naturallyShowFooter$.value = false;
+  };
 
   const urlParams = getUrlParams();
   const showFooterUrlParams = !(
@@ -1343,14 +1271,14 @@ export function createCallViewModel$(
   /**
    * Whether audio is currently being output through the earpiece.
    */
-  const earpieceMode$ = scope.behavior<boolean>(
-    combineLatest(
-      [mediaDevices.audioOutput.available$, mediaDevices.audioOutput.selected$],
-      (available, selected) =>
-        selected !== undefined &&
-        available.get(selected.id)?.type === "earpiece",
-    ),
-  );
+  const earpieceMode$ = computed(() => {
+    const selected = mediaDevices.audioOutput.selected$.value;
+    return (
+      selected !== undefined &&
+      mediaDevices.audioOutput.available$.value.get(selected.id)?.type ===
+        "earpiece"
+    );
+  });
 
   /**
    * Callback to toggle between the earpiece and the loudspeaker.
@@ -1358,103 +1286,50 @@ export function createCallViewModel$(
    * This will be `null` in case the target does not exist in the list
    * of available audio outputs.
    */
-  const audioOutputSwitcher$ = scope.behavior<{
+  const audioOutputSwitcher$ = computed<{
     targetOutput: "earpiece" | "speaker";
     switch: () => void;
-  } | null>(
-    combineLatest(
-      [mediaDevices.audioOutput.available$, mediaDevices.audioOutput.selected$],
-      (available, selected) => {
-        const selectionType = selected && available.get(selected.id)?.type;
+  } | null>(() => {
+    const available = mediaDevices.audioOutput.available$.value;
+    const selected = mediaDevices.audioOutput.selected$.value;
+    const selectionType = selected && available.get(selected.id)?.type;
 
-        // If we are in any output mode other than speaker switch to speaker.
-        const newSelectionType: "earpiece" | "speaker" =
-          selectionType === "speaker" ? "earpiece" : "speaker";
-        const newSelection = [...available].find(
-          ([, d]) => d.type === newSelectionType,
-        );
-        if (newSelection === undefined) return null;
+    // If we are in any output mode other than speaker switch to speaker.
+    const newSelectionType: "earpiece" | "speaker" =
+      selectionType === "speaker" ? "earpiece" : "speaker";
+    const newSelection = [...available].find(
+      ([, d]) => d.type === newSelectionType,
+    );
+    if (newSelection === undefined) return null;
 
-        const [id] = newSelection;
-        return {
-          targetOutput: newSelectionType,
-          switch: (): void => mediaDevices.audioOutput.select(id),
-        };
-      },
-    ),
-  );
+    const [id] = newSelection;
+    return {
+      targetOutput: newSelectionType,
+      switch: (): void => mediaDevices.audioOutput.select(id),
+    };
+  });
 
   /**
-   * Emits an array of reactions that should be visible on the screen.
+   * The reactions that should be visible on the screen. Each sender's reaction
+   * keeps its horizontal position for as long as it is showing.
    */
   // DISCUSSION move this into a reaction file
-  // const {visibleReactions$, audibleReactions$} = reactionsObservables$(showReactionSetting$, )
-  const visibleReactions$ = scope.behavior(
-    showReactions.value$.pipe(
-      switchMap((show) => (show ? reactions$ : of({}))),
-      scan<
-        Record<string, ReactionOption>,
-        { sender: string; emoji: string; startX: number }[]
-      >((acc, latest) => {
-        const newSet: { sender: string; emoji: string; startX: number }[] = [];
-        for (const [sender, reaction] of Object.entries(latest)) {
-          const startX =
-            acc.find((v) => v.sender === sender && v.emoji)?.startX ??
-            Math.ceil(Math.random() * 80) + 10;
-          newSet.push({ sender, emoji: reaction.emoji, startX });
-        }
-        return newSet;
-      }, []),
-    ),
-  );
-
-  /**
-   * Emits an array of reactions that should be played.
-   */
-  const audibleReactions$ = playReactionsSound.value$.pipe(
-    switchMap((show) =>
-      show ? reactions$ : of<Record<string, ReactionOption>>({}),
-    ),
-    map((reactions) => Object.values(reactions).map((v) => v.name)),
-    scan<string[], { playing: string[]; newSounds: string[] }>(
-      (acc, latest) => {
-        return {
-          playing: latest.filter(
-            (v) => acc.playing.includes(v) || acc.newSounds.includes(v),
-          ),
-          newSounds: latest.filter(
-            (v) => !acc.playing.includes(v) && !acc.newSounds.includes(v),
-          ),
-        };
-      },
-      { playing: [], newSounds: [] },
-    ),
-    map((v) => v.newSounds),
-  );
-
-  const newHandRaised$ = handsRaised$.pipe(
-    map((v) => Object.keys(v).length),
-    scan(
-      (acc, newValue) => ({
-        value: newValue,
-        playSounds: newValue > acc.value,
-      }),
-      { value: 0, playSounds: false },
-    ),
-    filter((v) => v.playSounds),
-  );
-
-  const newScreenShare$ = screenShares$.pipe(
-    map((v) => v.length),
-    scan(
-      (acc, newValue) => ({
-        value: newValue,
-        playSounds: newValue > acc.value,
-      }),
-      { value: 0, playSounds: false },
-    ),
-    filter((v) => v.playSounds),
-  );
+  const reactionStartX = new Map<string, number>();
+  const visibleReactions$ = computed<
+    { sender: string; emoji: string; startX: number }[]
+  >(() => {
+    const reactions = showReactions.value$.value ? reactions$.value : {};
+    for (const sender of reactionStartX.keys())
+      if (!(sender in reactions)) reactionStartX.delete(sender);
+    return Object.entries(reactions).map(([sender, reaction]) => {
+      let startX = reactionStartX.get(sender);
+      if (startX === undefined) {
+        startX = Math.ceil(Math.random() * 80) + 10;
+        reactionStartX.set(sender, startX);
+      }
+      return { sender, emoji: reaction.emoji, startX };
+    });
+  });
 
   /**
    * Whether we are sharing our screen.
@@ -1510,21 +1385,20 @@ export function createCallViewModel$(
   });
 
   return {
-    autoLeave$: autoLeave$,
     ringingVm$: ringingMedia$,
     ringingStatusLocation:
       urlParams.header === HeaderStyle.AppBar ? "app_bar" : "tile",
-    leave$: leave$,
-    hangup: (): void => userHangup$.next(),
+    leaveReason$,
+    hangup: (): void => leave("user"),
     join: localMembership.requestJoinAndPublish,
     leave: localMembership.requestDisconnect,
     toggleScreenSharing: toggleScreenSharing,
     sharingScreen$: sharingScreen$,
 
-    tapScreen: (): void => screenTap$.next(),
-    tapControls: (): void => controlsTap$.next(),
-    hoverScreen: (): void => screenHover$.next(),
-    unhoverScreen: (): void => screenUnhover$.next(),
+    tapScreen,
+    tapControls,
+    hoverScreen,
+    unhoverScreen,
 
     fatalError$,
     allConnections$,
@@ -1532,11 +1406,7 @@ export function createCallViewModel$(
     keyRotationSuppressed$: keyRotationSuppressed$,
     handsRaised$: handsRaised$,
     reactions$: reactions$,
-    joinSoundEffect$: joinSoundEffect$,
-    leaveSoundEffect$: leaveSoundEffect$,
-    newHandRaised$: newHandRaised$,
-    newScreenShare$: newScreenShare$,
-    audibleReactions$: audibleReactions$,
+    screenShares$,
     visibleReactions$: visibleReactions$,
 
     spotlightExpanded$: spotlightExpanded$,
@@ -1594,4 +1464,39 @@ function getE2eeKeyProvider(
       .catch((e) => logger.error("Failed to set shared key for E2EE", e));
     return keyProvider;
   }
+}
+
+/**
+ * A Behavior that stops following `value$` while `pause$` is true, and catches
+ * up with the latest value once it is false again.
+ */
+function pauseWhile<T>(
+  scope: ObservableScope,
+  value$: Behavior<T>,
+  pause$: Behavior<boolean>,
+): Behavior<T> {
+  const paused$ = state(value$.value);
+  scope.effect(() => {
+    const value = value$.value;
+    if (!pause$.value) paused$.value = value;
+  });
+  return paused$;
+}
+
+function createWindowSize$(
+  scope: ObservableScope,
+): Behavior<{ width: number; height: number }> {
+  const read = (): { width: number; height: number } => ({
+    width: window.innerWidth,
+    height: window.innerHeight,
+  });
+  const size$ = state(read());
+  scope.effect(() => {
+    const onResize = (): void => {
+      size$.value = read();
+    };
+    window.addEventListener("resize", onResize);
+    return (): void => window.removeEventListener("resize", onResize);
+  });
+  return size$;
 }

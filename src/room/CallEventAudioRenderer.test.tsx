@@ -26,7 +26,10 @@ import {
   mockMatrixRoomMember,
   mockRtcMembership,
 } from "../utils/test";
-import { CallEventAudioRenderer } from "./CallEventAudioRenderer";
+import {
+  CallEventAudioRenderer,
+  MAX_PARTICIPANT_COUNT_FOR_SOUND,
+} from "./CallEventAudioRenderer";
 import { useAudioContext } from "../useAudioContext";
 import { prefetchSounds } from "../soundUtils";
 import { getBasicCallViewModelEnvironment } from "../utils/test-viewmodel";
@@ -38,7 +41,6 @@ import {
   local,
   localRtcMember,
 } from "../utils/test-fixtures";
-import { MAX_PARTICIPANT_COUNT_FOR_SOUND } from "../state/CallViewModel/CallViewModel";
 import { initializeWidget } from "../widget";
 initializeWidget();
 vitest.mock("livekit-client/e2ee-worker?worker");

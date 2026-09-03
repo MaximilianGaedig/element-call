@@ -142,8 +142,8 @@ export async function createMatrixRTCSdk(
     mediaDevices,
     muteStates,
     { encryptionSystem: { kind: E2eeType.PER_PARTICIPANT } },
-    of({}),
-    of({}),
+    constant({}),
+    constant({}),
     constant({ supported: false, processor: undefined }),
   );
   logger.info("CallViewModelCreated");
@@ -272,7 +272,8 @@ export async function createMatrixRTCSdk(
   };
 
   // after hangup gets called
-  const leaveSubs = callViewModel.leave$.subscribe(() => {
+  scope.effect(() => {
+    if (callViewModel.leaveReason$.value === null) return;
     const scheduleWidgetCloseOnLeave = async (): Promise<void> => {
       const leaveResolver = Promise.withResolvers<void>();
       logger.info("waiting for RTC leave");
@@ -312,7 +313,6 @@ export async function createMatrixRTCSdk(
       callViewModel.leave();
     },
     stop: (): void => {
-      leaveSubs.unsubscribe();
       livekitRoomItemsSub.unsubscribe();
       scope.end();
     },

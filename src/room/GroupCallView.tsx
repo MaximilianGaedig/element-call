@@ -341,9 +341,8 @@ export const GroupCallView: FC<Props> = ({
       let audioPromise: Promise<void> | undefined = undefined;
       switch (reason) {
         case "allOthersLeft":
-          // When "allOthersLeft", the leaveSoundEffect$ in CallEventAudioRenderer
-          // already plays the "left" sound when the remote participant's media
-          // disappears. We play it here silenced (volumeOverwrite = 0) so we have the right duration in the audioPromise.
+          // When "allOthersLeft", the CallEventAudioRenderer already plays the
+          // "left" sound when the remote participant's media disappears. We play it here silenced (volumeOverwrite = 0) so we have the right duration in the audioPromise.
           // (used to destory the widget)
           audioPromise = leaveSoundContext.current?.playSound("left", 0);
           break;
