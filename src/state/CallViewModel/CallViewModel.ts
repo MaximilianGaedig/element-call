@@ -553,15 +553,11 @@ export function createCallViewModel$(
     localUser: { userId, deviceId },
   });
 
-  const connectOptions$ = scope.behavior(
-    matrixRTCMode$.pipe(
-      map((mode) => ({
-        encryptMedia: livekitKeyProvider !== undefined,
-        // TODO. This might need to get called again on each change of matrixRTCMode...
-        matrixRTCMode: mode,
-      })),
-    ),
-  );
+  const connectOptions$ = computed(() => ({
+    encryptMedia: livekitKeyProvider !== undefined,
+    // TODO. This might need to get called again on each change of matrixRTCMode...
+    matrixRTCMode: matrixRTCMode$.value,
+  }));
 
   const localMembership = createLocalMembership$({
     scope,
@@ -597,16 +593,12 @@ export function createCallViewModel$(
     logger: logger.getChild(`[${Date.now()}]`),
   });
 
-  const localRtcMembership$ = scope.behavior(
-    memberships$.pipe(
-      map(
-        (memberships) =>
-          memberships.value.find(
-            (membership) =>
-              membership.userId === userId && membership.deviceId === deviceId,
-          ) ?? null,
-      ),
-    ),
+  const localRtcMembership$ = computed(
+    () =>
+      memberships$.value.value.find(
+        (membership) =>
+          membership.userId === userId && membership.deviceId === deviceId,
+      ) ?? null,
   );
 
   const localMatrixLivekitMember$: Behavior<LocalMatrixLivekitMember | null> =
@@ -628,12 +620,13 @@ export function createCallViewModel$(
       ),
     );
 
-  const matrixLivekitMembers$ = scope.behavior(
-    combineLatest(
-      [localMatrixLivekitMember$, remoteMatrixLivekitMembers$],
-      (local, remote) => [...(local === null ? [] : [local]), ...remote.value],
-    ),
-  );
+  const matrixLivekitMembers$ = computed(() => {
+    const local = localMatrixLivekitMember$.value;
+    return [
+      ...(local === null ? [] : [local]),
+      ...remoteMatrixLivekitMembers$.value.value,
+    ];
+  });
 
   // ------------------------------------------------------------------------
   // matrixMemberMetadataStore
@@ -641,7 +634,7 @@ export function createCallViewModel$(
   const matrixRoomMembers$ = createRoomMembers$(scope, matrixRoom);
   const matrixMemberMetadataStore = createMatrixMemberMetadata$(
     scope,
-    scope.behavior(memberships$.pipe(map((mems) => mems.value))),
+    computed(() => memberships$.value.value),
     matrixRoomMembers$,
   );
 
@@ -660,53 +653,31 @@ export function createCallViewModel$(
     localUser: { userId, deviceId },
   });
 
-  const allConnections$ = scope.behavior(
-    connectionManager.connectionManagerData$.pipe(map((d) => d.value)),
+  const allConnections$ = computed(
+    () => connectionManager.connectionManagerData$.value.value,
   );
-  const livekitRoomItems$ = scope.behavior(
-    remoteMatrixLivekitMembers$.pipe(
-      switchMap((members) => {
-        const a$ = combineLatest(
-          members.value.map((member) =>
-            combineLatest([member.connection$, member.participant.value$]).pipe(
-              map(([connection, participant]) => {
-                // do not render audio for local participant
-                if (!connection || !participant || participant.isLocal)
-                  return null;
-                const livekitRoom = connection.livekitRoom;
-                const url = connection.transport.livekit_service_url;
-
-                return {
-                  url,
-                  livekitRoom,
-                  participant: participant.identity,
-                };
-              }),
-            ),
-          ),
-        );
-        return a$;
-      }),
-      map((members) =>
-        members.reduce<LivekitRoomItem[]>((acc, curr) => {
-          if (!curr) return acc;
-
-          const existing = acc.find((item) => item.url === curr.url);
-          if (existing) {
-            existing.participants.push(curr.participant);
-          } else {
-            acc.push({
-              livekitRoom: curr.livekitRoom,
-              participants: [curr.participant],
-              url: curr.url,
-            });
-          }
-          return acc;
-        }, []),
-      ),
-    ),
-    [],
-  );
+  /**
+   * The remote participants to render audio for, grouped by LiveKit room.
+   */
+  const livekitRoomItems$ = computed<LivekitRoomItem[]>(() => {
+    const items: LivekitRoomItem[] = [];
+    for (const member of remoteMatrixLivekitMembers$.value.value) {
+      const connection = member.connection$.value;
+      const participant = member.participant.value$.value;
+      // do not render audio for local participant
+      if (!connection || !participant || participant.isLocal) continue;
+      const url = connection.transport.livekit_service_url;
+      const existing = items.find((item) => item.url === url);
+      if (existing) existing.participants.push(participant.identity);
+      else
+        items.push({
+          url,
+          livekitRoom: connection.livekitRoom,
+          participants: [participant.identity],
+        });
+    }
+    return items;
+  });
 
   const handsRaised$ = scope.behavior(
     handsRaisedSubject$.pipe(pauseWhen(localMembership.reconnecting$)),
@@ -759,29 +730,28 @@ export function createCallViewModel$(
             rtcBackendIdentity: rtcId,
             participant,
             encryptionSystem: options.encryptionSystem,
-            livekitRoom$: scope.behavior(
-              connection$.pipe(map((c) => c?.livekitRoom)),
-            ),
-            focusUrl$: scope.behavior(
-              connection$.pipe(map((c) => c?.transport.livekit_service_url)),
+            livekitRoom$: computed(() => connection$.value?.livekitRoom),
+            focusUrl$: computed(
+              () => connection$.value?.transport.livekit_service_url,
             ),
             mediaDevices,
             pretendToBeDisconnected$: localMembership.reconnecting$,
-            displayName$: scope.behavior(
-              matrixMemberMetadataStore
-                .createDisplayNameBehavior$(scope, userId)
-                .pipe(map((name) => name ?? userId)),
-            ),
+            displayName$: (() => {
+              const name$ =
+                matrixMemberMetadataStore.createDisplayNameBehavior$(
+                  scope,
+                  userId,
+                );
+              return computed(() => name$.value ?? userId);
+            })(),
             mxcAvatarUrl$: matrixMemberMetadataStore.createAvatarUrlBehavior$(
               scope,
               userId,
             ),
-            handRaised$: scope.behavior(
-              handsRaised$.pipe(map((v) => v[mediaId]?.time ?? null)),
+            handRaised$: computed(
+              () => handsRaised$.value[mediaId]?.time ?? null,
             ),
-            reaction$: scope.behavior(
-              reactions$.pipe(map((v) => v[mediaId] ?? undefined)),
-            ),
+            reaction$: computed(() => reactions$.value[mediaId] ?? undefined),
           }),
       ),
     ),
@@ -802,13 +772,10 @@ export function createCallViewModel$(
               createRingingMedia({
                 id: `ringing:${userId}`,
                 userId,
-                displayName$: scope.behavior(
-                  matrixRoomMembers$.pipe(
-                    map(
-                      (members) =>
-                        members.get(userId)?.rawDisplayName || userId,
-                    ),
-                  ),
+                displayName$: computed(
+                  () =>
+                    matrixRoomMembers$.value.get(userId)?.rawDisplayName ||
+                    userId,
                 ),
                 mxcAvatarUrl$:
                   matrixMemberMetadataStore.createAvatarUrlBehavior$(
@@ -851,9 +818,7 @@ export function createCallViewModel$(
    *  - There can be multiple participants for one Matrix user if they join from
    *    multiple devices.
    */
-  const participantCount$ = scope.behavior(
-    matrixLivekitMembers$.pipe(map((ms) => ms.length)),
-  );
+  const participantCount$ = computed(() => matrixLivekitMembers$.value.length);
 
   const keyRotationSuppressed$ = createKeyRotationSuppressed$(
     scope,
@@ -1620,22 +1585,17 @@ export function createCallViewModel$(
     ),
     layout$: layout$,
     localMatrixLivekitMember$,
-    remoteMatrixLivekitMembers$: scope.behavior(
-      remoteMatrixLivekitMembers$.pipe(
-        map((members) => members.value),
-        tap((v) => {
-          const listForLogs = v
-            .map(
-              (m) =>
-                m.membership$.value.userId + "|" + m.membership$.value.deviceId,
-            )
-            .join(",");
-          logger.debug(
-            `matrixLivekitMembers$ updated (exported) [${listForLogs}]`,
-          );
-        }),
-      ),
-    ),
+    remoteMatrixLivekitMembers$: computed(() => {
+      const members = remoteMatrixLivekitMembers$.value.value;
+      const listForLogs = members
+        .map(
+          (m) =>
+            m.membership$.value.userId + "|" + m.membership$.value.deviceId,
+        )
+        .join(",");
+      logger.debug(`matrixLivekitMembers$ updated (exported) [${listForLogs}]`);
+      return members;
+    }),
     tileStoreGeneration$: tileStoreGeneration$,
     showSpotlightIndicators$: showSpotlightIndicators$,
     showSpeakingIndicators$: showSpeakingIndicators$,

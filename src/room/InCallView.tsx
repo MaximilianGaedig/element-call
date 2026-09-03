@@ -167,7 +167,6 @@ export const ActiveCall: FC<ActiveCallProps> = (props) => {
 
     const scope = new ObservableScope();
     const footerVm = createCallFooterViewModel(
-      scope,
       vm,
       props.muteStates,
       mediaDevices,

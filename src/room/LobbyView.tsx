@@ -38,7 +38,6 @@ import { useMediaQuery } from "../useMediaQuery";
 import { E2eeType } from "../e2ee/e2eeType";
 import { Link } from "../button/Link";
 import { useMediaDevices } from "../MediaDevicesContext";
-import { ObservableScope } from "../state/ObservableScope";
 import { useInitial } from "../useInitial";
 import {
   useTrackProcessor,
@@ -194,10 +193,8 @@ export const LobbyView: FC<Props> = ({
     null,
   );
   useEffect(() => {
-    const footerScope = new ObservableScope();
     setFooterVm(
       createLobbyFooterViewModel(
-        footerScope,
         muteStates,
         devices,
         openSettings,
@@ -206,9 +203,6 @@ export const LobbyView: FC<Props> = ({
         !hideHeader,
       ),
     );
-    return (): void => {
-      footerScope.end();
-    };
   }, [devices, hangup, hideHeader, muteStates, onLeaveClick, openSettings]);
 
   // TODO: Unify this component with InCallView, so we can get slick joining

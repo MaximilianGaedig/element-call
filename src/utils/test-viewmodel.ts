@@ -179,7 +179,6 @@ export function getBasicCallViewModelEnvironment(
     constant({ processor: undefined, supported: false }),
   );
   const footerVm = createCallFooterViewModel(
-    testScope(),
     vm,
     muteStates,
     mediaDevices,

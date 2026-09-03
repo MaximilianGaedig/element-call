@@ -5,15 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import {
-  combineLatest,
-  filter,
-  map,
-  type Observable,
-  pairwise,
-  Subject,
-  switchMap,
-} from "rxjs";
+import { filter, map, type Observable, pairwise, switchMap } from "rxjs";
 import { createMediaDeviceObserver } from "@livekit/components-core";
 import { type Logger, logger as rootLogger } from "matrix-js-sdk/lib/logger";
 
@@ -28,7 +20,7 @@ import { availableOutputDevices$ as controlledAvailableOutputDevices$ } from "..
 import { getUrlParams } from "../UrlParams";
 import { platform } from "../Platform";
 import { switchWhen } from "../utils/observable";
-import { type Behavior, constant } from "./Behavior";
+import { type Behavior, computed, constant, state } from "./Behavior";
 import { AndroidControlledAudioOutput } from "./AndroidControlledAudioOutput.ts";
 import { IOSControlledAudioOutput } from "./IOSControlledAudioOutput.ts";
 
@@ -86,7 +78,6 @@ export interface MediaDevice<Label, Selected> {
    * `Label` defines the UI-facing label data structure for each device type.
    */
   available$: Behavior<Map<string, Label>>;
-
   /**
    * The active device selection.
    * Can be `undefined` when no device is yet selected.
@@ -95,7 +86,6 @@ export interface MediaDevice<Label, Selected> {
    * type-specific metadata.
    */
   selected$: Behavior<Selected | undefined>;
-
   /**
    * Requests selection of a device by ID.
    *
@@ -163,37 +153,34 @@ function buildDeviceMap(
   );
 }
 
-function selectDevice$<Label>(
-  available$: Observable<Map<string, Label>>,
-  preferredId$: Observable<string | undefined>,
-): Observable<string | undefined> {
-  return combineLatest([available$, preferredId$], (available, preferredId) => {
-    if (available.size) {
-      if (preferredId !== undefined && available.has(preferredId)) {
-        // If the preferred device is available, use it.
-        return preferredId;
-      } else if (available.size === 1 && available.has("")) {
-        // In some cases the enumerateDevices will list the devices with empty string details:
-        // `{deviceId:'', kind:'audiooutput|audioinput|videoinput', label:'', groupId:''}`
-        // This can happen when:
-        //     1. The user has not yet granted permissions to microphone/devices
-        //     2. The page is not running in a secure context (e.g. localhost or https)
-        //     3. In embedded WebViews, restrictions are often tighter, need active capture..
-        //     3. The browser is blocking access to device details for privacy reasons (?)
-        // This is most likely transitional, so keep the current device selected until we get a more accurate enumerateDevices.
-        return preferredId;
-      } else {
-        // No preferred, so pick a default.
-        return available.keys().next().value;
-      }
+function selectDevice<Label>(
+  available: Map<string, Label>,
+  preferredId: string | undefined,
+): string | undefined {
+  if (available.size) {
+    if (preferredId !== undefined && available.has(preferredId)) {
+      // If the preferred device is available, use it.
+      return preferredId;
+    } else if (available.size === 1 && available.has("")) {
+      // In some cases the enumerateDevices will list the devices with empty string details:
+      // `{deviceId:'', kind:'audiooutput|audioinput|videoinput', label:'', groupId:''}`
+      // This can happen when:
+      //     1. The user has not yet granted permissions to microphone/devices
+      //     2. The page is not running in a secure context (e.g. localhost or https)
+      //     3. In embedded WebViews, restrictions are often tighter, need active capture..
+      //     3. The browser is blocking access to device details for privacy reasons (?)
+      // This is most likely transitional, so keep the current device selected until we get a more accurate enumerateDevices.
+      return preferredId;
+    } else {
+      // No preferred, so pick a default.
+      return available.keys().next().value;
     }
-    return undefined;
-  });
+  }
+  return undefined;
 }
 
 class AudioInput implements MediaDevice<DeviceLabel, SelectedAudioInputDevice> {
   private logger = rootLogger.getChild("[MediaDevices AudioInput]");
-
   private readonly availableRaw$: Behavior<MediaDeviceInfo[]> =
     availableRawDevices$(
       "audioinput",
@@ -201,32 +188,28 @@ class AudioInput implements MediaDevice<DeviceLabel, SelectedAudioInputDevice> {
       this.scope,
       this.logger,
     );
-
-  public readonly available$ = this.scope.behavior(
-    this.availableRaw$.pipe(map(buildDeviceMap)),
+  public readonly available$ = computed(() =>
+    buildDeviceMap(this.availableRaw$.value),
   );
-
-  public readonly selected$ = this.scope.behavior(
-    selectDevice$(this.available$, audioInputSetting.value$).pipe(
-      map((id) =>
-        id === undefined
-          ? undefined
-          : {
-              id,
-              // We can identify when the hardware device has changed by watching for
-              // changes in the group ID
-              hardwareDeviceChange$: this.availableRaw$.pipe(
-                map(
-                  (devices) => devices.find((d) => d.deviceId === id)?.groupId,
-                ),
-                pairwise(),
-                filter(([before, after]) => before !== after),
-                map(() => undefined),
-              ),
-            },
-      ),
-    ),
-  );
+  public readonly selected$ = computed(() => {
+    const id = selectDevice(
+      this.available$.value,
+      audioInputSetting.value$.value,
+    );
+    return id === undefined
+      ? undefined
+      : {
+          id,
+          // We can identify when the hardware device has changed by watching for
+          // changes in the group ID
+          hardwareDeviceChange$: this.availableRaw$.pipe(
+            map((devices) => devices.find((d) => d.deviceId === id)?.groupId),
+            pairwise(),
+            filter(([before, after]) => before !== after),
+            map(() => undefined),
+          ),
+        };
+  });
 
   public select(id: string): void {
     audioInputSetting.setValue(id);
@@ -236,8 +219,11 @@ class AudioInput implements MediaDevice<DeviceLabel, SelectedAudioInputDevice> {
     private readonly usingNames$: Behavior<boolean>,
     private readonly scope: ObservableScope,
   ) {
-    this.available$.subscribe((available) => {
-      this.logger.info("[audio-input] available devices:", available);
+    this.scope.effect(() => {
+      this.logger.info(
+        "[audio-input] available devices:",
+        this.available$.value,
+      );
     });
   }
 }
@@ -247,52 +233,45 @@ export class AudioOutput implements MediaDevice<
   SelectedAudioOutputDevice
 > {
   private logger = rootLogger.getChild("[MediaDevices AudioOutput]");
-  public readonly available$ = this.scope.behavior(
-    availableRawDevices$(
-      "audiooutput",
-      this.usingNames$,
-      this.scope,
-      this.logger,
-    ).pipe(
-      map((availableRaw) => {
-        let available: Map<string, AudioOutputDeviceLabel> =
-          buildDeviceMap(availableRaw);
-        // Create a virtual default audio output for browsers that don't have one.
-        // Its device ID must be the empty string because that's what setSinkId
-        // recognizes.
-        if (available.size && !available.has("") && !available.has("default"))
-          available.set("", {
-            type: "default",
-            name: availableRaw[0]?.label || null,
-          });
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const isSafari = !!(window as any).GestureEvent; // non standard api only found on Safari. https://developer.mozilla.org/en-US/docs/Web/API/GestureEvent#browser_compatibility
-        if (isSafari) {
-          // set to empty map if we are on Safari, because it does not support setSinkId
-          available = new Map();
-        }
-        // Note: creating virtual default input devices would be another problem
-        // entirely, because requesting a media stream from deviceId "" won't
-        // automatically track the default device.
-        return available;
-      }),
-    ),
+  private readonly availableRaw$ = availableRawDevices$(
+    "audiooutput",
+    this.usingNames$,
+    this.scope,
+    this.logger,
   );
+  public readonly available$ = computed(() => {
+    const availableRaw = this.availableRaw$.value;
+    let available: Map<string, AudioOutputDeviceLabel> =
+      buildDeviceMap(availableRaw);
+    // Create a virtual default audio output for browsers that don't have one.
+    // Its device ID must be the empty string because that's what setSinkId
+    // recognizes.
+    if (available.size && !available.has("") && !available.has("default"))
+      available.set("", {
+        type: "default",
+        name: availableRaw[0]?.label || null,
+      });
 
-  public readonly selected$ = this.scope.behavior(
-    selectDevice$(this.available$, audioOutputSetting.value$).pipe(
-      map((id) => {
-        if (id === undefined) {
-          return undefined;
-        } else {
-          return {
-            id,
-            virtualEarpiece: false,
-          };
-        }
-      }),
-    ),
-  );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const isSafari = !!(window as any).GestureEvent; // non standard api only found on Safari. https://developer.mozilla.org/en-US/docs/Web/API/GestureEvent#browser_compatibility
+    if (isSafari) {
+      // set to empty map if we are on Safari, because it does not support setSinkId
+      available = new Map();
+    }
+
+    // Note: creating virtual default input devices would be another problem
+    // entirely, because requesting a media stream from deviceId "" won't
+    // automatically track the default device.
+    return available;
+  });
+  public readonly selected$ = computed(() => {
+    const id = selectDevice(
+      this.available$.value,
+      audioOutputSetting.value$.value,
+    );
+    return id === undefined ? undefined : { id, virtualEarpiece: false };
+  });
+
   public select(id: string): void {
     audioOutputSetting.setValue(id);
   }
@@ -301,28 +280,34 @@ export class AudioOutput implements MediaDevice<
     private readonly usingNames$: Behavior<boolean>,
     private readonly scope: ObservableScope,
   ) {
-    this.available$.subscribe((available) => {
-      this.logger.info("[audio-output] available devices:", available);
+    this.scope.effect(() => {
+      this.logger.info(
+        "[audio-output] available devices:",
+        this.available$.value,
+      );
     });
   }
 }
 
 class VideoInput implements MediaDevice<DeviceLabel, SelectedDevice> {
   private logger = rootLogger.getChild("[MediaDevices VideoInput]");
+  private readonly availableRaw$ = availableRawDevices$(
+    "videoinput",
+    this.usingNames$,
+    this.scope,
+    this.logger,
+  );
+  public readonly available$ = computed(() =>
+    buildDeviceMap(this.availableRaw$.value),
+  );
+  public readonly selected$ = computed(() => {
+    const id = selectDevice(
+      this.available$.value,
+      videoInputSetting.value$.value,
+    );
+    return id === undefined ? undefined : { id };
+  });
 
-  public readonly available$ = this.scope.behavior(
-    availableRawDevices$(
-      "videoinput",
-      this.usingNames$,
-      this.scope,
-      this.logger,
-    ).pipe(map(buildDeviceMap)),
-  );
-  public readonly selected$ = this.scope.behavior(
-    selectDevice$(this.available$, videoInputSetting.value$).pipe(
-      map((id) => (id === undefined ? undefined : { id })),
-    ),
-  );
   public select(id: string): void {
     videoInputSetting.setValue(id);
   }
@@ -332,14 +317,24 @@ class VideoInput implements MediaDevice<DeviceLabel, SelectedDevice> {
     private readonly scope: ObservableScope,
   ) {
     // This also has the purpose of subscribing to the available devices
-    this.available$.subscribe((available) => {
-      this.logger.info("[video-input] available devices:", available);
+    this.scope.effect(() => {
+      this.logger.info(
+        "[video-input] available devices:",
+        this.available$.value,
+      );
     });
   }
 }
 
 export class MediaDevices {
-  private readonly deviceNamesRequest$ = new Subject<void>();
+  // Start using device names as soon as requested. This will cause LiveKit to
+  // briefly request device permissions and acquire media streams for each
+  // device type while calling `enumerateDevices`, which is what browsers want
+  // you to do to receive device names in lieu of a more explicit permissions
+  // API. This flag never resets to false, because once permissions are granted
+  // the first time, the user won't be prompted again until reload of the page.
+  private readonly usingNames$ = state(false);
+
   /**
    * Requests that the media devices be populated with the names of each
    * available device, rather than numbered identifiers. This may invoke a
@@ -347,19 +342,9 @@ export class MediaDevices {
    * intent to view the device list.
    */
   public requestDeviceNames(): void {
-    this.deviceNamesRequest$.next();
+    this.usingNames$.value = true;
   }
 
-  // Start using device names as soon as requested. This will cause LiveKit to
-  // briefly request device permissions and acquire media streams for each
-  // device type while calling `enumerateDevices`, which is what browsers want
-  // you to do to receive device names in lieu of a more explicit permissions
-  // API. This flag never resets to false, because once permissions are granted
-  // the first time, the user won't be prompted again until reload of the page.
-  private readonly usingNames$ = this.scope.behavior(
-    this.deviceNamesRequest$.pipe(map(() => true)),
-    false,
-  );
   public readonly audioInput: MediaDevice<
     DeviceLabel,
     SelectedAudioInputDevice

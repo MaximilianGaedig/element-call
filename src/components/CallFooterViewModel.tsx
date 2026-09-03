@@ -5,18 +5,16 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { combineLatest, map, switchMap } from "rxjs";
 import { supportsBackgroundProcessors } from "@livekit/track-processors";
 
 import { type CallViewModel } from "../state/CallViewModel/CallViewModel";
 import { type MenuOptions } from "./MediaMuteAndSwitchButton";
-import { type MediaDevices } from "../state/MediaDevices";
+import { type DeviceLabel, type MediaDevices } from "../state/MediaDevices";
 import {
   backgroundBlur as backgroundBlurSettings,
   debugTileLayout as debugTileLayoutSetting,
 } from "../settings/settings";
-import { type Behavior, constant } from "../state/Behavior";
-import type { ObservableScope } from "../state/ObservableScope";
+import { type Behavior, computed, constant } from "../state/Behavior";
 import { type MuteStates } from "../state/MuteStates";
 import { createStaticViewModel, type ViewModel } from "../state/ViewModel";
 import { getUrlParams, HeaderStyle } from "../UrlParams";
@@ -28,7 +26,6 @@ import { type FooterSnapshot } from "./CallFooter";
  * needed by FooterSnapshot.
  */
 function buildMuteBehaviors(
-  scope: ObservableScope,
   muteStates: MuteStates,
 ): Pick<
   ViewModel<FooterSnapshot>,
@@ -42,15 +39,20 @@ function buildMuteBehaviors(
   return {
     audioEnabled$: muteStates.audio.enabled$,
     audioBusy$: muteStates.audio.syncing$,
-    toggleAudio$: scope.behavior(
-      muteStates.audio.toggle$.pipe(map((t) => t ?? undefined)),
-    ),
+    toggleAudio$: computed(() => muteStates.audio.toggle$.value ?? undefined),
     videoEnabled$: muteStates.video.enabled$,
     videoBusy$: muteStates.video.syncing$,
-    toggleVideo$: scope.behavior(
-      muteStates.video.toggle$.pipe(map((t) => t ?? undefined)),
-    ),
+    toggleVideo$: computed(() => muteStates.video.toggle$.value ?? undefined),
   };
+}
+
+function deviceOptions(
+  disabled: boolean,
+  available: Map<string, DeviceLabel>,
+): MenuOptions[] {
+  return disabled
+    ? []
+    : [...available.entries()].map(([id, label]) => ({ id, label }));
 }
 
 /**
@@ -58,7 +60,6 @@ function buildMuteBehaviors(
  * needed by FooterSnapshot (options, selection, callbacks, blur toggle).
  */
 function buildDeviceBehaviors(
-  scope: ObservableScope,
   mediaDevices: MediaDevices,
   /** return empty arrays for  audioOptions and videoOptions*/
   disableSwitcher$: Behavior<boolean>,
@@ -74,57 +75,30 @@ function buildDeviceBehaviors(
   | "videoBlurEnabled$"
 > {
   return {
-    audioOptions$: scope.behavior(
-      disableSwitcher$.pipe(
-        switchMap((disable) =>
-          disable
-            ? constant([] as MenuOptions[])
-            : mediaDevices.audioInput.available$.pipe(
-                map((available) =>
-                  [...available.entries()].map(([id, label]) => ({
-                    id,
-                    label,
-                  })),
-                ),
-              ),
-        ),
+    audioOptions$: computed(() =>
+      deviceOptions(
+        disableSwitcher$.value,
+        mediaDevices.audioInput.available$.value,
       ),
     ),
-    selectedAudio$: scope.behavior(
-      mediaDevices.audioInput.selected$.pipe(map((s) => s?.id)),
-    ),
+    selectedAudio$: computed(() => mediaDevices.audioInput.selected$.value?.id),
     selectAudioButtonOption$: constant(mediaDevices.audioInput.select),
-    videoOptions$: scope.behavior(
-      disableSwitcher$.pipe(
-        switchMap((disable) =>
-          disable
-            ? constant([] as MenuOptions[])
-            : mediaDevices.videoInput.available$.pipe(
-                map((available) =>
-                  [...available.entries()].map(([id, label]) => ({
-                    id,
-                    label,
-                  })),
-                ),
-              ),
-        ),
+    videoOptions$: computed(() =>
+      deviceOptions(
+        disableSwitcher$.value,
+        mediaDevices.videoInput.available$.value,
       ),
     ),
-    selectedVideo$: scope.behavior(
-      mediaDevices.videoInput.selected$.pipe(map((s) => s?.id)),
-    ),
+    selectedVideo$: computed(() => mediaDevices.videoInput.selected$.value?.id),
     selectVideoButtonOption$: constant(mediaDevices.videoInput.select),
-    toggleBlur$: scope.behavior(
-      combineLatest([backgroundBlurSettings.value$, disableSwitcher$]).pipe(
-        map(([current, switcherDisabled]) => {
-          return !switcherDisabled && supportsBackgroundProcessors()
-            ? (): void => {
-                backgroundBlurSettings.setValue(!current);
-              }
-            : undefined;
-        }),
-      ),
-    ),
+    toggleBlur$: computed(() => {
+      const current = backgroundBlurSettings.value$.value;
+      return !disableSwitcher$.value && supportsBackgroundProcessors()
+        ? (): void => {
+            backgroundBlurSettings.setValue(!current);
+          }
+        : undefined;
+    }),
     videoBlurEnabled$: backgroundBlurSettings.value$,
   };
 }
@@ -132,7 +106,6 @@ function buildDeviceBehaviors(
 /**
  * Creates the ViewModel for the CallFooter.
  *
- * @param scope - ObservableScope that bounds the lifetime of derived behaviors.
  * @param callModel - The root CallViewModel; provides layout, grid mode, reactions, etc.
  * @param muteStates - Audio and video mute state + toggles.
  * @param mediaDevices - Available and selected input devices.
@@ -140,7 +113,6 @@ function buildDeviceBehaviors(
  *   undefined when reactions are not supported (hides the reaction button).
  */
 export function createCallFooterViewModel(
-  scope: ObservableScope,
   callModel: CallViewModel,
   muteStates: MuteStates,
   mediaDevices: MediaDevices,
@@ -149,53 +121,39 @@ export function createCallFooterViewModel(
   const { showControls, header: headerStyle } = getUrlParams();
   const showLogo = headerStyle === HeaderStyle.Standard;
 
-  const isPip$ = scope.behavior(
-    callModel.layout$.pipe(map((l) => l.type === "pip")),
+  const isPip$ = computed(() => callModel.layout$.value.type === "pip");
+  const disableDeviceSwitcher$ = computed(
+    () => isPip$.value || platform !== "desktop",
   );
-  const disableDeviceSwitcher$ = scope.behavior(
-    isPip$.pipe(map((isPip) => isPip || platform !== "desktop")),
-  );
+
   return {
-    ...buildMuteBehaviors(scope, muteStates),
-    ...buildDeviceBehaviors(scope, mediaDevices, disableDeviceSwitcher$),
+    ...buildMuteBehaviors(muteStates),
+    ...buildDeviceBehaviors(mediaDevices, disableDeviceSwitcher$),
+
     // candidat to move into the FooterViewModel
     showFooter$: callModel.showFooter$,
     hideControls$: constant(!showControls),
     showModals$: callModel.showModals$,
     asOverlay$: callModel.edgeToEdge$,
-    buttonSize$: scope.behavior(
-      isPip$.pipe(map<boolean, "md" | "lg">((pip) => (pip ? "md" : "lg"))),
-    ),
+    buttonSize$: computed<"md" | "lg">(() => (isPip$.value ? "md" : "lg")),
 
-    openSettings$: scope.behavior(
-      combineLatest([
-        callModel.showModals$,
-        callModel.showHeader$,
-        callModel.setSettingsOpen$,
-      ]).pipe(
-        map(([showModals, showHeader, setSettingsOpen]) =>
-          showModals && headerStyle !== HeaderStyle.AppBar && showControls
-            ? (): void => setSettingsOpen(true)
-            : undefined,
-        ),
-      ),
-    ),
+    openSettings$: computed(() => {
+      const setSettingsOpen = callModel.setSettingsOpen$.value;
+      return callModel.showModals$.value &&
+        headerStyle !== HeaderStyle.AppBar &&
+        showControls
+        ? (): void => setSettingsOpen(true)
+        : undefined;
+    }),
 
-    showLogo$: scope.behavior(isPip$.pipe(map((isPip) => showLogo && !isPip))),
-
+    showLogo$: computed(() => showLogo && !isPip$.value),
     layoutSwitchVm$: callModel.layoutSwitchVm$,
-
     sharingScreen$: callModel.sharingScreen$,
     toggleScreenSharing$: constant(callModel.toggleScreenSharing ?? undefined),
-
-    audioOutputSwitcher$: scope.behavior(
-      callModel.audioOutputSwitcher$.pipe(
-        map((switcher) => switcher ?? undefined),
-      ),
+    audioOutputSwitcher$: computed(
+      () => callModel.audioOutputSwitcher$.value ?? undefined,
     ),
-
     hangup$: constant(callModel.hangup),
-
     reactionIdentifier$: constant(reactionIdentifier),
     reactionData$: constant(
       reactionIdentifier !== undefined
@@ -205,7 +163,6 @@ export function createCallFooterViewModel(
           }
         : undefined,
     ),
-
     debugTileLayout$: debugTileLayoutSetting.value$,
     tileStoreGeneration$: callModel.tileStoreGeneration$,
   };
@@ -216,7 +173,6 @@ export function createCallFooterViewModel(
  * (pre-call) screen. Unlike createCallFooterViewModel, this does not require
  * a CallViewModel — it only needs mute states, device lists, and callbacks.
  *
- * @param scope - ObservableScope that bounds the lifetime of derived behaviors.
  * @param muteStates - Audio and video mute state + toggles.
  * @param mediaDevices - Available and selected input devices.
  * @param openSettings - Callback to open the settings modal, or undefined.
@@ -224,7 +180,6 @@ export function createCallFooterViewModel(
  * @param showLogo - Whether to show the Element Call logo.
  */
 export function createLobbyFooterViewModel(
-  scope: ObservableScope,
   muteStates: MuteStates,
   mediaDevices: MediaDevices,
   openSettings: (() => void) | undefined,
@@ -266,7 +221,7 @@ export function createLobbyFooterViewModel(
       selectAudioButtonOption: undefined,
       selectVideoButtonOption: undefined,
     }),
-    ...buildMuteBehaviors(scope, muteStates),
-    ...buildDeviceBehaviors(scope, mediaDevices, constant(false)),
+    ...buildMuteBehaviors(muteStates),
+    ...buildDeviceBehaviors(mediaDevices, constant(false)),
   };
 }

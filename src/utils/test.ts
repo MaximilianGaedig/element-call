@@ -559,8 +559,8 @@ export const mockTrack = (
   }) as unknown as TrackReference;
 
 export const deviceStub = {
-  available$: of(new Map<never, never>()),
-  selected$: of(undefined),
+  available$: constant(new Map<never, never>()),
+  selected$: constant(undefined),
   select(): void {},
 };
 

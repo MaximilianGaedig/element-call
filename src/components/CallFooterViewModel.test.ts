@@ -7,7 +7,7 @@ Please see LICENSE in the repository root for full details.
 
 import { describe, expect, it, vi } from "vitest";
 
-import { testScope, mockMuteStates, mockMediaDevices } from "../utils/test";
+import { mockMuteStates, mockMediaDevices } from "../utils/test";
 import { constant, state } from "../state/Behavior";
 import type { CallViewModel } from "../state/CallViewModel/CallViewModel";
 import type { Alignment, Layout } from "../state/layout-types";
@@ -99,7 +99,6 @@ describe("createCallFooterViewModel", () => {
       platformMock.mockReturnValue(platform);
 
       const vm = createCallFooterViewModel(
-        testScope(),
         buildMinimalCallViewModel(layout),
         mockMuteStates(),
         twoMicsAndOneCamMediaDevices,
@@ -120,7 +119,6 @@ describe("createCallFooterViewModel", () => {
       platformMock.mockReturnValue("desktop");
 
       const vm = createCallFooterViewModel(
-        testScope(),
         buildMinimalCallViewModel(gridLayout),
         mockMuteStates(),
         twoMicsAndOneCamMediaDevices,
