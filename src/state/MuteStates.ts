@@ -8,31 +8,11 @@ Please see LICENSE in the repository root for full details.
 
 import { type IWidgetApiRequest } from "matrix-widget-api";
 import { logger } from "matrix-js-sdk/lib/logger";
-import {
-  combineLatest,
-  distinctUntilChanged,
-  firstValueFrom,
-  fromEvent,
-  map,
-  merge,
-  Observable,
-  of,
-  Subject,
-  switchMap,
-  withLatestFrom,
-} from "rxjs";
 
 import { type MediaDevices, type MediaDevice } from "../state/MediaDevices";
 import { ElementWidgetActions, widget } from "../widget";
 import { type ObservableScope } from "./ObservableScope";
-import { type Behavior, constant, state } from "./Behavior";
-
-interface MuteStateData {
-  enabled$: Observable<boolean>;
-  syncing$: Observable<boolean>;
-  set: ((enabled: boolean) => void) | null;
-  toggle: (() => void) | null;
-}
+import { type Behavior, computed, constant, state } from "./Behavior";
 
 export type Handler = (desired: boolean) => Promise<boolean>;
 const defaultHandler: Handler = async (desired) => Promise.resolve(desired);
@@ -42,139 +22,103 @@ const defaultHandler: Handler = async (desired) => Promise.resolve(desired);
  * Do not use directly outside of tests.
  */
 export class MuteState<Label, Selected> {
-  private readonly handler$ = state(defaultHandler);
+  private handler = defaultHandler;
 
   public setHandler(handler: Handler): void {
-    if (this.handler$.value !== defaultHandler)
+    if (this.handler !== defaultHandler)
       throw new Error("Multiple mute state handlers are not supported");
-    this.handler$.value = handler;
+    this.handler = handler;
   }
 
   public unsetHandler(): void {
-    this.handler$.value = defaultHandler;
+    this.handler = defaultHandler;
   }
 
-  private readonly canControlDevices$ = combineLatest([
-    this.device.available$,
-    this.forceMute$,
-  ]).pipe(
-    map(([available, forceMute]) => {
-      return !forceMute && available.size > 0;
-    }),
+  private readonly canControlDevices$ = computed(
+    () => !this.forceMute$.value && this.device.available$.value.size > 0,
   );
 
-  private readonly data$ = this.scope.behavior<MuteStateData>(
-    this.canControlDevices$.pipe(
-      distinctUntilChanged(),
-      map((canControlDevices) => {
-        logger.info(
-          `MuteState: canControlDevices: ${canControlDevices}, enabled by default: ${this.enabledByDefault}`,
-        );
-        if (!canControlDevices) {
-          logger.info(
-            `MuteState: devices connected: ${canControlDevices}, disabling`,
-          );
-          // We need to sync the mute state with the handler
-          // to ensure nothing is beeing published.
-          this.handler$.value(false).catch((err) => {
-            logger.error("MuteState-disable: handler error", err);
-          });
-          return {
-            enabled$: of(false),
-            syncing$: of(false),
-            set: null,
-            toggle: null,
-          };
-        }
+  private readonly _enabled$ = state(false);
+  public readonly enabled$: Behavior<boolean> = this._enabled$;
 
-        // Assume the default value only once devices are actually connected
-        let enabled = this.enabledByDefault;
-        const set$ = new Subject<boolean>();
-        const toggle$ = new Subject<void>();
-        const syncing$ = state(false);
-        const desired$ = merge(set$, toggle$.pipe(map(() => !enabled)));
-        const enabled$ = new Observable<boolean>((subscriber) => {
-          subscriber.next(enabled);
-          let latestDesired = this.enabledByDefault;
+  /**
+   * Whether the handler is currently being asked to apply a change.
+   */
+  public readonly syncing$ = state(false);
 
-          const sync = async (): Promise<void> => {
-            if (enabled === latestDesired) {
-              syncing$.value = false;
-            } else {
-              const previouslyEnabled = enabled;
-              syncing$.value = true;
-              enabled = await firstValueFrom(
-                this.handler$.pipe(
-                  switchMap(async (handler) => handler(latestDesired)),
-                ),
-              );
-              if (enabled === previouslyEnabled) {
-                syncing$.value = false;
-              } else {
-                subscriber.next(enabled);
-                syncing$.value = true;
-                sync().catch((err) => {
-                  // TODO: better error handling
-                  logger.error("MuteState: handler error", err);
-                });
-              }
-            }
-          };
-
-          const s = desired$.subscribe((desired) => {
-            latestDesired = desired;
-            if (syncing$.value === false) {
-              syncing$.value = true;
-              sync().catch((err) => {
-                // TODO: better error handling
-                logger.error("MuteState: handler error", err);
-              });
-            }
-          });
-          return (): void => {
-            s.unsubscribe();
-          };
-        });
-
-        return {
-          set: (enabled: boolean): void => set$.next(enabled),
-          toggle: (): void => {
-            if (syncing$.value) return;
-            toggle$.next();
-          },
-          enabled$,
-          syncing$,
-        };
-      }),
-    ),
-  );
-
-  public readonly enabled$: Behavior<boolean> = this.scope.behavior(
-    this.data$.pipe(switchMap(({ enabled$ }) => enabled$)),
-  );
+  /**
+   * The most recently requested state, which the handler is brought towards.
+   */
+  private desired = this.enabledByDefault;
 
   public readonly setEnabled$: Behavior<((enabled: boolean) => void) | null> =
-    this.scope.behavior(this.data$.pipe(map(({ set }) => set)));
+    computed(() =>
+      this.canControlDevices$.value
+        ? (enabled: boolean): void => this.request(enabled)
+        : null,
+    );
 
-  public readonly toggle$: Behavior<(() => void) | null> = this.scope.behavior(
-    this.data$.pipe(map(({ toggle }) => toggle)),
+  public readonly toggle$: Behavior<(() => void) | null> = computed(() =>
+    this.canControlDevices$.value
+      ? (): void => {
+          if (!this.syncing$.value) this.request(!this._enabled$.value);
+        }
+      : null,
   );
 
-  public readonly syncing$: Behavior<boolean> = this.scope.behavior(
-    this.data$.pipe(switchMap(({ syncing$ }) => syncing$)),
-  );
+  private request(desired: boolean): void {
+    this.desired = desired;
+    if (!this.syncing$.peek()) void this.sync();
+  }
+
+  // Asks the handler to move towards the desired state until it is reached or
+  // the handler fails to make progress. Requests made in the meantime just
+  // update the target.
+  private async sync(): Promise<void> {
+    this.syncing$.value = true;
+    try {
+      while (this._enabled$.peek() !== this.desired) {
+        const enabled = await this.handler(this.desired);
+        if (enabled === this._enabled$.peek()) break;
+        this._enabled$.value = enabled;
+      }
+    } catch (err) {
+      // TODO: better error handling
+      logger.error("MuteState: handler error", err);
+    } finally {
+      this.syncing$.value = false;
+    }
+  }
 
   public constructor(
-    private readonly scope: ObservableScope,
+    scope: ObservableScope,
     private readonly device: MediaDevice<Label, Selected>,
     private readonly enabledByDefault: boolean,
     /**
-     * An optional observable which, when it emits `true`, will force the mute.
-     * Used for video to stop camera when earpiece mode is on.
-     * @private
+     * A Behavior which, when true, forces the mute. Used for video to stop the
+     * camera when earpiece mode is on.
      */
-    private readonly forceMute$: Observable<boolean>,
-  ) {}
+    private readonly forceMute$: Behavior<boolean>,
+  ) {
+    scope.effect(() => {
+      const canControlDevices = this.canControlDevices$.value;
+      logger.info(
+        `MuteState: canControlDevices: ${canControlDevices}, enabled by default: ${enabledByDefault}`,
+      );
+      if (canControlDevices) {
+        // Assume the default value only once devices are actually connected
+        this.desired = enabledByDefault;
+        this._enabled$.value = enabledByDefault;
+      } else {
+        // Sync the mute state with the handler to ensure nothing is published
+        this.handler(false).catch((err) => {
+          logger.error("MuteState-disable: handler error", err);
+        });
+        this.desired = false;
+        this._enabled$.value = false;
+      }
+    });
+  }
 }
 
 export class MuteStates {
@@ -182,17 +126,15 @@ export class MuteStates {
    *  True if the selected audio output device is an earpiece.
    *  Used to force-disable video when on earpiece.
    */
-  private readonly isEarpiece$ = combineLatest([
-    this.mediaDevices.audioOutput.available$,
-    this.mediaDevices.audioOutput.selected$,
-  ]).pipe(
-    map(([available, selected]) => {
-      if (!selected?.id) return false;
-      const device = available.get(selected.id);
-      logger.info(`MuteStates: selected audio output device:`, device);
-      return device?.type === "earpiece";
-    }),
-  );
+  private readonly isEarpiece$ = computed(() => {
+    const selected = this.mediaDevices.audioOutput.selected$.value;
+    if (!selected?.id) return false;
+    const device = this.mediaDevices.audioOutput.available$.value.get(
+      selected.id,
+    );
+    logger.info(`MuteStates: selected audio output device:`, device);
+    return device?.type === "earpiece";
+  });
 
   public readonly audio = new MuteState(
     this.scope,
@@ -217,55 +159,49 @@ export class MuteStates {
   ) {
     if (widget !== null) {
       // Sync our mute states with the hosting client
-      const widgetApiState$ = combineLatest(
-        [this.audio.enabled$, this.video.enabled$],
-        (audio, video) => ({ audio_enabled: audio, video_enabled: video }),
-      );
-      widgetApiState$.pipe(this.scope.bind()).subscribe((state) => {
+      const widgetApiState = (): {
+        audio_enabled: boolean;
+        video_enabled: boolean;
+      } => ({
+        audio_enabled: this.audio.enabled$.value,
+        video_enabled: this.video.enabled$.value,
+      });
+      this.scope.effect(() => {
         widget!.api.transport
-          .send(ElementWidgetActions.DeviceMute, state)
+          .send(ElementWidgetActions.DeviceMute, widgetApiState())
           .catch((e) =>
             logger.warn("Could not send DeviceMute action to widget", e),
           );
       });
 
       // Also sync the hosting client's mute states back with ours
-      const muteActions$ = fromEvent(
-        widget.lazyActions,
-        ElementWidgetActions.DeviceMute,
-      ) as Observable<CustomEvent<IWidgetApiRequest>>;
-      muteActions$
-        .pipe(
-          withLatestFrom(
-            widgetApiState$,
-            this.audio.setEnabled$,
-            this.video.setEnabled$,
-          ),
-          this.scope.bind(),
-        )
-        .subscribe(([ev, state, setAudioEnabled, setVideoEnabled]) => {
-          // First copy the current state into our new state
-          const newState = { ...state };
-          // Update new state if there are any requested changes from the widget
-          // action in `ev.detail.data`.
-          if (
-            ev.detail.data.audio_enabled != null &&
-            typeof ev.detail.data.audio_enabled === "boolean" &&
-            setAudioEnabled !== null
-          ) {
-            newState.audio_enabled = ev.detail.data.audio_enabled;
-            setAudioEnabled(newState.audio_enabled);
-          }
-          if (
-            ev.detail.data.video_enabled != null &&
-            typeof ev.detail.data.video_enabled === "boolean" &&
-            setVideoEnabled !== null
-          ) {
-            newState.video_enabled = ev.detail.data.video_enabled;
-            setVideoEnabled(newState.video_enabled);
-          }
-          widget!.api.transport.reply(ev.detail, newState);
-        });
+      const onDeviceMute = (ev: CustomEvent<IWidgetApiRequest>): void => {
+        // First copy the current state into our new state
+        const newState = widgetApiState();
+        const setAudioEnabled = this.audio.setEnabled$.value;
+        const setVideoEnabled = this.video.setEnabled$.value;
+        // Update new state if there are any requested changes from the widget
+        // action in `ev.detail.data`.
+        if (
+          typeof ev.detail.data.audio_enabled === "boolean" &&
+          setAudioEnabled !== null
+        ) {
+          newState.audio_enabled = ev.detail.data.audio_enabled;
+          setAudioEnabled(newState.audio_enabled);
+        }
+        if (
+          typeof ev.detail.data.video_enabled === "boolean" &&
+          setVideoEnabled !== null
+        ) {
+          newState.video_enabled = ev.detail.data.video_enabled;
+          setVideoEnabled(newState.video_enabled);
+        }
+        widget!.api.transport.reply(ev.detail, newState);
+      };
+      widget.lazyActions.on(ElementWidgetActions.DeviceMute, onDeviceMute);
+      this.scope.onEnd(() =>
+        widget!.lazyActions.off(ElementWidgetActions.DeviceMute, onDeviceMute),
+      );
     }
   }
 }

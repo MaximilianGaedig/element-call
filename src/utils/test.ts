@@ -4,7 +4,7 @@ Copyright 2023, 2024 New Vector Ltd.
 SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
-import { map, type Observable, of, type SchedulerLike } from "rxjs";
+import { map, type Observable, type SchedulerLike } from "rxjs";
 import { type RunHelpers, TestScheduler } from "rxjs/testing";
 import {
   expect,
@@ -713,9 +713,7 @@ export function mockMediaDevices(data: Partial<MediaDevices>): MediaDevices {
   } as MediaDevices;
 }
 
-export function mockMuteStates(
-  joined$: Observable<boolean> = of(true),
-): MuteStates {
+export function mockMuteStates(): MuteStates {
   const observableScope = new ObservableScope();
   return new MuteStates(observableScope, mockMediaDevices({}), {
     audioEnabled: false,
