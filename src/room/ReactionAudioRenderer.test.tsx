@@ -103,12 +103,12 @@ describe("ReactionAudioRenderer", () => {
       );
     }
     act(() => {
-      reactionsSubject$.next({
+      reactionsSubject$.value = {
         [aliceRtcMember.deviceId]: {
           reactionOption: chosenReaction,
           expireAfter: new Date(0),
         },
-      });
+      };
     });
     expect(playSound).toHaveBeenCalledWith(chosenReaction.name);
   });
@@ -129,12 +129,12 @@ describe("ReactionAudioRenderer", () => {
       );
     }
     act(() => {
-      reactionsSubject$.next({
+      reactionsSubject$.value = {
         [aliceRtcMember.deviceId]: {
           reactionOption: chosenReaction,
           expireAfter: new Date(0),
         },
-      });
+      };
     });
     expect(playSound).toHaveBeenCalledWith(GenericReaction.name);
   });
@@ -155,7 +155,7 @@ describe("ReactionAudioRenderer", () => {
       );
     }
     act(() => {
-      reactionsSubject$.next({
+      reactionsSubject$.value = {
         [aliceRtcMember.deviceId]: {
           reactionOption: reaction1,
           expireAfter: new Date(0),
@@ -168,7 +168,7 @@ describe("ReactionAudioRenderer", () => {
           reactionOption: reaction1,
           expireAfter: new Date(0),
         },
-      });
+      };
     });
     expect(playSound).toHaveBeenCalledWith(reaction1.name);
     expect(playSound).toHaveBeenCalledWith(reaction2.name);

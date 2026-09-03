@@ -18,7 +18,7 @@ import {
   type CallMembership,
   type LivekitTransportConfig,
 } from "matrix-js-sdk/lib/matrixrtc";
-import { BehaviorSubject, filter, lastValueFrom } from "rxjs";
+import { filter, lastValueFrom } from "rxjs";
 import fetchMock from "fetch-mock";
 
 import {
@@ -41,6 +41,7 @@ import {
 import * as openIDSFU from "../../../livekit/openIDSFU";
 import { customLivekitUrl } from "../../../settings/settings";
 import { testJWTToken } from "../../../utils/test-fixtures";
+import { state } from "../../Behavior";
 
 describe("LocalTransport", () => {
   const openIdResponse: openIDSFU.SFUConfig = {
@@ -338,7 +339,7 @@ describe("LocalTransport", () => {
       .spyOn(openIDSFU, "getSFUConfigWithOpenID")
       .mockResolvedValue(openIdResponse);
 
-    const delayId$ = new BehaviorSubject<string | null>(null);
+    const delayId$ = state<string | null>(null);
 
     const { advertised$, active$ } = createLocalTransport$({
       scope: testScope(),
@@ -382,11 +383,11 @@ describe("LocalTransport", () => {
 
     expect(authCallSpy).toHaveBeenCalledTimes(2);
     // Now emits 3 new delays id
-    delayId$.next("delay_id_1");
+    delayId$.value = "delay_id_1";
     await flushPromises();
-    delayId$.next("delay_id_2");
+    delayId$.value = "delay_id_2";
     await flushPromises();
-    delayId$.next("delay_id_3");
+    delayId$.value = "delay_id_3";
     await flushPromises();
 
     // No new emissions should've happened, it is the same transport.

@@ -6,10 +6,9 @@ Please see LICENSE in the repository root for full details.
 */
 
 import { logger } from "matrix-js-sdk/lib/logger";
-import { BehaviorSubject } from "rxjs";
 
 import { PosthogAnalytics } from "../analytics/PosthogAnalytics";
-import { type Behavior } from "../state/Behavior";
+import { type Behavior, state, type State } from "../state/Behavior";
 import { useBehavior } from "../useBehavior";
 import { MatrixRTCMode } from "../config/ConfigOptions";
 
@@ -34,27 +33,27 @@ export class Setting<T> {
       }
     }
 
-    this._value$ = new BehaviorSubject(initialValue);
+    this._value$ = state(initialValue);
     this.value$ = this._value$;
-    this._lastUpdateReason$ = new BehaviorSubject<string | null>(null);
+    this._lastUpdateReason$ = state<string | null>(null);
     this.lastUpdateReason$ = this._lastUpdateReason$;
   }
 
   private readonly key: string;
   private readonly hasStoredValue: boolean;
 
-  private readonly _value$: BehaviorSubject<T>;
-  private readonly _lastUpdateReason$: BehaviorSubject<string | null>;
+  private readonly _value$: State<T>;
+  private readonly _lastUpdateReason$: State<string | null>;
   public readonly value$: Behavior<T>;
   public readonly lastUpdateReason$: Behavior<string | null>;
 
   public readonly setValue = (value: T, reason?: string): void => {
-    this._value$.next(value);
-    this._lastUpdateReason$.next(reason ?? null);
+    this._value$.value = value;
+    this._lastUpdateReason$.value = reason ?? null;
     localStorage.setItem(this.key, JSON.stringify(value));
   };
   public readonly getValue = (): T => {
-    return this._value$.getValue();
+    return this._value$.value;
   };
 
   /**
@@ -64,7 +63,7 @@ export class Setting<T> {
    */
   public seedFromConfig(value: T): void {
     if (!this.hasStoredValue) {
-      this._value$.next(value);
+      this._value$.value = value;
     }
   }
 }

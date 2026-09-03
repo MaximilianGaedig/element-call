@@ -6,10 +6,9 @@ Please see LICENSE in the repository root for full details.
 */
 
 import { describe, expect, it, vi } from "vitest";
-import { BehaviorSubject } from "rxjs";
 
 import { testScope, mockMuteStates, mockMediaDevices } from "../utils/test";
-import { constant } from "../state/Behavior";
+import { constant, state } from "../state/Behavior";
 import type { CallViewModel } from "../state/CallViewModel/CallViewModel";
 import type { Alignment, Layout } from "../state/layout-types";
 import type { SpotlightTileViewModel } from "../state/TileViewModel";
@@ -59,7 +58,7 @@ function buildMinimalCallViewModel(layout: Layout): CallViewModel {
 const gridLayout: Layout = {
   type: "grid",
   grid: [],
-  spotlightAlignment$: new BehaviorSubject<Alignment>({
+  spotlightAlignment$: state<Alignment>({
     inline: "end",
     block: "end",
   }),

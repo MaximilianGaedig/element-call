@@ -6,7 +6,6 @@ Please see LICENSE in the repository root for full details.
 */
 
 import { expect, fn, userEvent, within } from "storybook/test";
-import { BehaviorSubject } from "rxjs";
 import { type JSX, type ReactNode } from "react";
 import { Link } from "@vector-im/compound-web";
 
@@ -19,14 +18,14 @@ import { type ReactionOption } from "../reactions";
 import { MediaDevicesContext } from "../MediaDevicesContext";
 import { MediaDevices } from "../state/MediaDevices";
 import { globalScope } from "../state/ObservableScope";
-import { constant } from "../state/Behavior";
+import { constant, state } from "../state/Behavior";
 import { type LayoutMode } from "../state/LayoutSwitchViewModel";
 
 // consts for tests
 const reactionIdentifier = "@user:example.com:DEVICE";
 const reactionData = {
-  handsRaised$: new BehaviorSubject({}),
-  reactions$: new BehaviorSubject({}),
+  handsRaised$: state({}),
+  reactions$: state({}),
 };
 
 const mediaDevices = new MediaDevices(globalScope);

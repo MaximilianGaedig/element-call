@@ -5,9 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { BehaviorSubject } from "rxjs";
-
-import { type Behavior } from "./Behavior";
+import { type Behavior, state } from "./Behavior";
 import { type MediaViewModel } from "./media/MediaViewModel";
 import { type RingingMediaViewModel } from "./media/RingingMediaViewModel";
 import { type UserMediaViewModel } from "./media/UserMediaViewModel";
@@ -19,7 +17,7 @@ function createId(): string {
 
 export class GridTileViewModel {
   public readonly id = createId();
-  private readonly _showOutline$ = new BehaviorSubject(false);
+  private readonly _showOutline$ = state(false);
   public readonly showOutline$: Behavior<boolean> = this._showOutline$;
 
   public constructor(
@@ -29,7 +27,7 @@ export class GridTileViewModel {
   ) {}
 
   public setShowOutline(value: boolean): void {
-    this._showOutline$.next(value);
+    this._showOutline$.value = value;
   }
 }
 

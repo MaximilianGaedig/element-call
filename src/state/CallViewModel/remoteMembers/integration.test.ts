@@ -6,7 +6,6 @@ Please see LICENSE in the repository root for full details.
 */
 
 import { test, vi, expect, beforeEach, afterEach } from "vitest";
-import { BehaviorSubject } from "rxjs";
 import { type Room as LivekitRoom } from "livekit-client";
 import EventEmitter from "events";
 import fetchMock from "fetch-mock";
@@ -36,6 +35,7 @@ import { createConnectionManager$ } from "./ConnectionManager.ts";
 import { membershipsAndTransports$ } from "../../SessionBehaviors.ts";
 import { constant } from "../../Behavior.ts";
 import { localRtcMember, testJWTToken } from "../../../utils/test-fixtures.ts";
+import { state } from "../../Behavior";
 
 // Test the integration of ConnectionManager and MatrixLivekitMerger
 
@@ -73,7 +73,7 @@ beforeEach(() => {
     mockClient,
     "!roomid:example.org",
     mockMediaDevices({}),
-    new BehaviorSubject<ProcessorState>({
+    state<ProcessorState>({
       supported: true,
       processor: undefined,
     }),

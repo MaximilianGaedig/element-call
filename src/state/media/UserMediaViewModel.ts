@@ -7,7 +7,6 @@ Please see LICENSE in the repository root for full details.
 */
 
 import {
-  BehaviorSubject,
   combineLatest,
   map,
   type Observable,
@@ -22,7 +21,7 @@ import {
 import { ParticipantEvent, Track } from "livekit-client";
 
 import { type ReactionOption } from "../../reactions";
-import { type Behavior } from "../Behavior";
+import { type Behavior, state } from "../Behavior";
 import { type LocalUserMediaViewModel } from "./LocalUserMediaViewModel";
 import {
   createMemberMedia,
@@ -93,7 +92,7 @@ export function createBaseUserMedia(
     ),
   );
   const toggleCropVideo$ = new Subject<void>();
-  const videoAspectRatio$ = new BehaviorSubject(NaN);
+  const videoAspectRatio$ = state(NaN);
 
   return {
     ...createMemberMedia(scope, {
@@ -149,6 +148,6 @@ export function createBaseUserMedia(
         return observeRtpStreamStats$(p, Track.Source.Camera, statsType);
       }),
     ),
-    setVideoAspectRatio: (ratio) => videoAspectRatio$.next(ratio),
+    setVideoAspectRatio: (ratio) => (videoAspectRatio$.value = ratio),
   };
 }

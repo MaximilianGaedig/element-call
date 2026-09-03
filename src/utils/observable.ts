@@ -20,13 +20,12 @@ import {
   takeWhile,
   tap,
   withLatestFrom,
-  BehaviorSubject,
   type OperatorFunction,
   distinctUntilChanged,
 } from "rxjs";
 import { logger } from "matrix-js-sdk/lib/logger";
 
-import { type Behavior } from "../state/Behavior";
+import { type Behavior, state, type State } from "../state/Behavior";
 import { Epoch, ObservableScope } from "../state/ObservableScope";
 
 const nothing = Symbol("nothing");
@@ -142,7 +141,7 @@ export function pauseWhen<T>(pause$: Behavior<boolean>) {
 interface ItemHandle<Keys extends unknown[], Data, Item> {
   scope: ObservableScope;
   keys: readonly [...Keys];
-  data$: BehaviorSubject<Data>;
+  data$: State<Data>;
   item: Item;
 }
 
@@ -217,10 +216,10 @@ export function filterBehavior<T, S extends T>(
 ): OperatorFunction<T, Behavior<S> | null> {
   return (input$) =>
     input$.pipe(
-      scan<T, BehaviorSubject<S> | null>((acc$, input) => {
+      scan<T, State<S> | null>((acc$, input) => {
         if (predicate(input)) {
-          const output$ = acc$ ?? new BehaviorSubject(input);
-          output$.next(input);
+          const output$ = acc$ ?? state(input);
+          output$.value = input;
           return output$;
         }
         return null;
@@ -305,7 +304,7 @@ function generateItemsInternal<
             if (item === undefined) {
               // First time requesting the key; create the item
               const scope = new ObservableScope();
-              const data$ = new BehaviorSubject(data);
+              const data$ = state(data);
               logger.debug(
                 `[${name}] Creating item with keys ${keys.join(", ")}`,
               );
@@ -316,7 +315,7 @@ function generateItemsInternal<
                 item: factory(scope, data$, ...keys),
               };
             } else {
-              item.data$.next(data);
+              item.data$.value = data;
             }
 
             // Likewise, disable type checks to insert the item in the nested map

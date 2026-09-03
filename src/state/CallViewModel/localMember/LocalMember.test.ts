@@ -20,7 +20,7 @@ import {
   afterAll,
   beforeEach,
 } from "vitest";
-import { BehaviorSubject, map, of } from "rxjs";
+import { map, of } from "rxjs";
 import { logger } from "matrix-js-sdk/lib/logger";
 import { type LocalParticipant, type LocalTrack } from "livekit-client";
 
@@ -47,7 +47,7 @@ import {
   MatrixRTCTransportMissingError,
 } from "../../../utils/errors";
 import { Epoch, ObservableScope } from "../../ObservableScope";
-import { constant, type State } from "../../Behavior";
+import { constant } from "../../Behavior";
 import { ConnectionManagerData } from "../remoteMembers/ConnectionManager";
 import { ConnectionState, type Connection } from "../remoteMembers/Connection";
 import { type Publisher } from "./Publisher";
@@ -56,6 +56,7 @@ import {
   type LocalTransport,
   type LocalTransportWithSFUConfig,
 } from "./LocalTransport";
+import { state, type State } from "../../Behavior";
 
 initializeWidget();
 
@@ -290,8 +291,8 @@ describe("LocalMembership", () => {
     const scope = new ObservableScope();
 
     const aLocalTransport: LocalTransport = {
-      advertised$: new BehaviorSubject(aTransport),
-      active$: new BehaviorSubject(aTransportWithSFUConfig),
+      advertised$: state(aTransport),
+      active$: state(aTransportWithSFUConfig),
     };
 
     const mockConnectionManager = {
@@ -309,7 +310,7 @@ describe("LocalMembership", () => {
         leaveRoomSession: vi.fn(),
       },
       connectionManager: mockConnectionManager,
-      localTransport$: new BehaviorSubject(aLocalTransport),
+      localTransport$: state(aLocalTransport),
     });
     const expextedLog =
       "'not connected yet' while updating the call intent (this is expected on startup)";
@@ -373,9 +374,9 @@ describe("LocalMembership", () => {
   it("recreates publisher if new connection is used, always unpublish and end tracks", async () => {
     const scope = new ObservableScope();
 
-    const activeTransport$ = new BehaviorSubject(aTransportWithSFUConfig);
+    const activeTransport$ = state(aTransportWithSFUConfig);
     const aLocalTransport: LocalTransport = {
-      advertised$: new BehaviorSubject(aTransport),
+      advertised$: state(aTransport),
       active$: activeTransport$,
     };
 
@@ -413,13 +414,13 @@ describe("LocalMembership", () => {
       connectionManager: {
         connectionManagerData$: constant(new Epoch(connectionManagerData)),
       },
-      localTransport$: new BehaviorSubject(aLocalTransport),
+      localTransport$: state(aLocalTransport),
     });
     await flushPromises();
-    activeTransport$.next({
+    activeTransport$.value = {
       ...aTransportWithSFUConfig,
       transport: bTransport,
-    });
+    };
     await flushPromises();
 
     expect(publisherFactory).toHaveBeenCalledTimes(2);
@@ -443,8 +444,8 @@ describe("LocalMembership", () => {
 
     const publishers: Publisher[] = [];
 
-    const tracks$ = new BehaviorSubject<LocalTrack[]>([]);
-    const publishing$ = new BehaviorSubject<boolean>(false);
+    const tracks$ = state<LocalTrack[]>([]);
+    const publishing$ = state<boolean>(false);
     defaultCreateLocalMemberValues.createPublisherFactory.mockImplementation(
       () => {
         const p = {
@@ -452,7 +453,7 @@ describe("LocalMembership", () => {
           // all the cleanup we need.
           destroy: vi.fn(),
           createAndSetupTracks: vi.fn().mockImplementation(async () => {
-            tracks$.next([{}, {}] as LocalTrack[]);
+            tracks$.value = [{}, {}] as LocalTrack[];
             return Promise.resolve();
           }),
           tracks$,
@@ -468,8 +469,8 @@ describe("LocalMembership", () => {
       >;
 
     const aLocalTransport: LocalTransport = {
-      advertised$: new BehaviorSubject(aTransport),
-      active$: new BehaviorSubject(aTransportWithSFUConfig),
+      advertised$: state(aTransport),
+      active$: state(aTransportWithSFUConfig),
     };
 
     const connectionManagerData = new ConnectionManagerData();
@@ -481,7 +482,7 @@ describe("LocalMembership", () => {
       connectionManager: {
         connectionManagerData$: constant(new Epoch(connectionManagerData)),
       },
-      localTransport$: new BehaviorSubject(aLocalTransport),
+      localTransport$: state(aLocalTransport),
     });
     await flushPromises();
     expect(publisherFactory).toHaveBeenCalledOnce();
@@ -505,20 +506,17 @@ describe("LocalMembership", () => {
 
     const connectionManagerData = new ConnectionManagerData();
 
-    const activeTransport$ =
-      new BehaviorSubject<null | LocalTransportWithSFUConfig>(null);
+    const activeTransport$ = state<null | LocalTransportWithSFUConfig>(null);
 
     const aLocalTransport: LocalTransport = {
-      advertised$: new BehaviorSubject(aTransport),
+      advertised$: state(aTransport),
       active$: activeTransport$,
     };
 
-    const connectionManagerData$ = new BehaviorSubject(
-      new Epoch(connectionManagerData),
-    );
+    const connectionManagerData$ = state(new Epoch(connectionManagerData));
     const publishers: Publisher[] = [];
 
-    const publishing$ = new BehaviorSubject<boolean>(false);
+    const publishing$ = state<boolean>(false);
     const createTrackResolver = Promise.withResolvers<void>();
     const publishResolver = Promise.withResolvers<void>();
     defaultCreateLocalMemberValues.createPublisherFactory.mockImplementation(
@@ -532,7 +530,7 @@ describe("LocalMembership", () => {
           }),
           startPublishing: vi.fn().mockImplementation(async () => {
             await publishResolver.promise;
-            publishing$.next(true);
+            publishing$.value = true;
           }),
           publishing$,
         };
@@ -552,14 +550,14 @@ describe("LocalMembership", () => {
       connectionManager: {
         connectionManagerData$,
       },
-      localTransport$: new BehaviorSubject(aLocalTransport),
+      localTransport$: state(aLocalTransport),
     });
 
     await flushPromises();
     expect(localMembership.localMemberState$.value).toStrictEqual(
       TransportState.Waiting,
     );
-    activeTransport$.next(aTransportWithSFUConfig);
+    activeTransport$.value = aTransportWithSFUConfig;
     await flushPromises();
     expect(localMembership.localMemberState$.value).toStrictEqual({
       matrix: RTCMemberStatus.Connected,
@@ -573,7 +571,7 @@ describe("LocalMembership", () => {
       [],
     );
 
-    connectionManagerData$.next(new Epoch(connectionManagerData2));
+    connectionManagerData$.value = new Epoch(connectionManagerData2);
     await flushPromises();
     expect(localMembership.localMemberState$.value).toStrictEqual({
       matrix: RTCMemberStatus.Connected,
@@ -669,9 +667,10 @@ describe("LocalMembership", () => {
       );
 
       // Simulate startup where membership isn't established yet
-      const hsReason$ = new BehaviorSubject<
-        [boolean, HomeserverDisconnectReason | null]
-      >([false, "membership"]);
+      const hsReason$ = state<[boolean, HomeserverDisconnectReason | null]>([
+        false,
+        "membership",
+      ]);
 
       const connectionManagerData = new ConnectionManagerData();
       connectionManagerData.add(connectionTransportAConnected, []);
@@ -686,16 +685,16 @@ describe("LocalMembership", () => {
         connectionManager: {
           connectionManagerData$: constant(new Epoch(connectionManagerData)),
         },
-        localTransport$: new BehaviorSubject({
-          advertised$: new BehaviorSubject(aTransport),
-          active$: new BehaviorSubject(aTransportWithSFUConfig),
+        localTransport$: state({
+          advertised$: state(aTransport),
+          active$: state(aTransportWithSFUConfig),
         }),
       });
 
       await flushPromises();
 
       // Membership is established — call is now connected
-      hsReason$.next([true, null]);
+      hsReason$.value = [true, null];
 
       expect(trackSpy).not.toHaveBeenCalled();
 
@@ -709,9 +708,10 @@ describe("LocalMembership", () => {
         "track",
       );
 
-      const hsReason$ = new BehaviorSubject<
-        [boolean, HomeserverDisconnectReason | null]
-      >([true, null]);
+      const hsReason$ = state<[boolean, HomeserverDisconnectReason | null]>([
+        true,
+        null,
+      ]);
 
       const connectionManagerData = new ConnectionManagerData();
       connectionManagerData.add(connectionTransportAConnected, []);
@@ -726,16 +726,16 @@ describe("LocalMembership", () => {
         connectionManager: {
           connectionManagerData$: constant(new Epoch(connectionManagerData)),
         },
-        localTransport$: new BehaviorSubject({
-          advertised$: new BehaviorSubject(aTransport),
-          active$: new BehaviorSubject(aTransportWithSFUConfig),
+        localTransport$: state({
+          advertised$: state(aTransport),
+          active$: state(aTransportWithSFUConfig),
         }),
       });
 
       await flushPromises();
 
-      hsReason$.next([false, "sync"]);
-      hsReason$.next([true, null]);
+      hsReason$.value = [false, "sync"];
+      hsReason$.value = [true, null];
 
       expect(trackSpy).toHaveBeenCalledWith(
         defaultCreateLocalMemberValues.roomId,
@@ -753,7 +753,7 @@ describe("LocalMembership", () => {
         "track",
       );
 
-      const connectionState$ = new BehaviorSubject<ConnectionState>(
+      const connectionState$ = state<ConnectionState>(
         ConnectionState.LivekitConnected,
       );
       const mutableConnection = {
@@ -768,24 +768,25 @@ describe("LocalMembership", () => {
         scope,
         ...defaultCreateLocalMemberValues,
         homeserverConnected: {
-          combined$: new BehaviorSubject<
-            [boolean, HomeserverDisconnectReason | null]
-          >([true, null]),
+          combined$: state<[boolean, HomeserverDisconnectReason | null]>([
+            true,
+            null,
+          ]),
           rtsSession$: constant(RTCMemberStatus.Connected),
         },
         connectionManager: {
           connectionManagerData$: constant(new Epoch(connectionManagerData)),
         },
-        localTransport$: new BehaviorSubject({
-          advertised$: new BehaviorSubject(aTransport),
-          active$: new BehaviorSubject(aTransportWithSFUConfig),
+        localTransport$: state({
+          advertised$: state(aTransport),
+          active$: state(aTransportWithSFUConfig),
         }),
       });
 
       await flushPromises();
 
-      connectionState$.next(ConnectionState.LivekitDisconnected);
-      connectionState$.next(ConnectionState.LivekitConnected);
+      connectionState$.value = ConnectionState.LivekitDisconnected;
+      connectionState$.value = ConnectionState.LivekitConnected;
 
       expect(trackSpy).toHaveBeenCalledWith(
         defaultCreateLocalMemberValues.roomId,
@@ -803,9 +804,10 @@ describe("LocalMembership", () => {
         "track",
       );
 
-      const hsReason$ = new BehaviorSubject<
-        [boolean, HomeserverDisconnectReason | null]
-      >([true, null]);
+      const hsReason$ = state<[boolean, HomeserverDisconnectReason | null]>([
+        true,
+        null,
+      ]);
 
       const connectionManagerData = new ConnectionManagerData();
       connectionManagerData.add(connectionTransportAConnected, []);
@@ -820,21 +822,21 @@ describe("LocalMembership", () => {
         connectionManager: {
           connectionManagerData$: constant(new Epoch(connectionManagerData)),
         },
-        localTransport$: new BehaviorSubject({
-          advertised$: new BehaviorSubject(aTransport),
-          active$: new BehaviorSubject(aTransportWithSFUConfig),
+        localTransport$: state({
+          advertised$: state(aTransport),
+          active$: state(aTransportWithSFUConfig),
         }),
       });
 
       await flushPromises();
 
-      hsReason$.next([false, "membership"]);
-      hsReason$.next([true, null]);
+      hsReason$.value = [false, "membership"];
+      hsReason$.value = [true, null];
 
-      hsReason$.next([false, "probablyLeft"]);
-      hsReason$.next([false, "sync"]);
-      hsReason$.next([false, "membership"]);
-      hsReason$.next([true, null]);
+      hsReason$.value = [false, "probablyLeft"];
+      hsReason$.value = [false, "sync"];
+      hsReason$.value = [false, "membership"];
+      hsReason$.value = [true, null];
 
       expect(trackSpy).toHaveBeenCalledTimes(2);
       expect(trackSpy).toHaveBeenNthCalledWith(

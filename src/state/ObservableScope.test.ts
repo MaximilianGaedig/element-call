@@ -6,7 +6,7 @@ Please see LICENSE in the repository root for full details.
 */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { BehaviorSubject, combineLatest, Subject } from "rxjs";
+import { combineLatest, Subject } from "rxjs";
 import { logger } from "matrix-js-sdk/lib/logger";
 import { sleep } from "matrix-js-sdk/lib/utils";
 
@@ -17,6 +17,7 @@ import {
   trackEpoch,
 } from "./ObservableScope";
 import { withTestScheduler } from "../utils/test";
+import { state } from "./Behavior";
 
 describe("Epoch", () => {
   it("should map the value correctly", () => {
@@ -63,7 +64,7 @@ describe("Epoch", () => {
   });
 
   it("diamonds emits in a predictable order", () => {
-    const sb$ = new BehaviorSubject("initial");
+    const sb$ = state("initial");
     const root$ = sb$.pipe(trackEpoch());
     const derivedA$ = root$.pipe(mapEpoch((e) => e + "-A"));
     const derivedB$ = root$.pipe(mapEpoch((e) => e + "-B"));
@@ -82,8 +83,8 @@ describe("Epoch", () => {
         );
       },
     );
-    sb$.next("updated");
-    sb$.next("ANOTERUPDATE");
+    sb$.value = "updated";
+    sb$.value = "ANOTERUPDATE";
   });
 
   it("behavior test", () => {
@@ -116,7 +117,7 @@ describe("Reconcile", () => {
   it("should wait clean up before processing next", async () => {
     vi.useFakeTimers();
     const scope = new ObservableScope();
-    const behavior$ = new BehaviorSubject<number>(0);
+    const behavior$ = state<number>(0);
 
     const setup = vi.fn().mockImplementation(async () => await sleep(100));
     const cleanup = vi
@@ -134,7 +135,7 @@ describe("Reconcile", () => {
     expect(cleanup).toHaveBeenCalledTimes(0);
 
     // Send next value
-    behavior$.next(1);
+    behavior$.value = 1;
     await vi.advanceTimersByTimeAsync(50);
     // Should not have started setup for 1 yet
     expect(setup).toHaveBeenCalledTimes(1);
@@ -150,7 +151,7 @@ describe("Reconcile", () => {
   it("should skip intermediates values that are not setup", async () => {
     vi.useFakeTimers();
     const scope = new ObservableScope();
-    const behavior$ = new BehaviorSubject<number>(0);
+    const behavior$ = state<number>(0);
 
     const setup = vi
       .fn()
@@ -171,10 +172,10 @@ describe("Reconcile", () => {
     await vi.advanceTimersByTimeAsync(120);
 
     // Send 4 next values quickly
-    behavior$.next(1);
-    behavior$.next(2);
-    behavior$.next(3);
-    behavior$.next(4);
+    behavior$.value = 1;
+    behavior$.value = 2;
+    behavior$.value = 3;
+    behavior$.value = 4;
 
     await vi.advanceTimersByTimeAsync(3000);
     // should have only called cleanup for 0
@@ -195,7 +196,7 @@ describe("Reconcile", () => {
   it("should wait for setup to complete before starting cleanup", async () => {
     vi.useFakeTimers();
     const scope = new ObservableScope();
-    const behavior$ = new BehaviorSubject<number>(0);
+    const behavior$ = state<number>(0);
 
     const setup = vi
       .fn()
@@ -217,7 +218,7 @@ describe("Reconcile", () => {
     // Setup for 0 should be in progress
     expect(setup).toHaveBeenCalledTimes(1);
 
-    behavior$.next(1);
+    behavior$.value = 1;
     await vi.advanceTimersByTimeAsync(500);
 
     // Should not have started setup for 1 yet

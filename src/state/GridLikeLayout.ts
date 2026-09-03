@@ -5,14 +5,13 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { type BehaviorSubject } from "rxjs";
-
 import {
   type Alignment,
   type Layout,
   type LayoutMedia,
 } from "./layout-types.ts";
 import { type TileStore } from "./TileStore";
+import { type State } from "./Behavior";
 
 export type GridLikeLayoutType =
   | "grid"
@@ -25,7 +24,7 @@ export type GridLikeLayoutType =
  */
 export function gridLikeLayout(
   media: LayoutMedia & { type: GridLikeLayoutType },
-  spotlightAlignment$: BehaviorSubject<Alignment>,
+  spotlightAlignment$: State<Alignment>,
   visibleTiles: number,
   setVisibleTiles: (value: number) => void,
   prevTiles: TileStore,

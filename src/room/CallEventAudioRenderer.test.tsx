@@ -86,7 +86,7 @@ test("plays one sound when entering a call", () => {
 
   // Joining a call usually means remote participants are added later.
   act(() => {
-    rtcMemberships$.next([localRtcMember, aliceRtcMember, bobRtcMember]);
+    rtcMemberships$.value = [localRtcMember, aliceRtcMember, bobRtcMember];
   });
   expect(playSound).toHaveBeenCalledOnce();
 });
@@ -100,7 +100,7 @@ test("plays a sound when a user joins", () => {
   render(<CallEventAudioRenderer vm={vm} />);
 
   act(() => {
-    rtcMemberships$.next([localRtcMember, aliceRtcMember, bobRtcMember]);
+    rtcMemberships$.value = [localRtcMember, aliceRtcMember, bobRtcMember];
   });
   // Play a sound when joining a call.
   expect(playSound).toBeCalledWith("join");
@@ -114,7 +114,7 @@ test("plays a sound when a user leaves", () => {
   render(<CallEventAudioRenderer vm={vm} />);
 
   act(() => {
-    rtcMemberships$.next([localRtcMember]);
+    rtcMemberships$.value = [localRtcMember];
   });
   expect(playSound).toBeCalledWith("left");
 });
@@ -129,7 +129,7 @@ test("does not play a sound before the call is successful", () => {
   render(<CallEventAudioRenderer vm={vm} />);
 
   act(() => {
-    rtcMemberships$.next([localRtcMember]);
+    rtcMemberships$.value = [localRtcMember];
   });
   expect(playSound).not.toBeCalledWith("left");
 });
@@ -153,8 +153,9 @@ test("plays no sound when the participant list is more than the maximum size", (
   // Remove the last membership in the array to test the leaving sound
   // (The array has length MAX_PARTICIPANT_COUNT_FOR_SOUND + 1)
   act(() => {
-    rtcMemberships$.next(
-      mockRtcMemberships.slice(0, MAX_PARTICIPANT_COUNT_FOR_SOUND),
+    rtcMemberships$.value = mockRtcMemberships.slice(
+      0,
+      MAX_PARTICIPANT_COUNT_FOR_SOUND,
     );
   });
   expect(playSound).toBeCalledWith("left");
@@ -169,14 +170,14 @@ test("plays one sound when a hand is raised", () => {
   render(<CallEventAudioRenderer vm={vm} />);
 
   act(() => {
-    handRaisedSubject$.next({
+    handRaisedSubject$.value = {
       // TODO: What is this string supposed to be?
       [`${bobRtcMember.userId}:${bobRtcMember.deviceId}`]: {
         time: new Date(),
         membershipEventId: "",
         reactionEventId: "",
       },
-    });
+    };
   });
   expect(playSound).toBeCalledWith("raiseHand");
 });
@@ -190,7 +191,7 @@ test("should not play a sound when a hand raise is retracted", () => {
 
   playSound.mockClear();
   act(() => {
-    handRaisedSubject$.next({
+    handRaisedSubject$.value = {
       ["foo"]: {
         time: new Date(),
         membershipEventId: "",
@@ -201,17 +202,17 @@ test("should not play a sound when a hand raise is retracted", () => {
         membershipEventId: "",
         reactionEventId: "",
       },
-    });
+    };
   });
   expect(playSound).toHaveBeenCalledExactlyOnceWith("raiseHand");
   act(() => {
-    handRaisedSubject$.next({
+    handRaisedSubject$.value = {
       ["foo"]: {
         time: new Date(),
         membershipEventId: "",
         reactionEventId: "",
       },
-    });
+    };
   });
   expect(playSound).toHaveBeenCalledExactlyOnceWith("raiseHand");
 });

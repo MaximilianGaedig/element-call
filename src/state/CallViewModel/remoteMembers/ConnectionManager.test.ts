@@ -6,7 +6,6 @@ Please see LICENSE in the repository root for full details.
 */
 
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { BehaviorSubject } from "rxjs";
 import { type LivekitTransportConfig } from "matrix-js-sdk/lib/matrixrtc";
 import { type RemoteParticipant } from "livekit-client";
 import { logger } from "matrix-js-sdk/lib/logger";
@@ -21,6 +20,7 @@ import { type Connection } from "./Connection.ts";
 import { ownMemberMock, withTestScheduler } from "../../../utils/test.ts";
 import { areLivekitTransportsEqual } from "./MatrixLivekitMembers.ts";
 import { constant, type Behavior } from "../../Behavior.ts";
+import { state } from "../../Behavior";
 
 // Some test constants
 
@@ -50,7 +50,7 @@ beforeEach(() => {
       (scope: ObservableScope, transport: LivekitTransportConfig) => {
         const mockConnection = {
           transport,
-          remoteParticipants$: new BehaviorSubject([]),
+          remoteParticipants$: state([]),
         } as unknown as Connection;
         vi.mocked(mockConnection).start = vi.fn();
         vi.mocked(mockConnection).stop = vi.fn();
@@ -219,7 +219,7 @@ describe("connectionManagerData$ stream", () => {
     ): Behavior<RemoteParticipant[]> {
       return (
         fakeRemoteParticipantsStreams.get(keyForTransport(transport)) ??
-        new BehaviorSubject([])
+        state([])
       );
     }
 
@@ -228,9 +228,7 @@ describe("connectionManagerData$ stream", () => {
       .fn()
       .mockImplementation(
         (scope: ObservableScope, transport: LivekitTransportConfig) => {
-          const fakeRemoteParticipants$ = new BehaviorSubject<
-            RemoteParticipant[]
-          >([]);
+          const fakeRemoteParticipants$ = state<RemoteParticipant[]>([]);
           const mockConnection = {
             transport,
             remoteParticipants$: getRemoteParticipantsFor(transport),

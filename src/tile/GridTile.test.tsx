@@ -13,7 +13,6 @@ import { test, expect } from "vitest";
 import { act, render, screen } from "@testing-library/react";
 import { axe } from "vitest-axe";
 import { type MatrixRTCSession } from "matrix-js-sdk/lib/matrixrtc";
-import { BehaviorSubject } from "rxjs";
 
 import { GridTile } from "./GridTile";
 import {
@@ -27,7 +26,7 @@ import {
 import { GridTileViewModel } from "../state/TileViewModel";
 import { ReactionsSenderProvider } from "../reactions/useReactionsSender";
 import type { CallViewModel } from "../state/CallViewModel/CallViewModel";
-import { constant } from "../state/Behavior";
+import { constant, state } from "../state/Behavior";
 import {
   createRingingMedia,
   type RingingMediaViewModel,
@@ -129,9 +128,8 @@ test("GridTile displays local media", async () => {
 });
 
 test("GridTile displays ringing media", async () => {
-  const pickupState$ = new BehaviorSubject<
-    RingingMediaViewModel["pickupState$"]["value"]
-  >("ringing");
+  const pickupState$ =
+    state<RingingMediaViewModel["pickupState$"]["value"]>("ringing");
   const vm = createRingingMedia({
     pickupState$,
     id: "test",
@@ -162,6 +160,8 @@ test("GridTile displays ringing media", async () => {
   screen.getByText("Calling…");
 
   // Alice declines the call
-  act(() => pickupState$.next("decline"));
+  act(() => {
+    pickupState$.value = "decline";
+  });
   screen.getByText("Call ended");
 });

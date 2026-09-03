@@ -5,8 +5,6 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { type BehaviorSubject } from "rxjs";
-
 import { type LocalUserMediaViewModel } from "./media/LocalUserMediaViewModel.ts";
 import { type MediaViewModel } from "./media/MediaViewModel.ts";
 import { type RingingMediaViewModel } from "./media/RingingMediaViewModel.ts";
@@ -15,7 +13,7 @@ import {
   type GridTileViewModel,
   type SpotlightTileViewModel,
 } from "./TileViewModel.ts";
-import { type Behavior } from "./Behavior.ts";
+import { type Behavior, type State } from "./Behavior.ts";
 import { shallowEquals as arrayShallowEquals } from "../utils/array.ts";
 
 export interface GridLayoutMedia {
@@ -84,7 +82,7 @@ export interface GridLayout {
   type: "grid";
   spotlight?: SpotlightTileViewModel;
   grid: GridTileViewModel[];
-  spotlightAlignment$: BehaviorSubject<Alignment>;
+  spotlightAlignment$: State<Alignment>;
   setVisibleTiles: (value: number) => void;
 }
 
@@ -106,14 +104,14 @@ export interface SpotlightExpandedLayout {
   type: "spotlight-expanded";
   spotlight: SpotlightTileViewModel;
   pip?: GridTileViewModel;
-  pipAlignment$: BehaviorSubject<Alignment>;
+  pipAlignment$: State<Alignment>;
 }
 
 export interface OneOnOneDesktopLayout {
   type: "one-on-one-desktop";
   spotlight: GridTileViewModel;
   pip: GridTileViewModel;
-  pipAlignment$: BehaviorSubject<Alignment>;
+  pipAlignment$: State<Alignment>;
 }
 
 export interface OneOnOneMobileLayout {
@@ -121,7 +119,7 @@ export interface OneOnOneMobileLayout {
   spotlight: SpotlightTileViewModel;
   pip?: GridTileViewModel;
   pipSize$: Behavior<"sm" | "lg">;
-  pipAlignment$: BehaviorSubject<Alignment>;
+  pipAlignment$: State<Alignment>;
 }
 
 export interface PipLayout {

@@ -15,7 +15,7 @@ import {
   type TrackPublication,
 } from "livekit-client";
 import { SyncState } from "matrix-js-sdk/lib/sync";
-import { BehaviorSubject, combineLatest, map, of } from "rxjs";
+import { combineLatest, map, of } from "rxjs";
 import { onTestFinished, vi } from "vitest";
 import { ClientEvent, type RoomMember, type MatrixClient } from "matrix-js-sdk";
 import EventEmitter from "events";
@@ -53,7 +53,7 @@ import {
   local,
   localRtcMember,
 } from "../../utils/test-fixtures";
-import { type Behavior, constant } from "../Behavior";
+import { type Behavior, constant, state, type State } from "../Behavior";
 import { type ProcessorState } from "../../livekit/TrackProcessorContext";
 import { type MediaDevices } from "../MediaDevices";
 import { type MatrixRTCMode } from "../../config/ConfigOptions";
@@ -109,7 +109,7 @@ export function withCallViewModel(mode: MatrixRTCMode) {
       vm: CallViewModel,
       rtcSession: MockRTCSession,
       subjects: {
-        raisedHands$: BehaviorSubject<Record<string, RaisedHandInfo>>;
+        raisedHands$: State<Record<string, RaisedHandInfo>>;
       },
       setSyncState: (value: SyncState) => void,
     ) => void,
@@ -185,10 +185,8 @@ export function withCallViewModel(mode: MatrixRTCMode) {
       .spyOn(ComponentsCore, "roomEventSelector")
       .mockImplementation((_room, _eventType) => of());
     const muteStates = mockMuteStates();
-    const raisedHands$ = new BehaviorSubject<Record<string, RaisedHandInfo>>(
-      {},
-    );
-    const reactions$ = new BehaviorSubject<Record<string, ReactionInfo>>({});
+    const raisedHands$ = state<Record<string, RaisedHandInfo>>({});
+    const reactions$ = state<Record<string, ReactionInfo>>({});
 
     const livekitRoomFactory = (): LivekitRoom =>
       mockLivekitRoom({
@@ -243,7 +241,7 @@ export function withCallViewModel(mode: MatrixRTCMode) {
       },
       raisedHands$,
       reactions$,
-      new BehaviorSubject<ProcessorState>({
+      state<ProcessorState>({
         processor: undefined,
         supported: undefined,
       }),

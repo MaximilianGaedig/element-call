@@ -6,7 +6,6 @@ Please see LICENSE in the repository root for full details.
 */
 
 import { describe, expect, it } from "vitest";
-import { BehaviorSubject } from "rxjs";
 
 import { testScope } from "../utils/test";
 import { type CallViewModel } from "../state/CallViewModel/CallViewModel";
@@ -14,11 +13,12 @@ import {
   createDeveloperSettingsTabViewModel,
   outOfCallDeveloperSettingsTabViewModel,
 } from "./DeveloperSettingsTabViewModel";
+import { state } from "../state/Behavior";
 
 describe("createDeveloperSettingsTabViewModel", () => {
   it("projects the key rotation state of the call", () => {
-    const keyRotationSuppressed$ = new BehaviorSubject(false);
-    const participantCount$ = new BehaviorSubject(5);
+    const keyRotationSuppressed$ = state(false);
+    const participantCount$ = state(5);
     const vm = createDeveloperSettingsTabViewModel(testScope(), {
       keyRotationSuppressed$,
       participantCount$,
@@ -29,8 +29,8 @@ describe("createDeveloperSettingsTabViewModel", () => {
       participantCount: 5,
     });
 
-    participantCount$.next(50);
-    keyRotationSuppressed$.next(true);
+    participantCount$.value = 50;
+    keyRotationSuppressed$.value = true;
 
     expect(vm.keyRotation$.value).toEqual({
       suppressed: true,

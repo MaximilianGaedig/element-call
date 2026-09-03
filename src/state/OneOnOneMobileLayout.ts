@@ -6,15 +6,13 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { type BehaviorSubject } from "rxjs";
-
 import {
   type Alignment,
   type OneOnOneMobileLayout,
   type OneOnOneMobileLayoutMedia,
 } from "./layout-types";
 import { type TileStore } from "./TileStore";
-import { type Behavior } from "./Behavior";
+import { type Behavior, type State } from "./Behavior";
 
 /**
  * Produces a one-on-one mobile layout with the given media.
@@ -22,7 +20,7 @@ import { type Behavior } from "./Behavior";
 export function oneOnOneMobileLayout(
   media: OneOnOneMobileLayoutMedia,
   pipSize$: Behavior<"sm" | "lg">,
-  pipAlignment$: BehaviorSubject<Alignment>,
+  pipAlignment$: State<Alignment>,
   prevTiles: TileStore,
 ): [OneOnOneMobileLayout, TileStore] {
   const update = prevTiles.from(media.pip === undefined ? 0 : 1);

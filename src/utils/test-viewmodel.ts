@@ -6,7 +6,6 @@ Please see LICENSE in the repository root for full details.
 */
 
 import { type CallMembership } from "matrix-js-sdk/lib/matrixrtc";
-import { BehaviorSubject } from "rxjs";
 import { vitest } from "vitest";
 import { type RelationsContainer } from "matrix-js-sdk/lib/models/relations-container";
 import EventEmitter from "events";
@@ -37,7 +36,7 @@ import {
 import { type MediaDevices } from "../state/MediaDevices";
 import { aliceRtcMember, localRtcMember } from "./test-fixtures";
 import { type RaisedHandInfo, type ReactionInfo } from "../reactions";
-import { constant } from "../state/Behavior";
+import { constant, state, type State } from "../state/Behavior";
 import { MatrixRTCMode } from "../config/ConfigOptions";
 import { createCallFooterViewModel } from "../components/CallFooterViewModel";
 import { type FooterSnapshot } from "../components/CallFooter";
@@ -53,7 +52,7 @@ export function getBasicRTCSession(
 ): {
   rtcSession: MockRTCSession;
   matrixRoom: Room;
-  rtcMemberships$: BehaviorSubject<CallMembership[]>;
+  rtcMemberships$: State<CallMembership[]>;
 } {
   const matrixRoomId = "!myRoomId:example.com";
   const matrixRoomMembers = new Map(members.map((p) => [p.userId, p]));
@@ -113,9 +112,7 @@ export function getBasicRTCSession(
       ),
   });
 
-  const rtcMemberships$ = new BehaviorSubject<CallMembership[]>(
-    initialRtcMemberships,
-  );
+  const rtcMemberships$ = state<CallMembership[]>(initialRtcMemberships);
 
   const fakeRtcSession = new MockRTCSession(matrixRoom).withMemberships(
     rtcMemberships$,
@@ -143,17 +140,17 @@ export function getBasicCallViewModelEnvironment(
   vm: CallViewModel;
   footerVm: ViewModel<FooterSnapshot>;
   developerSettingsVm: ViewModel<DeveloperSettingsSnapshot>;
-  rtcMemberships$: BehaviorSubject<CallMembership[]>;
+  rtcMemberships$: State<CallMembership[]>;
   rtcSession: MockRTCSession;
-  handRaisedSubject$: BehaviorSubject<Record<string, RaisedHandInfo>>;
-  reactionsSubject$: BehaviorSubject<Record<string, ReactionInfo>>;
+  handRaisedSubject$: State<Record<string, RaisedHandInfo>>;
+  reactionsSubject$: State<Record<string, ReactionInfo>>;
 } {
   const { rtcSession, matrixRoom, rtcMemberships$ } = getBasicRTCSession(
     members,
     initialRtcMemberships,
   );
-  const handRaisedSubject$ = new BehaviorSubject({});
-  const reactionsSubject$ = new BehaviorSubject({});
+  const handRaisedSubject$ = state({});
+  const reactionsSubject$ = state({});
 
   const scope = testScope();
   const muteStates = mockMuteStates();

@@ -81,13 +81,13 @@ test("Can raise hand", async () => {
   );
   act(() => {
     // Mock receiving a reaction.
-    handRaisedSubject$.next({
+    handRaisedSubject$.value = {
       [localIdent]: {
         time: new Date(),
         reactionEventId: "",
         membershipEventId: localRtcMember.eventId!,
       },
-    });
+    };
   });
   expect(container).toMatchSnapshot();
 });
@@ -103,13 +103,13 @@ test("Can lower hand", async () => {
   await user.click(getByLabelText("Reactions"));
   await user.click(getByLabelText("Raise hand"));
   act(() => {
-    handRaisedSubject$.next({
+    handRaisedSubject$.value = {
       [localIdent]: {
         time: new Date(),
         reactionEventId,
         membershipEventId: localRtcMember.eventId!,
       },
-    });
+    };
   });
   await user.click(getByLabelText("Reactions"));
   await user.click(getByLabelText("Lower hand"));
@@ -119,7 +119,7 @@ test("Can lower hand", async () => {
   );
   act(() => {
     // Mock receiving a redacted reaction.
-    handRaisedSubject$.next({});
+    handRaisedSubject$.value = {};
   });
   expect(container).toMatchSnapshot();
 });

@@ -10,7 +10,7 @@ import {
   type CallMembership,
   type LivekitTransport,
 } from "matrix-js-sdk/lib/matrixrtc";
-import { BehaviorSubject, combineLatest, map, type Observable } from "rxjs";
+import { combineLatest, map, type Observable } from "rxjs";
 
 import { type IConnectionManager } from "./ConnectionManager.ts";
 import {
@@ -32,6 +32,7 @@ import {
 import { type Connection } from "./Connection.ts";
 import { constant } from "../../Behavior.ts";
 import { localRtcMember } from "../../../utils/test-fixtures.ts";
+import { state } from "../../Behavior";
 
 let testScope: ObservableScope;
 
@@ -77,10 +78,8 @@ function epochMeWith$<T, U>(
 }
 
 test("should signal participant not yet connected to livekit", async () => {
-  const mockedMemberships$ = new BehaviorSubject([bobMembership]);
-  const mockConnectionManagerData$ = new BehaviorSubject(
-    new ConnectionManagerData(),
-  );
+  const mockedMemberships$ = state([bobMembership]);
+  const mockConnectionManagerData$ = state(new ConnectionManagerData());
   const { memberships$, membershipsWithTransport$ } =
     createEpochedMemberships$(mockedMemberships$);
 
@@ -276,10 +275,7 @@ describe("Publication edge case", () => {
 });
 
 test("bob is publishing in the wrong connection", async () => {
-  const mockedMemberships$ = new BehaviorSubject([
-    bobMembership,
-    carlMembership,
-  ]);
+  const mockedMemberships$ = state([bobMembership, carlMembership]);
 
   const { memberships$, membershipsWithTransport$ } =
     createEpochedMemberships$(mockedMemberships$);
@@ -300,9 +296,7 @@ test("bob is publishing in the wrong connection", async () => {
     mockRemoteParticipant({ identity: bobParticipantId }),
   ]);
 
-  const connectionsWithPublisher$ = new BehaviorSubject(
-    connectionWithPublisher,
-  );
+  const connectionsWithPublisher$ = state(connectionWithPublisher);
   const connectionManagerData$ = epochMeWith$(
     memberships$,
     connectionsWithPublisher$,

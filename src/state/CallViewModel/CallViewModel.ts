@@ -15,7 +15,6 @@ import {
 } from "livekit-client";
 import { type Room as MatrixRoom } from "matrix-js-sdk";
 import {
-  BehaviorSubject,
   catchError,
   combineLatest,
   distinctUntilChanged,
@@ -81,7 +80,7 @@ import {
 } from "../../reactions";
 import { shallowEquals as shallowArrayEquals } from "../../utils/array";
 import { type MediaDevices } from "../MediaDevices";
-import { constant, type Behavior } from "../Behavior";
+import { constant, type Behavior, state } from "../Behavior";
 import { E2eeType } from "../../e2ee/e2eeType";
 import { MatrixKeyProvider } from "../../e2ee/matrixKeyProvider";
 import { type MuteStates } from "../MuteStates";
@@ -1471,9 +1470,9 @@ export function createCallViewModel$(
     windowMode$.pipe(map((mode) => mode !== "pip")),
   );
 
-  const settingsOpen$ = new BehaviorSubject(false);
+  const settingsOpen$ = state(false);
   const setSettingsOpen$ = constant((open: boolean) => {
-    settingsOpen$.next(open);
+    settingsOpen$.value = open;
   });
 
   const showHeader$ = scope.behavior<boolean>(
@@ -1493,7 +1492,7 @@ export function createCallViewModel$(
   /**
    * The alignment of the floating spotlight tile, if present.
    */
-  const spotlightAlignment$ = new BehaviorSubject<Alignment>({
+  const spotlightAlignment$ = state<Alignment>({
     inline: "end",
     block: "end",
   });
@@ -1506,14 +1505,14 @@ export function createCallViewModel$(
   /**
    * The alignment of the small picture-in-picture tile, if present, when in portrait.
    */
-  const portraitPipAlignment$ = new BehaviorSubject<Alignment>({
+  const portraitPipAlignment$ = state<Alignment>({
     inline: "end",
     block: "end",
   });
   /**
    * The alignment of the small picture-in-picture tile, if present, when in landscape.
    */
-  const landscapePipAlignment$ = new BehaviorSubject<Alignment>({
+  const landscapePipAlignment$ = state<Alignment>({
     inline: "end",
     block: "start",
   });

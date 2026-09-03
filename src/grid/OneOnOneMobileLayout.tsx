@@ -48,7 +48,7 @@ export const makeOneOnOneMobileLayout: CallLayout<
     const pipAlignment = useBehavior(model.pipAlignment$);
     const onDragLocalTile: DragCallback = useCallback(
       ({ xRatio, yRatio }) =>
-        model.pipAlignment$.next({
+        (model.pipAlignment$.value = {
           block: yRatio < 0.5 ? "start" : "end",
           inline: xRatio < 0.5 ? "start" : "end",
         }),

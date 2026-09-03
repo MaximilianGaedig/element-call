@@ -7,7 +7,6 @@ Please see LICENSE in the repository root for full details.
 
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { Room as LivekitRoom } from "livekit-client";
-import { BehaviorSubject } from "rxjs";
 import fetchMock from "fetch-mock";
 import { logger } from "matrix-js-sdk/lib/logger";
 import EventEmitter from "events";
@@ -32,6 +31,7 @@ import {
   cameraBitrate,
   cameraCodec,
 } from "../../../settings/settings.ts";
+import { state } from "../../Behavior";
 
 // At the top of your test file, after imports
 vi.mock("livekit-client", async (importOriginal) => {
@@ -80,7 +80,7 @@ describe("ECConnectionFactory - Audio inputs options", () => {
         mockClient,
         "!roomid:example.org",
         mockMediaDevices({}),
-        new BehaviorSubject<ProcessorState>({
+        state<ProcessorState>({
           supported: true,
           processor: undefined,
         }),
@@ -128,7 +128,7 @@ describe("ECConnectionFactory - ControlledAudioDevice", () => {
             select: () => {},
           },
         }),
-        new BehaviorSubject<ProcessorState>({
+        state<ProcessorState>({
           supported: true,
           processor: undefined,
         }),
@@ -163,7 +163,7 @@ describe("ECConnectionFactory - Camera quality settings", () => {
       mockClient,
       "!roomid:example.org",
       mockMediaDevices({}),
-      new BehaviorSubject<ProcessorState>({
+      state<ProcessorState>({
         supported: true,
         processor: undefined,
       }),
@@ -200,7 +200,7 @@ describe("ECConnectionFactory - Camera quality settings", () => {
       mockClient,
       "!roomid:example.org",
       mockMediaDevices({}),
-      new BehaviorSubject<ProcessorState>({
+      state<ProcessorState>({
         supported: true,
         processor: undefined,
       }),
@@ -238,7 +238,7 @@ describe("ECConnectionFactory - Camera quality settings", () => {
       mockClient,
       "!roomid:example.org",
       mockMediaDevices({}),
-      new BehaviorSubject<ProcessorState>({
+      state<ProcessorState>({
         supported: true,
         processor: undefined,
       }),

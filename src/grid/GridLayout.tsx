@@ -51,7 +51,7 @@ export const makeGridLayout: CallLayout<GridLayoutModel> = ({
 
     const onDragSpotlight: DragCallback = useCallback(
       ({ xRatio, yRatio }) =>
-        model.spotlightAlignment$.next({
+        (model.spotlightAlignment$.value = {
           block: yRatio < 0.5 ? "start" : "end",
           inline: xRatio < 0.5 ? "start" : "end",
         }),

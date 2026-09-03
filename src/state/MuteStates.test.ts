@@ -6,7 +6,6 @@ Please see LICENSE in the repository root for full details.
 */
 
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { BehaviorSubject } from "rxjs";
 import { logger } from "matrix-js-sdk/lib/logger";
 
 import { MuteStates, MuteState } from "./MuteStates";
@@ -17,7 +16,7 @@ import {
   type SelectedAudioOutputDevice,
   type SelectedDevice,
 } from "./MediaDevices";
-import { constant } from "./Behavior";
+import { constant, state } from "./Behavior";
 import { ObservableScope } from "./ObservableScope";
 import { flushPromises, mockMediaDevices } from "../utils/test";
 import { initializeWidget } from "../widget";
@@ -38,7 +37,7 @@ afterEach(() => {
 
 describe("MuteState", () => {
   test("should automatically mute if force mute is set", async () => {
-    const forceMute$ = new BehaviorSubject<boolean>(false);
+    const forceMute$ = state<boolean>(false);
 
     const deviceStub = {
       available$: constant(
@@ -67,7 +66,7 @@ describe("MuteState", () => {
     expect(lastEnabled).toBe(true);
 
     // Now force mute
-    forceMute$.next(true);
+    forceMute$.value = true;
     await flushPromises();
     // Should automatically mute
     expect(lastEnabled).toBe(false);
@@ -76,7 +75,7 @@ describe("MuteState", () => {
     expect(setEnabled).toBeNull();
 
     // Disable force mute
-    forceMute$.next(false);
+    forceMute$.value = false;
     await flushPromises();
 
     // TODO I'd expect it to go back to previous state (enabled)
@@ -168,9 +167,7 @@ describe("MuteStates", () => {
     AudioOutputDeviceLabel,
     SelectedAudioOutputDevice
   > {
-    const selected$ = new BehaviorSubject<
-      SelectedAudioOutputDevice | undefined
-    >({
+    const selected$ = state<SelectedAudioOutputDevice | undefined>({
       id: "default",
       virtualEarpiece: false,
     });
@@ -189,19 +186,17 @@ describe("MuteStates", () => {
           logger.warn(`Attempted to select unknown device id: ${id}`);
           return;
         }
-        selected$.next({
+        selected$.value = {
           id,
           /** For test purposes we ignore this */
           virtualEarpiece: false,
-        });
+        };
       },
     };
   }
 
   function aVideoInput(): MediaDevice<DeviceLabel, SelectedDevice> {
-    const selected$ = new BehaviorSubject<SelectedDevice | undefined>(
-      undefined,
-    );
+    const selected$ = state<SelectedDevice | undefined>(undefined);
     return {
       available$: constant(
         new Map<string, DeviceLabel>([
@@ -215,7 +210,7 @@ describe("MuteStates", () => {
           logger.warn(`Attempted to select unknown device id: ${id}`);
           return;
         }
-        selected$.next({ id });
+        selected$.value = { id };
       },
     };
   }

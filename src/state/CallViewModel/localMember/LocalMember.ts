@@ -22,7 +22,6 @@ import {
   type MatrixRTCSession,
 } from "matrix-js-sdk/lib/matrixrtc";
 import {
-  BehaviorSubject,
   catchError,
   combineLatest,
   distinctUntilChanged,
@@ -72,6 +71,7 @@ import {
 import { type HomeserverConnected } from "./HomeserverConnected.ts";
 import { type LocalTransport } from "./LocalTransport.ts";
 import { areLivekitTransportsEqual } from "../remoteMembers/MatrixLivekitMembers.ts";
+import { state } from "../../Behavior";
 
 export enum TransportState {
   /** Not even a transport is available to the LocalMembership */
@@ -311,12 +311,12 @@ export const createLocalMembership$ = ({
 
   // This should be used in a combineLatest with publisher$ to connect.
   // to make it possible to call startTracks before the preferredTransport$ has resolved.
-  const joinAndPublishRequested$ = new BehaviorSubject(false);
+  const joinAndPublishRequested$ = state(false);
 
   /**
    * The publisher is stored in here an abstracts creating and publishing tracks.
    */
-  const publisher$ = new BehaviorSubject<Publisher | null>(null);
+  const publisher$ = state<Publisher | null>(null);
 
   const startTracks = (): void => {
     trackStartRequested.resolve();
@@ -325,11 +325,11 @@ export const createLocalMembership$ = ({
 
   const requestJoinAndPublish = (): void => {
     trackStartRequested.resolve();
-    joinAndPublishRequested$.next(true);
+    joinAndPublishRequested$.value = true;
   };
 
   const requestDisconnect = (): void => {
-    joinAndPublishRequested$.next(false);
+    joinAndPublishRequested$.value = false;
   };
 
   // Take care of the publisher$
@@ -346,7 +346,7 @@ export const createLocalMembership$ = ({
     );
     if (connection !== null) {
       const publisher = createPublisherFactory(connection);
-      publisher$.next(publisher);
+      publisher$.value = publisher;
 
       // Clean-up callback
       return Promise.resolve(async (): Promise<void> => {
@@ -401,24 +401,22 @@ export const createLocalMembership$ = ({
   // STATE COMPUTATION
 
   // These are non fatal since we can join a room and concume media even though publishing failed.
-  const publishError$ = new BehaviorSubject<ElementCallError | null>(null);
+  const publishError$ = state<ElementCallError | null>(null);
   const setPublishError = (e: ElementCallError): void => {
     if (publishError$.value !== null) {
       logger.error("Multiple Media Errors:", e);
     } else {
-      publishError$.next(e);
+      publishError$.value = e;
     }
   };
 
-  const fatalTransportError$ = new BehaviorSubject<ElementCallError | null>(
-    null,
-  );
+  const fatalTransportError$ = state<ElementCallError | null>(null);
 
   const setTransportError = (e: ElementCallError): void => {
     if (fatalTransportError$.value !== null) {
       logger.error("Multiple Transport Errors:", e);
     } else {
-      fatalTransportError$.next(e);
+      fatalTransportError$.value = e;
     }
   };
 
@@ -464,12 +462,12 @@ export const createLocalMembership$ = ({
       distinctUntilChanged(deepCompare),
     ),
   );
-  const fatalMatrixError$ = new BehaviorSubject<ElementCallError | null>(null);
+  const fatalMatrixError$ = state<ElementCallError | null>(null);
   const setMatrixError = (e: ElementCallError): void => {
     if (fatalMatrixError$.value !== null) {
       logger.error("Multiple Matrix Errors:", e);
     } else {
-      fatalMatrixError$.next(e);
+      fatalMatrixError$.value = e;
     }
   };
 

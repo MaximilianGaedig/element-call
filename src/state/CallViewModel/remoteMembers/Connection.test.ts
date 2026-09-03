@@ -539,7 +539,7 @@ describe("remote participants", () => {
 //   function createSetup(): void {
 //     setUpPublishConnection();
 
-//     const fakeTrackProcessorSubject$ = new BehaviorSubject<ProcessorState>({
+//     const fakeTrackProcessorSubject$ = state<ProcessorState>({
 //       supported: true,
 //       processor: undefined,
 //     });
@@ -553,19 +553,19 @@ describe("remote participants", () => {
 
 //     const audioInput = {
 //       available$: of(new Map([["mic1", { id: "mic1" }]])),
-//       selected$: new BehaviorSubject({ id: "mic1" }),
+//       selected$: state({ id: "mic1" }),
 //       select(): void {},
 //     };
 
 //     const videoInput = {
 //       available$: of(new Map([["cam1", { id: "cam1" }]])),
-//       selected$: new BehaviorSubject({ id: "cam1" }),
+//       selected$: state({ id: "cam1" }),
 //       select(): void {},
 //     };
 
 //     const audioOutput = {
 //       available$: of(new Map([["speaker", { id: "speaker" }]])),
-//       selected$: new BehaviorSubject({ id: "speaker" }),
+//       selected$: state({ id: "speaker" }),
 //       select(): void {},
 //     };
 

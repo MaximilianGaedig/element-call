@@ -8,7 +8,6 @@ Please see LICENSE in the repository root for full details.
 
 import { test, vi, onTestFinished, it, describe, expect } from "vitest";
 import {
-  BehaviorSubject,
   combineLatest,
   debounceTime,
   distinctUntilChanged,
@@ -61,7 +60,7 @@ import {
 } from "../../utils/test-fixtures.ts";
 import { MediaDevices } from "../MediaDevices.ts";
 import { getValue } from "../../utils/observable.ts";
-import { type Behavior, constant } from "../Behavior.ts";
+import { type Behavior, constant, state } from "../Behavior.ts";
 import {
   localParticipant,
   withCallViewModel as withCallViewModelInMode,
@@ -1337,13 +1336,13 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
               });
             },
             b: () => {
-              raisedHands$.next({
+              raisedHands$.value = {
                 [`${bobRtcMember.userId}:${bobRtcMember.deviceId}`]: {
                   time: new Date(),
                   reactionEventId: "",
                   membershipEventId: "",
                 },
-              });
+              };
             },
           });
           expectObservable(summarizeLayout$(vm.layout$)).toBe(
@@ -1630,7 +1629,7 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
 
   it.skip("media tracks are paused while reconnecting to MatrixRTC", () => {
     withTestScheduler(({ schedule, expectObservable }) => {
-      const trackRunning$ = new BehaviorSubject(true);
+      const trackRunning$ = state(true);
       const originalPublications = localParticipant.trackPublications;
       localParticipant.trackPublications = new Map([
         [
@@ -1641,11 +1640,11 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
                 return !trackRunning$.value;
               }
               public async pauseUpstream(): Promise<void> {
-                trackRunning$.next(false);
+                trackRunning$.value = false;
                 return Promise.resolve();
               }
               public async resumeUpstream(): Promise<void> {
-                trackRunning$.next(true);
+                trackRunning$.value = true;
                 return Promise.resolve();
               }
             })(),

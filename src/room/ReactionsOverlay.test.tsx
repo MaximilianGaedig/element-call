@@ -44,12 +44,12 @@ test("shows a reaction when sent", () => {
   const { getByRole } = render(<ReactionsOverlay vm={vm} />);
   const reaction = ReactionSet[0];
   act(() => {
-    reactionsSubject$.next({
+    reactionsSubject$.value = {
       [aliceRtcMember.deviceId]: {
         reactionOption: reaction,
         expireAfter: new Date(0),
       },
-    });
+    };
   });
   const span = getByRole("presentation");
   expect(getByRole("presentation")).toBeTruthy();
@@ -65,7 +65,7 @@ test("shows two of the same reaction when sent", () => {
   ]);
   const { getAllByRole } = render(<ReactionsOverlay vm={vm} />);
   act(() => {
-    reactionsSubject$.next({
+    reactionsSubject$.value = {
       [aliceRtcMember.deviceId]: {
         reactionOption: reaction,
         expireAfter: new Date(0),
@@ -74,7 +74,7 @@ test("shows two of the same reaction when sent", () => {
         reactionOption: reaction,
         expireAfter: new Date(0),
       },
-    });
+    };
   });
   expect(getAllByRole("presentation")).toHaveLength(2);
 });
@@ -88,7 +88,7 @@ test("shows two different reactions when sent", () => {
   ]);
   const { getAllByRole } = render(<ReactionsOverlay vm={vm} />);
   act(() => {
-    reactionsSubject$.next({
+    reactionsSubject$.value = {
       [aliceRtcMember.deviceId]: {
         reactionOption: reactionA,
         expireAfter: new Date(0),
@@ -97,7 +97,7 @@ test("shows two different reactions when sent", () => {
         reactionOption: reactionB,
         expireAfter: new Date(0),
       },
-    });
+    };
   });
   const [reactionElementA, reactionElementB] = getAllByRole("presentation");
   expect(reactionElementA.innerHTML).toEqual(reactionA.emoji);
@@ -113,12 +113,12 @@ test("hides reactions when reaction animations are disabled", () => {
   ]);
   const { container } = render(<ReactionsOverlay vm={vm} />);
   act(() => {
-    reactionsSubject$.next({
+    reactionsSubject$.value = {
       [aliceRtcMember.deviceId]: {
         reactionOption: reaction,
         expireAfter: new Date(0),
       },
-    });
+    };
   });
   expect(container.getElementsByTagName("span")).toHaveLength(0);
 });

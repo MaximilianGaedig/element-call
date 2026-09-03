@@ -18,7 +18,7 @@ import {
   EventType,
   RoomEvent as MatrixRoomEvent,
 } from "matrix-js-sdk";
-import { BehaviorSubject, delay } from "rxjs";
+import { delay } from "rxjs";
 
 import {
   ElementCallReactionEventType,
@@ -29,6 +29,7 @@ import {
   type ReactionInfo,
 } from ".";
 import { type ObservableScope } from "../state/ObservableScope";
+import { state, type Behavior } from "../state/Behavior";
 
 export const REACTION_ACTIVE_TIME_MS = 3000;
 
@@ -38,22 +39,22 @@ export const REACTION_ACTIVE_TIME_MS = 3000;
  * @param rtcSession
  */
 export class ReactionsReader {
-  private readonly raisedHandsSubject$ = new BehaviorSubject<
-    Record<string, RaisedHandInfo>
-  >({});
-  private readonly reactionsSubject$ = new BehaviorSubject<
-    Record<string, ReactionInfo>
-  >({});
+  private readonly raisedHandsSubject$ = state<Record<string, RaisedHandInfo>>(
+    {},
+  );
+  private readonly reactionsSubject$ = state<Record<string, ReactionInfo>>({});
 
   /**
    * The latest set of raised hands.
    */
-  public readonly raisedHands$ = this.raisedHandsSubject$.asObservable();
+  public readonly raisedHands$: Behavior<Record<string, RaisedHandInfo>> =
+    this.raisedHandsSubject$;
 
   /**
    * The latest set of reactions.
    */
-  public readonly reactions$ = this.reactionsSubject$.asObservable();
+  public readonly reactions$: Behavior<Record<string, ReactionInfo>> =
+    this.reactionsSubject$;
 
   public constructor(
     private readonly scope: ObservableScope,
@@ -70,7 +71,7 @@ export class ReactionsReader {
         if (Object.keys(reactions).length === Object.keys(nextEntries).length) {
           return;
         }
-        this.reactionsSubject$.next(nextEntries);
+        this.reactionsSubject$.value = nextEntries;
       });
 
     // TODO: Convert this class to the functional reactive style and get rid of
@@ -209,10 +210,10 @@ export class ReactionsReader {
    * @param info The event information.
    */
   private addRaisedHand(identifier: string, info: RaisedHandInfo): void {
-    this.raisedHandsSubject$.next({
+    this.raisedHandsSubject$.value = {
       ...this.raisedHandsSubject$.value,
       [identifier]: info,
-    });
+    };
   }
 
   /**
@@ -220,11 +221,9 @@ export class ReactionsReader {
    * @param identifier A userId:deviceId combination.
    */
   private removeRaisedHand(identifier: string): void {
-    this.raisedHandsSubject$.next(
-      Object.fromEntries(
-        Object.entries(this.raisedHandsSubject$.value).filter(
-          ([uId]) => uId !== identifier,
-        ),
+    this.raisedHandsSubject$.value = Object.fromEntries(
+      Object.entries(this.raisedHandsSubject$.value).filter(
+        ([uId]) => uId !== identifier,
       ),
     );
   }
@@ -302,13 +301,13 @@ export class ReactionsReader {
         logger.warn(`Got reaction from ${identifier} but one is still playing`);
         return;
       }
-      this.reactionsSubject$.next({
+      this.reactionsSubject$.value = {
         ...currentReactions,
         [identifier]: {
           reactionOption: reaction,
           expireAfter: new Date(Date.now() + REACTION_ACTIVE_TIME_MS),
         },
-      });
+      };
     } else if (event.getType() === EventType.Reaction) {
       const content = event.getContent() as ReactionEventContent;
       const membershipEventId = content["m.relates_to"].event_id;

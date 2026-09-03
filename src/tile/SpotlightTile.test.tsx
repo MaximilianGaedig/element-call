@@ -10,7 +10,6 @@ import { act, isInaccessible, render, screen } from "@testing-library/react";
 import { axe } from "vitest-axe";
 import userEvent from "@testing-library/user-event";
 import { TooltipProvider } from "@vector-im/compound-web";
-import { BehaviorSubject } from "rxjs";
 
 import { SpotlightTile } from "./SpotlightTile";
 import {
@@ -23,7 +22,7 @@ import {
   mockRemoteScreenShare,
 } from "../utils/test";
 import { SpotlightTileViewModel } from "../state/TileViewModel";
-import { constant } from "../state/Behavior";
+import { constant, state } from "../state/Behavior";
 import {
   createRingingMedia,
   type RingingMediaViewModel,
@@ -172,9 +171,8 @@ test("Screen share volume UI is hidden when screen share has no audio", async ()
 });
 
 test("SpotlightTile displays ringing media", async () => {
-  const pickupState$ = new BehaviorSubject<
-    RingingMediaViewModel["pickupState$"]["value"]
-  >("ringing");
+  const pickupState$ =
+    state<RingingMediaViewModel["pickupState$"]["value"]>("ringing");
   const vm = createRingingMedia({
     pickupState$,
     id: "test",
@@ -211,6 +209,8 @@ test("SpotlightTile displays ringing media", async () => {
   screen.getByText("Calling…");
 
   // Now we time out ringing to Alice
-  act(() => pickupState$.next("timeout"));
+  act(() => {
+    pickupState$.value = "timeout";
+  });
   screen.getByText("Call ended");
 });

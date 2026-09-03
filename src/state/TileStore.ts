@@ -5,7 +5,6 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { BehaviorSubject } from "rxjs";
 import { logger } from "matrix-js-sdk/lib/logger";
 
 import { GridTileViewModel, SpotlightTileViewModel } from "./TileViewModel";
@@ -14,6 +13,7 @@ import { debugTileLayout } from "../settings/settings";
 import { type MediaViewModel } from "./media/MediaViewModel";
 import { type UserMediaViewModel } from "./media/UserMediaViewModel";
 import { type RingingMediaViewModel } from "./media/RingingMediaViewModel";
+import { state, type State } from "./Behavior";
 
 type SpotlightBackground = "solid" | "transparent";
 
@@ -25,28 +25,28 @@ let DEBUG_ENABLED = false;
 debugTileLayout.value$.subscribe((value) => (DEBUG_ENABLED = value));
 
 class SpotlightTileData {
-  private readonly media$: BehaviorSubject<MediaViewModel[]>;
+  private readonly media$: State<MediaViewModel[]>;
   public get media(): MediaViewModel[] {
     return this.media$.value;
   }
   public set media(value: MediaViewModel[]) {
-    this.media$.next(value);
+    this.media$.value = value;
   }
 
-  private readonly maximised$: BehaviorSubject<boolean>;
+  private readonly maximised$: State<boolean>;
   public get maximised(): boolean {
     return this.maximised$.value;
   }
   public set maximised(value: boolean) {
-    this.maximised$.next(value);
+    this.maximised$.value = value;
   }
 
-  private readonly background$: BehaviorSubject<SpotlightBackground>;
+  private readonly background$: State<SpotlightBackground>;
   public get background(): SpotlightBackground {
     return this.background$.value;
   }
   public set background(value: SpotlightBackground) {
-    this.background$.next(value);
+    this.background$.value = value;
   }
 
   public readonly vm: SpotlightTileViewModel;
@@ -56,9 +56,9 @@ class SpotlightTileData {
     maximised: boolean,
     background: SpotlightBackground,
   ) {
-    this.media$ = new BehaviorSubject(media);
-    this.maximised$ = new BehaviorSubject(maximised);
-    this.background$ = new BehaviorSubject(background);
+    this.media$ = state(media);
+    this.maximised$ = state(maximised);
+    this.background$ = state(background);
     this.vm = new SpotlightTileViewModel(
       this.media$,
       this.maximised$,
@@ -68,20 +68,18 @@ class SpotlightTileData {
 }
 
 class GridTileData {
-  private readonly media$: BehaviorSubject<
-    UserMediaViewModel | RingingMediaViewModel
-  >;
+  private readonly media$: State<UserMediaViewModel | RingingMediaViewModel>;
   public get media(): UserMediaViewModel | RingingMediaViewModel {
     return this.media$.value;
   }
   public set media(value: UserMediaViewModel) {
-    this.media$.next(value);
+    this.media$.value = value;
   }
 
   public readonly vm: GridTileViewModel;
 
   public constructor(media: UserMediaViewModel | RingingMediaViewModel) {
-    this.media$ = new BehaviorSubject(media);
+    this.media$ = state(media);
     this.vm = new GridTileViewModel(this.media$);
   }
 }

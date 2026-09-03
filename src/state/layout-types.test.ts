@@ -15,11 +15,11 @@ import {
   type SpotlightTileViewModel,
   type GridTileViewModel,
 } from "./TileViewModel";
-import { BehaviorSubject } from "rxjs";
+import { state } from "./Behavior";
 
 const spotlightTile = {} as unknown as SpotlightTileViewModel;
 const gridTile = {} as unknown as GridTileViewModel;
-const pipAlignment$ = new BehaviorSubject<Alignment>({
+const pipAlignment$ = state<Alignment>({
   inline: "end",
   block: "end",
 });

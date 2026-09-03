@@ -50,7 +50,7 @@ export const makeSpotlightExpandedLayout: CallLayout<
 
     const onDragPip: DragCallback = useCallback(
       ({ xRatio, yRatio }) =>
-        model.pipAlignment$.next({
+        (model.pipAlignment$.value = {
           block: yRatio < 0.5 ? "start" : "end",
           inline: xRatio < 0.5 ? "start" : "end",
         }),

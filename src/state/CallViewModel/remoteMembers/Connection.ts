@@ -17,7 +17,7 @@ import {
   type Room as LivekitRoom,
 } from "livekit-client";
 import { type LivekitTransportConfig } from "matrix-js-sdk/lib/matrixrtc";
-import { BehaviorSubject, map } from "rxjs";
+import { map } from "rxjs";
 import { type Logger } from "matrix-js-sdk/lib/logger";
 import { type CallMembershipIdentityParts } from "matrix-js-sdk/lib/matrixrtc/EncryptionManager";
 
@@ -36,6 +36,7 @@ import {
   SFURoomCreationRestrictedError,
   UnknownCallError,
 } from "../../../utils/errors.ts";
+import { state } from "../../Behavior";
 
 export interface ConnectionOpts {
   /**
@@ -89,9 +90,9 @@ export enum ConnectionState {
  */
 export class Connection {
   // Private Behavior
-  private readonly _state$ = new BehaviorSubject<
-    ConnectionState | ElementCallError
-  >(ConnectionState.Initialized);
+  private readonly _state$ = state<ConnectionState | ElementCallError>(
+    ConnectionState.Initialized,
+  );
 
   /**
    * The current state of the connection to the media transport.
@@ -189,7 +190,7 @@ export class Connection {
     this.logger.debug("Starting Connection");
     this.stopped = false;
     try {
-      this._state$.next(ConnectionState.FetchingConfig);
+      this._state$.value = ConnectionState.FetchingConfig;
       // We should already have this information after creating the localTransport.
       // only call getSFUConfigWithOpenID for connections where we do not have a token yet. (existingJwtTokenData === undefined)
       const { url, jwt, livekitAlias } =
@@ -217,7 +218,7 @@ export class Connection {
         )
         .subscribe((lkState) => {
           // It is save to cast lkState to ConnectionState as they are fully overlapping.
-          this._state$.next(lkState);
+          this._state$.value = lkState;
         });
 
       try {
@@ -259,13 +260,12 @@ export class Connection {
       if (this.stopped) return;
     } catch (error) {
       this.logger.debug(`Failed to connect to LiveKit room: ${error}`);
-      this._state$.next(
+      this._state$.value =
         error instanceof ElementCallError
           ? error
           : error instanceof Error
             ? new UnknownCallError(error)
-            : new UnknownCallError(new Error(`${error}`)),
-      );
+            : new UnknownCallError(new Error(`${error}`));
       // Its okay to ignore the throw. The error is part of the state.
       throw error;
     }
@@ -297,7 +297,7 @@ export class Connection {
     );
     if (this.stopped) return;
     await this.livekitRoom.disconnect();
-    this._state$.next(ConnectionState.Stopped);
+    this._state$.value = ConnectionState.Stopped;
     this.stopped = true;
     this.logger.debug(
       `stop: DONE disconnecing from lk room ${this.transport.livekit_service_url}`,

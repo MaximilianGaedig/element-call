@@ -14,7 +14,6 @@ import {
   ParticipantEvent,
   Track,
 } from "livekit-client";
-import { BehaviorSubject } from "rxjs";
 import { logger } from "matrix-js-sdk/lib/logger";
 
 import { ObservableScope } from "../../ObservableScope";
@@ -27,6 +26,7 @@ import {
 import { Publisher } from "./Publisher";
 import { type Connection } from "../remoteMembers/Connection";
 import { type MuteStates } from "../../MuteStates";
+import { state, type State } from "../../Behavior";
 
 let scope: ObservableScope;
 
@@ -61,9 +61,9 @@ function createMockLocalTrack(source: Track.Source): LocalTrack {
   return track;
 }
 
-function createMockMuteState(enabled$: BehaviorSubject<boolean>): {
-  enabled$: BehaviorSubject<boolean>;
-  syncing$: BehaviorSubject<boolean>;
+function createMockMuteState(enabled$: State<boolean>): {
+  enabled$: State<boolean>;
+  syncing$: State<boolean>;
   setHandler: (h: (enabled: boolean) => void) => void;
   unsetHandler: () => void;
 } {
@@ -71,7 +71,7 @@ function createMockMuteState(enabled$: BehaviorSubject<boolean>): {
 
   const ms = {
     enabled$,
-    syncing$: new BehaviorSubject(false),
+    syncing$: state(false),
     setHandler: vi.fn().mockImplementation((h: (enabled: boolean) => void) => {
       currentHandler = h;
     }),
@@ -91,16 +91,16 @@ function createMockMuteState(enabled$: BehaviorSubject<boolean>): {
 let connection: Connection;
 let muteStates: MuteStates;
 let localParticipant: LocalParticipant;
-let audioEnabled$: BehaviorSubject<boolean>;
-let videoEnabled$: BehaviorSubject<boolean>;
+let audioEnabled$: State<boolean>;
+let videoEnabled$: State<boolean>;
 let trackPublications: LocalTrackPublication[];
 // use it to control when track creation resolves, default to resolved
 let createTrackLock: Promise<void>;
 
 beforeEach(() => {
   trackPublications = [];
-  audioEnabled$ = new BehaviorSubject(false);
-  videoEnabled$ = new BehaviorSubject(false);
+  audioEnabled$ = state(false);
+  videoEnabled$ = state(false);
   createTrackLock = Promise.resolve();
 
   muteStates = {
@@ -205,8 +205,8 @@ describe("Publisher", () => {
       "createTracks",
     );
 
-    audioEnabled$.next(false);
-    videoEnabled$.next(false);
+    audioEnabled$.value = false;
+    videoEnabled$.value = false;
     await publisher.createAndSetupTracks();
 
     expect(createTracksSpy).not.toHaveBeenCalled();
@@ -251,8 +251,8 @@ describe("Publisher", () => {
     );
     const createTracksSpy = vi.spyOn(localParticipant, "createTracks");
 
-    audioEnabled$.next(true);
-    videoEnabled$.next(true);
+    audioEnabled$.value = true;
+    videoEnabled$.value = true;
     await publisher.createAndSetupTracks();
     await flushPromises();
 
@@ -266,7 +266,7 @@ describe("Publisher", () => {
   });
 
   it("Ensure no data is streamed until publish has been called", async () => {
-    audioEnabled$.next(true);
+    audioEnabled$.value = true;
     await publisher.createAndSetupTracks();
 
     // The track should be created and paused
@@ -287,7 +287,7 @@ describe("Publisher", () => {
   });
 
   it("Ensure resume upstream when published is called", async () => {
-    videoEnabled$.next(true);
+    videoEnabled$.value = true;
     await publisher.createAndSetupTracks();
     // await flushPromises();
     await publisher.startPublishing();
@@ -320,8 +320,8 @@ describe("Publisher", () => {
       { mutes: { audioEnabled: true, videoEnabled: false } },
     ])("only create the tracks that are unmuted $mutes", async ({ mutes }) => {
       // Ensure all muted
-      audioEnabled$.next(mutes.audioEnabled);
-      videoEnabled$.next(mutes.videoEnabled);
+      audioEnabled$.value = mutes.audioEnabled;
+      videoEnabled$.value = mutes.videoEnabled;
 
       vi.mocked(connection.livekitRoom.localParticipant).createTracks = vi
         .fn()
@@ -365,7 +365,7 @@ describe("Bug fix", () => {
       constant({ supported: false, processor: undefined }),
       logger,
     );
-    audioEnabled$.next(true);
+    audioEnabled$.value = true;
 
     const resolvers = Promise.withResolvers<void>();
     createTrackLock = resolvers.promise;
@@ -377,7 +377,7 @@ describe("Bug fix", () => {
       void publisher.startPublishing();
     });
     // now mute the audio before allowing track creation to complete
-    audioEnabled$.next(false);
+    audioEnabled$.value = false;
     resolvers.resolve(undefined);
     await createTracks;
 

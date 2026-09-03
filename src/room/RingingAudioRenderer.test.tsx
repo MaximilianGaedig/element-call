@@ -7,12 +7,11 @@ Please see LICENSE in the repository root for full details.
 
 import { expect, type MockedFunction, test, vi } from "vitest";
 import { act, render } from "@testing-library/react";
-import { BehaviorSubject } from "rxjs";
 
 import { useAudioContext } from "../useAudioContext";
 import { createRingingMedia } from "../state/media/RingingMediaViewModel";
 import { alice, aliceId } from "../utils/test-fixtures";
-import { constant } from "../state/Behavior";
+import { constant, state } from "../state/Behavior";
 import { RingingAudioRenderer } from "./RingingAudioRenderer";
 import { prefetchSounds } from "../soundUtils";
 
@@ -31,9 +30,7 @@ test("ringtone plays on loop while ringing", () => {
     soundDuration: {},
   });
 
-  const pickupState$ = new BehaviorSubject<"ringing" | "timeout" | "decline">(
-    "ringing",
-  );
+  const pickupState$ = state<"ringing" | "timeout" | "decline">("ringing");
   const vm = createRingingMedia({
     id: aliceId,
     userId: alice.userId,
@@ -53,7 +50,9 @@ test("ringtone plays on loop while ringing", () => {
   vi.clearAllMocks();
 
   // End ringing
-  act(() => pickupState$.next("decline"));
+  act(() => {
+    pickupState$.value = "decline";
+  });
   expect(playSoundLooping).not.toHaveBeenCalled();
   expect(endSoundLooping).toHaveBeenCalledExactlyOnceWith();
 });

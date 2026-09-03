@@ -9,7 +9,6 @@ Please see LICENSE in the repository root for full details.
 import { type IWidgetApiRequest } from "matrix-widget-api";
 import { logger } from "matrix-js-sdk/lib/logger";
 import {
-  BehaviorSubject,
   combineLatest,
   distinctUntilChanged,
   firstValueFrom,
@@ -26,7 +25,7 @@ import {
 import { type MediaDevices, type MediaDevice } from "../state/MediaDevices";
 import { ElementWidgetActions, widget } from "../widget";
 import { type ObservableScope } from "./ObservableScope";
-import { type Behavior, constant } from "./Behavior";
+import { type Behavior, constant, state } from "./Behavior";
 
 interface MuteStateData {
   enabled$: Observable<boolean>;
@@ -43,16 +42,16 @@ const defaultHandler: Handler = async (desired) => Promise.resolve(desired);
  * Do not use directly outside of tests.
  */
 export class MuteState<Label, Selected> {
-  private readonly handler$ = new BehaviorSubject(defaultHandler);
+  private readonly handler$ = state(defaultHandler);
 
   public setHandler(handler: Handler): void {
     if (this.handler$.value !== defaultHandler)
       throw new Error("Multiple mute state handlers are not supported");
-    this.handler$.next(handler);
+    this.handler$.value = handler;
   }
 
   public unsetHandler(): void {
-    this.handler$.next(defaultHandler);
+    this.handler$.value = defaultHandler;
   }
 
   private readonly canControlDevices$ = combineLatest([
@@ -92,7 +91,7 @@ export class MuteState<Label, Selected> {
         let enabled = this.enabledByDefault;
         const set$ = new Subject<boolean>();
         const toggle$ = new Subject<void>();
-        const syncing$ = new BehaviorSubject(false);
+        const syncing$ = state(false);
         const desired$ = merge(set$, toggle$.pipe(map(() => !enabled)));
         const enabled$ = new Observable<boolean>((subscriber) => {
           subscriber.next(enabled);
@@ -100,20 +99,20 @@ export class MuteState<Label, Selected> {
 
           const sync = async (): Promise<void> => {
             if (enabled === latestDesired) {
-              syncing$.next(false);
+              syncing$.value = false;
             } else {
               const previouslyEnabled = enabled;
-              syncing$.next(true);
+              syncing$.value = true;
               enabled = await firstValueFrom(
                 this.handler$.pipe(
                   switchMap(async (handler) => handler(latestDesired)),
                 ),
               );
               if (enabled === previouslyEnabled) {
-                syncing$.next(false);
+                syncing$.value = false;
               } else {
                 subscriber.next(enabled);
-                syncing$.next(true);
+                syncing$.value = true;
                 sync().catch((err) => {
                   // TODO: better error handling
                   logger.error("MuteState: handler error", err);
@@ -125,7 +124,7 @@ export class MuteState<Label, Selected> {
           const s = desired$.subscribe((desired) => {
             latestDesired = desired;
             if (syncing$.value === false) {
-              syncing$.next(true);
+              syncing$.value = true;
               sync().catch((err) => {
                 // TODO: better error handling
                 logger.error("MuteState: handler error", err);
@@ -134,7 +133,6 @@ export class MuteState<Label, Selected> {
           });
           return (): void => {
             s.unsubscribe();
-            syncing$.complete();
           };
         });
 
