@@ -6,7 +6,7 @@ Please see LICENSE in the repository root for full details.
 */
 
 import { type Behavior, state } from "../Behavior";
-import { type ObservableScope } from "../ObservableScope";
+import { type Scope } from "../Scope";
 
 /**
  * Whether someone counts as a speaker: it takes 1 second of continuous
@@ -14,7 +14,7 @@ import { type ObservableScope } from "../ObservableScope";
  * one.
  */
 export function speaker$(
-  scope: ObservableScope,
+  scope: Scope,
   speaking$: Behavior<boolean>,
 ): Behavior<boolean> {
   const speaker$ = state(false);

@@ -17,7 +17,7 @@ import { logger as rootLogger } from "matrix-js-sdk/lib/logger";
 import { untracked } from "@preact/signals-core";
 
 import { type Behavior, type Emitter, state } from "../Behavior";
-import { ObservableScope } from "../ObservableScope";
+import { Scope } from "../Scope";
 import { type RoomMemberMap } from "./remoteMembers/MatrixMemberMetadata";
 
 export type AutoLeaveReason = "allOthersLeft" | "timeout" | "decline";
@@ -45,7 +45,7 @@ export type CallNotificationWrapper = {
  * The most recent call notification that we sent, if any.
  */
 export function createSentCallNotification$(
-  scope: ObservableScope,
+  scope: Scope,
   matrixRTCSession: MatrixRTCSession,
 ): Behavior<CallNotificationWrapper | null> {
   const sent$ = state<CallNotificationWrapper | null>(null);
@@ -65,7 +65,7 @@ export function createSentCallNotification$(
 }
 
 export interface Props {
-  scope: ObservableScope;
+  scope: Scope;
   memberships$: Behavior<CallMembership[]>;
   matrixRoomMembers$: Behavior<RoomMemberMap>;
   sentCallNotification$: Behavior<CallNotificationWrapper | null>;
@@ -125,7 +125,7 @@ export function createCallNotificationLifecycle$({
       }
 
       const outcome$ = state<"ringing" | RingOutcome>("ringing");
-      const attempt = new ObservableScope();
+      const attempt = new Scope();
       const settle = (outcome: RingOutcome): void => {
         outcome$.value = outcome;
         attempt.end();

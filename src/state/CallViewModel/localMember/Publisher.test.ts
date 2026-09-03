@@ -16,7 +16,7 @@ import {
 } from "livekit-client";
 import { logger } from "matrix-js-sdk/lib/logger";
 
-import { ObservableScope } from "../../ObservableScope";
+import { Scope } from "../../Scope";
 import { constant } from "../../Behavior";
 import {
   flushPromises,
@@ -28,10 +28,10 @@ import { type Connection } from "../remoteMembers/Connection";
 import { type MuteStates } from "../../MuteStates";
 import { state, type State } from "../../Behavior";
 
-let scope: ObservableScope;
+let scope: Scope;
 
 beforeEach(() => {
-  scope = new ObservableScope();
+  scope = new Scope();
 });
 
 afterEach(() => scope.end());

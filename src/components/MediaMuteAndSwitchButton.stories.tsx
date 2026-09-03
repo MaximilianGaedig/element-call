@@ -12,7 +12,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { MediaMuteAndSwitchButton } from "./MediaMuteAndSwitchButton";
 import { MediaDevicesContext } from "../MediaDevicesContext";
 import { MediaDevices } from "../state/MediaDevices";
-import { globalScope } from "../state/ObservableScope";
+import { globalScope } from "../state/Scope";
 
 const mediaDevices = new MediaDevices(globalScope);
 

@@ -7,9 +7,9 @@ Please see LICENSE in the repository root for full details.
 
 import { ESLintUtils } from "@typescript-eslint/utils";
 
-// These ObservableScope methods will not generally cause resource leaks even if
+// These Scope methods will not generally cause resource leaks even if
 // called from a callback
-const safeScopeMethods = new Set(["bind", "end"]);
+const safeScopeMethods = new Set(["end"]);
 
 /**
  * Determines whether the variable with the given name is local to
@@ -33,11 +33,11 @@ const rule = ESLintUtils.RuleCreator(
     type: "problem",
     docs: {
       description:
-        "Require referenced ObservableScopes to be defined in the very same scope to avoid resource leaks.",
+        "Require referenced Scopes to be defined in the very same scope to avoid resource leaks.",
     },
     messages: {
       scopeLeak:
-        "Do not reference ObservableScopes defined in an outer scope; this may create resource leaks.",
+        "Do not reference Scopes defined in an outer scope; this may create resource leaks.",
     },
     schema: [],
   },
@@ -48,7 +48,7 @@ const rule = ESLintUtils.RuleCreator(
         if (
           // Is this a reference to a variable defined in an outer scope?
           !isLocal(node.name, scope) &&
-          // Exclude calls to "safe" ObservableScope methods
+          // Exclude calls to "safe" Scope methods
           node.parent?.type === "MemberExpression" &&
           node.parent.object === node &&
           node.parent.property.type === "Identifier" &&
@@ -56,14 +56,14 @@ const rule = ESLintUtils.RuleCreator(
           /(^s|S)cope$/.test(node.name)
         ) {
           // TODO: Once oxlint supports lint rules that rely on TypeScript type-awareness,
-          // Verify that the variable is actually of type ObservableScope rather than just
+          // Verify that the variable is actually of type Scope rather than just
           // checking its name. This is expensive so we should do this last.
           //
           // const services = ESLintUtils.getParserServices(context);
           // const type = services.getTypeAtLocation(node);
-          // if (type.symbol?.name === "ObservableScope") { ... }
+          // if (type.symbol?.name === "Scope") { ... }
 
-          // This ObservableScope method call may be causing resource leaks.
+          // This Scope method call may be causing resource leaks.
           context.report({
             messageId: "scopeLeak",
             loc: node.loc,

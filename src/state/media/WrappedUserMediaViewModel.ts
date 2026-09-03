@@ -7,7 +7,7 @@ Please see LICENSE in the repository root for full details.
 
 import { type LocalParticipant, type RemoteParticipant } from "livekit-client";
 
-import { type ObservableScope } from "../ObservableScope.ts";
+import { type Scope } from "../Scope.ts";
 import { type Behavior, computed, fromEvents } from "../Behavior.ts";
 import type { MediaDevices } from "../MediaDevices.ts";
 import { speaker$ } from "./speaker.ts";
@@ -87,7 +87,7 @@ interface WrappedUserMediaInputs extends Omit<
 }
 
 export function createWrappedUserMedia(
-  scope: ObservableScope,
+  scope: Scope,
   {
     participant,
     mediaDevices,

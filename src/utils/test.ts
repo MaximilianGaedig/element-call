@@ -60,7 +60,7 @@ import {
 import { Config } from "../config/Config";
 import { type MediaDevices } from "../state/MediaDevices";
 import { type Behavior, constant, state, type State } from "../state/Behavior";
-import { ObservableScope } from "../state/ObservableScope";
+import { Scope } from "../state/Scope";
 import { MuteStates } from "../state/MuteStates";
 import {
   createLocalUserMedia,
@@ -91,10 +91,10 @@ export async function flushPromises(): Promise<void> {
 }
 
 /**
- * Create a new ObservableScope which ends when the current test ends.
+ * Create a new Scope which ends when the current test ends.
  */
-export function testScope(): ObservableScope {
-  const scope = new ObservableScope();
+export function testScope(): Scope {
+  const scope = new Scope();
   onTestFinished(() => scope.end());
   return scope;
 }
@@ -154,7 +154,7 @@ export function parseMarbles(
 
 export interface MarbleHelpers {
   /** A scope which ends when the test ends. */
-  scope: ObservableScope;
+  scope: Scope;
   /** Schedules actions to happen at the frames given by a marble diagram. */
   schedule: (marbles: string, actions: Record<string, () => void>) => void;
   /** A Behavior taking the values given by a marble diagram over time. */
@@ -186,7 +186,7 @@ export function withTestScheduler(
   const ownsTimers = !vi.isFakeTimers();
   if (ownsTimers) vi.useFakeTimers();
   const start = Date.now();
-  const scope = new ObservableScope();
+  const scope = new Scope();
   const expectations: (() => void)[] = [];
   const subscriptions: (() => void)[] = [];
   const marbleValue = <T>(marble: string, values?: Record<string, T>): T =>
@@ -635,7 +635,7 @@ export function mockMediaDevices(data: Partial<MediaDevices>): MediaDevices {
 }
 
 export function mockMuteStates(): MuteStates {
-  const observableScope = new ObservableScope();
+  const observableScope = new Scope();
   return new MuteStates(observableScope, mockMediaDevices({}), {
     audioEnabled: false,
     videoEnabled: false,

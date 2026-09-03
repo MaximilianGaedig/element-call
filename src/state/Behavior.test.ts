@@ -9,7 +9,7 @@ import EventEmitter from "events";
 import { describe, expect, it } from "vitest";
 
 import { computed, fromEvents, state } from "./Behavior";
-import { ObservableScope } from "./ObservableScope";
+import { Scope } from "./Scope";
 
 describe("computed", () => {
   it("tracks States", () => {
@@ -43,7 +43,7 @@ describe("computed", () => {
 
 describe("fromEvents", () => {
   it("re-reads the value on each event until the scope ends", () => {
-    const scope = new ObservableScope();
+    const scope = new Scope();
     const emitter = Object.assign(new EventEmitter(), { count: 0 });
     const count$ = fromEvents(scope, emitter, ["tick"], (e) => e.count);
     expect(count$.value).toBe(0);
@@ -58,7 +58,7 @@ describe("fromEvents", () => {
   });
 
   it("follows a Behavior of emitters", () => {
-    const scope = new ObservableScope();
+    const scope = new Scope();
     const a = Object.assign(new EventEmitter(), { name: "a" });
     const b = Object.assign(new EventEmitter(), { name: "b" });
     const emitter$ = state<typeof a | null>(a);
@@ -76,9 +76,9 @@ describe("fromEvents", () => {
   });
 });
 
-describe("ObservableScope", () => {
+describe("Scope", () => {
   it("runs end callbacks once, in order, and immediately once ended", () => {
-    const scope = new ObservableScope();
+    const scope = new Scope();
     const order: string[] = [];
     scope.onEnd(() => order.push("first"));
     scope.onEnd(() => order.push("second"));
@@ -89,7 +89,7 @@ describe("ObservableScope", () => {
   });
 
   it("disposes effects when it ends", () => {
-    const scope = new ObservableScope();
+    const scope = new Scope();
     const s$ = state(0);
     const seen: number[] = [];
     scope.effect(() => {

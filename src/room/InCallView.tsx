@@ -77,7 +77,7 @@ import { Toast } from "../Toast.tsx";
 import overlayStyles from "../Overlay.module.css";
 import { useTrackProcessor } from "../livekit/TrackProcessorContext.tsx";
 import { type Layout } from "../state/layout-types.ts";
-import { ObservableScope } from "../state/ObservableScope.ts";
+import { Scope } from "../state/Scope.ts";
 import { CallFooter, type FooterSnapshot } from "../components/CallFooter.tsx";
 import { SettingsIconButton } from "../button/Button.tsx";
 import { createCallFooterViewModel } from "../components/CallFooterViewModel.tsx";
@@ -118,7 +118,7 @@ export const ActiveCall: FC<ActiveCallProps> = (props) => {
   const trackProcessorState$ = useValueBehavior(useTrackProcessor());
   useEffect(() => {
     rootLogger.info("START CALL VIEW SCOPE");
-    const scope = new ObservableScope();
+    const scope = new Scope();
     const reactionsReader = new ReactionsReader(scope, props.rtcSession);
     const { autoLeaveWhenOthersLeft, waitForCallPickup, sendNotificationType } =
       urlParams;
@@ -167,7 +167,7 @@ export const ActiveCall: FC<ActiveCallProps> = (props) => {
   useEffect(() => {
     if (vm === null) return;
 
-    const scope = new ObservableScope();
+    const scope = new Scope();
     const footerVm = createCallFooterViewModel(
       vm,
       props.muteStates,

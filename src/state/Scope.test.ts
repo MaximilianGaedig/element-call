@@ -8,7 +8,7 @@ Please see LICENSE in the repository root for full details.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { sleep } from "matrix-js-sdk/lib/utils";
 
-import { ObservableScope } from "./ObservableScope";
+import { Scope } from "./Scope";
 import { state } from "./Behavior";
 
 describe("Reconcile", () => {
@@ -22,7 +22,7 @@ describe("Reconcile", () => {
 
   it("should wait clean up before processing next", async () => {
     vi.useFakeTimers();
-    const scope = new ObservableScope();
+    const scope = new Scope();
     const behavior$ = state<number>(0);
 
     const setup = vi.fn().mockImplementation(async () => await sleep(100));
@@ -56,7 +56,7 @@ describe("Reconcile", () => {
 
   it("should skip intermediates values that are not setup", async () => {
     vi.useFakeTimers();
-    const scope = new ObservableScope();
+    const scope = new Scope();
     const behavior$ = state<number>(0);
 
     const setup = vi
@@ -101,7 +101,7 @@ describe("Reconcile", () => {
 
   it("should wait for setup to complete before starting cleanup", async () => {
     vi.useFakeTimers();
-    const scope = new ObservableScope();
+    const scope = new Scope();
     const behavior$ = state<number>(0);
 
     const setup = vi

@@ -39,7 +39,7 @@ import { Link } from "../button/Link";
 import { ErrorView } from "../ErrorView";
 import { useMediaDevices } from "../MediaDevicesContext";
 import { MuteStates } from "../state/MuteStates";
-import { ObservableScope } from "../state/ObservableScope";
+import { Scope } from "../state/Scope";
 import { calculateInitialMuteState } from "../state/initialMuteState.ts";
 
 export const RoomPage: FC = (): ReactNode => {
@@ -67,7 +67,7 @@ export const RoomPage: FC = (): ReactNode => {
   const [muteStates, setMuteStates] = useState<MuteStates | null>(null);
 
   useEffect(() => {
-    const scope = new ObservableScope();
+    const scope = new Scope();
     setMuteStates(
       new MuteStates(
         scope,

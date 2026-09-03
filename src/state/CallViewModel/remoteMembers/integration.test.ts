@@ -12,7 +12,7 @@ import fetchMock from "fetch-mock";
 import { type LivekitTransportConfig } from "matrix-js-sdk/lib/matrixrtc";
 import { logger } from "matrix-js-sdk/lib/logger";
 
-import { ObservableScope } from "../../ObservableScope.ts";
+import { Scope } from "../../Scope.ts";
 import { ECConnectionFactory } from "./ConnectionFactory.ts";
 import { type OpenIDClientParts } from "../../../livekit/openIDSFU.ts";
 import {
@@ -35,7 +35,7 @@ import { state } from "../../Behavior";
 
 // Test the integration of ConnectionManager and MatrixLivekitMerger
 
-let testScope: ObservableScope;
+let testScope: Scope;
 let ecConnectionFactory: ECConnectionFactory;
 let mockClient: OpenIDClientParts;
 let lkRoomFactory: () => LivekitRoom;
@@ -43,7 +43,7 @@ let lkRoomFactory: () => LivekitRoom;
 const createdMockLivekitRooms: Map<string, LivekitRoom> = new Map();
 
 beforeEach(() => {
-  testScope = new ObservableScope();
+  testScope = new Scope();
   mockClient = {
     getOpenIdToken: vi.fn().mockReturnValue(""),
     getDeviceId: vi.fn().mockReturnValue("DEV000"),

@@ -10,7 +10,7 @@ import { type TrackReference } from "@livekit/components-core";
 import { type Participant, ParticipantEvent, type Track } from "livekit-client";
 
 import { type Behavior, computed, fromEvents } from "./Behavior";
-import { type ObservableScope } from "./ObservableScope";
+import { type Scope } from "./Scope";
 
 /**
  * The participant events after which its track publications may have changed.
@@ -39,7 +39,7 @@ export const MEDIA_EVENTS = [
  * A participant's track reference for a given media source.
  */
 export function trackReference$(
-  scope: ObservableScope,
+  scope: Scope,
   participant$: Behavior<Participant | null | undefined>,
   source: Track.Source,
 ): Behavior<TrackReference | undefined> {

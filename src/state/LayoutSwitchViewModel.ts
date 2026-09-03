@@ -7,7 +7,7 @@ Please see LICENSE in the repository root for full details.
 
 import { type WindowMode } from "./CallViewModel/CallViewModel.ts";
 import { type Behavior, computed, state } from "./Behavior.ts";
-import { type ObservableScope } from "./ObservableScope.ts";
+import { type Scope } from "./Scope.ts";
 
 export type LayoutMode = "spotlight" | "grid";
 
@@ -29,7 +29,7 @@ export interface LayoutSwitchViewModel {
  * @param hasRemoteScreenShares$ - A behavior indicating if there are remote screen shares active.
  */
 export function createLayoutSwitchViewModel(
-  scope: ObservableScope,
+  scope: Scope,
   windowMode$: Behavior<WindowMode>,
   hasRemoteScreenShares$: Behavior<boolean>,
 ): LayoutSwitchViewModel {

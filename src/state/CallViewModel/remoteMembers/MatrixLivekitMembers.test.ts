@@ -16,7 +16,7 @@ import {
   type RemoteMatrixLivekitMember,
   createRemoteMatrixLivekitMembers$,
 } from "./MatrixLivekitMembers.ts";
-import { ObservableScope } from "../../ObservableScope.ts";
+import { Scope } from "../../Scope.ts";
 import { ConnectionManagerData } from "./ConnectionManager.ts";
 import {
   flushPromises,
@@ -28,7 +28,7 @@ import { type Behavior, computed, constant } from "../../Behavior.ts";
 import { localRtcMember } from "../../../utils/test-fixtures.ts";
 import { state } from "../../Behavior";
 
-let testScope: ObservableScope;
+let testScope: Scope;
 
 const fallbackMemberId = (userId: string, deviceId: string): string =>
   `${userId}:${deviceId}`;
@@ -53,7 +53,7 @@ const carlMembership = mockRtcMembership("@carl:sample.com", "DEV111", {
 });
 
 beforeEach(() => {
-  testScope = new ObservableScope();
+  testScope = new Scope();
 });
 
 afterEach(() => {

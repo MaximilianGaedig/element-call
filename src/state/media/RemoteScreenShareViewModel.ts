@@ -14,7 +14,7 @@ import {
   type BaseScreenShareViewModel,
   createBaseScreenShare,
 } from "./ScreenShareViewModel";
-import { type ObservableScope } from "../ObservableScope";
+import { type Scope } from "../Scope";
 import { createVolumeControls, type VolumeControls } from "../VolumeControls";
 import { trackReference$ } from "../trackReference";
 
@@ -37,7 +37,7 @@ export interface RemoteScreenShareInputs extends BaseScreenShareInputs {
 }
 
 export function createRemoteScreenShare(
-  scope: ObservableScope,
+  scope: Scope,
   { pretendToBeDisconnected$, ...inputs }: RemoteScreenShareInputs,
 ): RemoteScreenShareViewModel {
   const audio$ = trackReference$(

@@ -11,7 +11,7 @@ import { logger as rootLogger, type Logger } from "matrix-js-sdk/lib/logger";
 import { type CallMembershipIdentityParts } from "matrix-js-sdk/lib/matrixrtc/EncryptionManager";
 
 import { type Behavior, computed, state } from "../../Behavior.ts";
-import { type ObservableScope } from "../../ObservableScope.ts";
+import { type Scope } from "../../Scope.ts";
 import { Config } from "../../../config/Config.ts";
 import {
   FailToGetOpenIdToken,
@@ -32,7 +32,7 @@ import { RtcTransportAutoDiscovery } from "./RtcTransportAutoDiscovery.ts";
  * and ensures the SFU path is primed before advertising that choice.
  */
 interface Props {
-  scope: ObservableScope;
+  scope: Scope;
   ownMembershipIdentity: CallMembershipIdentityParts;
   client: Pick<
     MatrixClient,

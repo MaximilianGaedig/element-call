@@ -15,7 +15,7 @@ import {
 import EventEmitter from "events";
 import { it } from "vitest";
 
-import { ObservableScope } from "../../ObservableScope.ts";
+import { Scope } from "../../Scope.ts";
 import type { Room as MatrixRoom } from "matrix-js-sdk/lib/models/room";
 import {
   mockRtcMembership,
@@ -26,7 +26,7 @@ import {
   createMatrixMemberMetadata$,
   createRoomMembers$,
 } from "./MatrixMemberMetadata.ts";
-let testScope: ObservableScope;
+let testScope: Scope;
 let mockMatrixRoom: MatrixRoom;
 
 describe("MatrixMemberMetadata", () => {
@@ -37,7 +37,7 @@ describe("MatrixMemberMetadata", () => {
   let fakeMembersMap: Map<string, Partial<RoomMember>>;
 
   beforeEach(() => {
-    testScope = new ObservableScope();
+    testScope = new Scope();
     fakeMembersMap = new Map<string, Partial<RoomMember>>();
 
     const roomEmitter = new EventEmitter();

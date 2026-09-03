@@ -14,7 +14,7 @@ import {
 } from "livekit-client";
 
 import { type Behavior, state } from "../Behavior";
-import { type ObservableScope } from "../ObservableScope";
+import { type Scope } from "../Scope";
 import { trackReference$ } from "../trackReference";
 
 export type RtpStreamStats =
@@ -26,7 +26,7 @@ export type RtpStreamStats =
  * enabled.
  */
 export function rtpStreamStats$(
-  scope: ObservableScope,
+  scope: Scope,
   participant$: Behavior<Participant | null>,
   source: Track.Source,
   type: "inbound-rtp" | "outbound-rtp",

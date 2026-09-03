@@ -11,7 +11,7 @@ import {
   type MediaDevice,
   type SelectedAudioOutputDevice,
 } from "./MediaDevices.ts";
-import type { ObservableScope } from "./ObservableScope.ts";
+import type { Scope } from "./Scope.ts";
 import type { RTCCallIntent } from "matrix-js-sdk/lib/matrixrtc";
 import { type Controls, type OutputDevice } from "../controls.ts";
 import { type Behavior, computed, state } from "./Behavior.ts";
@@ -87,13 +87,13 @@ export class AndroidControlledAudioOutput implements MediaDevice<
    *
    * @constructor
    * @param controlledDevices$ - The list of available output devices coming from the hosting application, ordered by preference order (most preferred first).
-   * @param scope - The ObservableScope to create the Behaviors in.
+   * @param scope - The Scope to create the Behaviors in.
    * @param initialIntent - The initial call intent (e.g. "audio" or "video") that can be used to determine the default audio routing (e.g. default to earpiece for audio calls and speaker for video calls).
    * @param controls - The controls provided by the hosting application to control the audio routing and notify of user actions.
    */
   public constructor(
     private readonly controlledDevices$: Behavior<OutputDevice[]>,
-    scope: ObservableScope,
+    scope: Scope,
     private initialIntent: RTCCallIntent | undefined = undefined,
     controls: Controls,
   ) {

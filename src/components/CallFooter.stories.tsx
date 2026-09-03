@@ -17,7 +17,7 @@ import { ReactionsSenderContext } from "../reactions/useReactionsSender";
 import { type ReactionOption } from "../reactions";
 import { MediaDevicesContext } from "../MediaDevicesContext";
 import { MediaDevices } from "../state/MediaDevices";
-import { globalScope } from "../state/ObservableScope";
+import { globalScope } from "../state/Scope";
 import { constant, state } from "../state/Behavior";
 import { type LayoutMode } from "../state/LayoutSwitchViewModel";
 

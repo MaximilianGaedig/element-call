@@ -27,7 +27,7 @@ import {
   type RaisedHandInfo,
   type ReactionInfo,
 } from ".";
-import { type ObservableScope } from "../state/ObservableScope";
+import { type Scope } from "../state/Scope";
 import { state, type Behavior } from "../state/Behavior";
 
 export const REACTION_ACTIVE_TIME_MS = 3000;
@@ -56,7 +56,7 @@ export class ReactionsReader {
     this.reactionsSubject$;
 
   public constructor(
-    private readonly scope: ObservableScope,
+    private readonly scope: Scope,
     private readonly rtcSession: MatrixRTCSession,
   ) {
     // Hide reactions once they expire

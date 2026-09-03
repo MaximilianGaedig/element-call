@@ -20,7 +20,7 @@ import {
   type BaseUserMediaViewModel,
   createBaseUserMedia,
 } from "./UserMediaViewModel";
-import { type ObservableScope } from "../ObservableScope";
+import { type Scope } from "../Scope";
 import { alwaysShowSelf } from "../../settings/settings";
 import { platform } from "../../Platform";
 import { type MediaDevices } from "../MediaDevices";
@@ -49,7 +49,7 @@ export interface LocalUserMediaInputs extends Omit<
 }
 
 export function createLocalUserMedia(
-  scope: ObservableScope,
+  scope: Scope,
   { mediaDevices, ...inputs }: LocalUserMediaInputs,
 ): LocalUserMediaViewModel {
   const baseUserMedia = createBaseUserMedia(scope, {

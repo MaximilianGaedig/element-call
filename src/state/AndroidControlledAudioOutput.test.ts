@@ -10,7 +10,7 @@ import { type RTCCallIntent } from "matrix-js-sdk/lib/matrixrtc";
 
 import { AndroidControlledAudioOutput } from "./AndroidControlledAudioOutput.ts";
 import type { Controls, OutputDevice } from "../controls";
-import { ObservableScope } from "./ObservableScope";
+import { Scope } from "./Scope";
 import { withTestScheduler } from "../utils/test";
 import { constant, state, type State } from "./Behavior";
 
@@ -97,11 +97,11 @@ const FULL_DEVICE_LIST = [
   ...BASE_DEVICE_LIST,
 ];
 
-let testScope: ObservableScope;
+let testScope: Scope;
 let mockControls: Controls;
 
 beforeEach(() => {
-  testScope = new ObservableScope();
+  testScope = new Scope();
   mockControls = {
     onAudioDeviceSelect: vi.fn(),
     onOutputDeviceSelect: vi.fn(),
@@ -507,7 +507,7 @@ describe("Available device changes", () => {
 
 describe("Scope management", () => {
   it("Should stop emitting when scope ends", () => {
-    const aScope = new ObservableScope();
+    const aScope = new Scope();
     const controlledAudioOutput = new AndroidControlledAudioOutput(
       constant(BASE_DEVICE_LIST),
       aScope,
@@ -526,7 +526,7 @@ describe("Scope management", () => {
   });
 
   it("Should stop updating when scope ends", () => {
-    const aScope = new ObservableScope();
+    const aScope = new Scope();
     const availableSource$ = state<OutputDevice[]>([]);
     new AndroidControlledAudioOutput(
       availableSource$,

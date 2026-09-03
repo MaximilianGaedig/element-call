@@ -14,7 +14,7 @@ import {
   type BaseScreenShareViewModel,
   createBaseScreenShare,
 } from "./ScreenShareViewModel";
-import { type ObservableScope } from "../ObservableScope";
+import { type Scope } from "../Scope";
 
 export interface LocalScreenShareViewModel extends BaseScreenShareViewModel {
   local: true;
@@ -25,7 +25,7 @@ export interface LocalScreenShareInputs extends BaseScreenShareInputs {
 }
 
 export function createLocalScreenShare(
-  scope: ObservableScope,
+  scope: Scope,
   inputs: LocalScreenShareInputs,
 ): LocalScreenShareViewModel {
   return { ...createBaseScreenShare(scope, inputs), local: true };

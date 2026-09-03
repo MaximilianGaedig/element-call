@@ -11,7 +11,7 @@ import fetchMock from "fetch-mock";
 import { logger } from "matrix-js-sdk/lib/logger";
 import EventEmitter from "events";
 
-import { ObservableScope } from "../../ObservableScope.ts";
+import { Scope } from "../../Scope.ts";
 import { ECConnectionFactory } from "./ConnectionFactory.ts";
 import type { OpenIDClientParts } from "../../../livekit/openIDSFU.ts";
 import {
@@ -50,11 +50,11 @@ vi.mock("livekit-client", async (importOriginal) => {
   };
 });
 
-let testScope: ObservableScope;
+let testScope: Scope;
 let mockClient: OpenIDClientParts;
 
 beforeEach(() => {
-  testScope = new ObservableScope();
+  testScope = new Scope();
   mockClient = {
     getOpenIdToken: vi.fn().mockReturnValue(""),
     getDeviceId: vi.fn().mockReturnValue("DEV000"),

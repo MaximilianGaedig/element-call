@@ -17,7 +17,7 @@ import {
   type BaseMemberMediaViewModel,
 } from "./MemberMediaViewModel";
 import { type RemoteUserMediaViewModel } from "./RemoteUserMediaViewModel";
-import { type ObservableScope } from "../ObservableScope";
+import { type Scope } from "../Scope";
 import { showConnectionStats } from "../../settings/settings";
 import { rtpStreamStats$, type RtpStreamStats } from "./rtpStreamStats";
 import { MEDIA_EVENTS } from "../trackReference";
@@ -60,7 +60,7 @@ export interface BaseUserMediaInputs extends Omit<
 }
 
 export function createBaseUserMedia(
-  scope: ObservableScope,
+  scope: Scope,
   {
     rtcBackendIdentity,
     handRaised$,

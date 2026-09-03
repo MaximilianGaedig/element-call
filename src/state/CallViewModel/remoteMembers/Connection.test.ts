@@ -34,7 +34,7 @@ import {
   ConnectionState,
   type ConnectionOpts,
 } from "./Connection.ts";
-import { ObservableScope } from "../../ObservableScope.ts";
+import { Scope } from "../../Scope.ts";
 import { type OpenIDClientParts } from "../../../livekit/openIDSFU.ts";
 import {
   ElementCallError,
@@ -43,7 +43,7 @@ import {
 import { testJWTToken } from "../../../utils/test-fixtures.ts";
 import { mockRemoteParticipant, ownMemberMock } from "../../../utils/test.ts";
 
-let testScope: ObservableScope;
+let testScope: Scope;
 
 let client: MockedObject<OpenIDClientParts>;
 
@@ -60,7 +60,7 @@ const livekitFocus: LivekitTransportConfig = {
 };
 
 function setupTest(): void {
-  testScope = new ObservableScope();
+  testScope = new Scope();
   client = vi.mocked<OpenIDClientParts>({
     getOpenIdToken: vi.fn().mockResolvedValue({
       access_token: "rYsmGUEwNjKgJYyeNUkZseJN",

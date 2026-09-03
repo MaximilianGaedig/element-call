@@ -14,7 +14,7 @@ import {
   audioOutput as audioOutputSetting,
   videoInput as videoInputSetting,
 } from "../settings/settings";
-import { type ObservableScope } from "./ObservableScope";
+import { type Scope } from "./Scope";
 import { availableOutputDevices$ as controlledAvailableOutputDevices$ } from "../controls";
 import { getUrlParams } from "../UrlParams";
 import { platform } from "../Platform";
@@ -110,7 +110,7 @@ export const iosDeviceMenu$ =
 export function availableRawDevices$(
   kind: MediaDeviceKind,
   usingNames$: Behavior<boolean>,
-  scope: ObservableScope,
+  scope: Scope,
   logger: Logger,
 ): Behavior<MediaDeviceInfo[]> {
   const devices$ = state<MediaDeviceInfo[]>([]);
@@ -218,7 +218,7 @@ class AudioInput implements MediaDevice<DeviceLabel, SelectedAudioInputDevice> {
 
   public constructor(
     private readonly usingNames$: Behavior<boolean>,
-    private readonly scope: ObservableScope,
+    private readonly scope: Scope,
   ) {
     this.scope.effect(() => {
       this.logger.info(
@@ -279,7 +279,7 @@ export class AudioOutput implements MediaDevice<
 
   public constructor(
     private readonly usingNames$: Behavior<boolean>,
-    private readonly scope: ObservableScope,
+    private readonly scope: Scope,
   ) {
     this.scope.effect(() => {
       this.logger.info(
@@ -315,7 +315,7 @@ class VideoInput implements MediaDevice<DeviceLabel, SelectedDevice> {
 
   public constructor(
     private readonly usingNames$: Behavior<boolean>,
-    private readonly scope: ObservableScope,
+    private readonly scope: Scope,
   ) {
     // This also has the purpose of subscribing to the available devices
     this.scope.effect(() => {
@@ -372,5 +372,5 @@ export class MediaDevices {
   public readonly videoInput: MediaDevice<DeviceLabel, SelectedDevice> =
     new VideoInput(this.usingNames$, this.scope);
 
-  public constructor(private readonly scope: ObservableScope) {}
+  public constructor(private readonly scope: Scope) {}
 }

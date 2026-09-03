@@ -9,11 +9,11 @@ import { untracked } from "@preact/signals-core";
 import { logger } from "matrix-js-sdk/lib/logger";
 
 import { type Behavior, state, type State } from "./Behavior";
-import { ObservableScope } from "./ObservableScope";
+import { Scope } from "./Scope";
 import { shallowEquals } from "../utils/array";
 
 interface Entry<Data, Item> {
-  scope: ObservableScope;
+  scope: Scope;
   keys: readonly unknown[];
   data$: State<Data>;
   item: Item;
@@ -38,17 +38,13 @@ export function keyedItems<
   Data,
   Item,
 >(
-  scope: ObservableScope,
+  scope: Scope,
   name: string,
   input$: Behavior<Input>,
   generator: (
     input: Input,
   ) => Iterable<{ keys: readonly [...Keys]; data: Data }>,
-  factory: (
-    scope: ObservableScope,
-    data$: Behavior<Data>,
-    ...keys: Keys
-  ) => Item,
+  factory: (scope: Scope, data$: Behavior<Data>, ...keys: Keys) => Item,
 ): Behavior<Item[]> {
   // Entries live in a tree of Maps, one level per key
   let tree = new Map<unknown, unknown>();
@@ -67,7 +63,7 @@ export function keyedItems<
 
       if (entry === undefined) {
         logger.debug(`[${name}] Creating item with keys ${keys.join(", ")}`);
-        const itemScope = new ObservableScope();
+        const itemScope = new Scope();
         const data$ = state(data);
         // What the factory reads is not a dependency of this collection
         const item = untracked(() => factory(itemScope, data$, ...keys));

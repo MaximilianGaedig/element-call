@@ -24,7 +24,7 @@ import { type CallMembershipIdentityParts } from "matrix-js-sdk/lib/matrixrtc/En
 
 import { type Behavior, computed, fromEvents, state } from "../../Behavior.ts";
 import { type IConnectionManager } from "../remoteMembers/ConnectionManager.ts";
-import { type ObservableScope } from "../../ObservableScope.ts";
+import { type Scope } from "../../Scope.ts";
 import { type Publisher } from "./Publisher.ts";
 import { type MuteStates } from "../../MuteStates.ts";
 import {
@@ -112,7 +112,7 @@ export type LocalMemberState =
 interface Props {
   // TODO add a comment into some code style readme or file header callviewmodel
   // that the inputs for those createSomething$() functions should NOT contain any js-sdk objectes
-  scope: ObservableScope;
+  scope: Scope;
   muteStates: MuteStates;
   connectionManager: IConnectionManager;
   createPublisherFactory: (connection: Connection) => Publisher;

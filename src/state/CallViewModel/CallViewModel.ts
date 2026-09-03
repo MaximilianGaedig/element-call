@@ -69,7 +69,7 @@ import {
   type SpotlightPortraitLayoutMedia,
 } from "../layout-types.ts";
 import { ElementCallError, UnknownCallError } from "../../utils/errors.ts";
-import { type ObservableScope } from "../ObservableScope.ts";
+import { type Scope } from "../Scope.ts";
 import { keyedItems } from "../keyedItems.ts";
 import { createHomeserverConnected$ } from "./localMember/HomeserverConnected.ts";
 import {
@@ -367,7 +367,7 @@ export interface CallViewModel {
 // state and LiveKit state. We use the common terminology of room "members", RTC
 // "memberships", and LiveKit "participants".
 export function createCallViewModel$(
-  scope: ObservableScope,
+  scope: Scope,
   // A call is permanently tied to a single Matrix room
   matrixRTCSession: MatrixRTCSession,
   matrixRoom: MatrixRoom,
@@ -1471,7 +1471,7 @@ function getE2eeKeyProvider(
  * up with the latest value once it is false again.
  */
 function pauseWhile<T>(
-  scope: ObservableScope,
+  scope: Scope,
   value$: Behavior<T>,
   pause$: Behavior<boolean>,
 ): Behavior<T> {
@@ -1484,7 +1484,7 @@ function pauseWhile<T>(
 }
 
 function createWindowSize$(
-  scope: ObservableScope,
+  scope: Scope,
 ): Behavior<{ width: number; height: number }> {
   const read = (): { width: number; height: number } => ({
     width: window.innerWidth,

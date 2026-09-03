@@ -46,7 +46,7 @@ import {
   FailToGetOpenIdToken,
   MatrixRTCTransportMissingError,
 } from "../../../utils/errors";
-import { ObservableScope } from "../../ObservableScope";
+import { Scope } from "../../Scope";
 import { constant } from "../../Behavior";
 import { ConnectionManagerData } from "../remoteMembers/ConnectionManager";
 import { ConnectionState, type Connection } from "../remoteMembers/Connection";
@@ -275,7 +275,7 @@ describe("LocalMembership", () => {
   });
 
   it("logs if callIntent cannot be updated", async () => {
-    const scope = new ObservableScope();
+    const scope = new Scope();
 
     const aLocalTransport: LocalTransport = {
       advertised$: state(aTransport),
@@ -360,7 +360,7 @@ describe("LocalMembership", () => {
   } as unknown as Connection;
 
   it("recreates publisher if new connection is used, always unpublish and end tracks", async () => {
-    const scope = new ObservableScope();
+    const scope = new Scope();
 
     const activeTransport$ = state(aTransportWithSFUConfig);
     const aLocalTransport: LocalTransport = {
@@ -429,7 +429,7 @@ describe("LocalMembership", () => {
   });
 
   it("only start tracks if requested", async () => {
-    const scope = new ObservableScope();
+    const scope = new Scope();
 
     const publishers: Publisher[] = [];
 
@@ -492,7 +492,7 @@ describe("LocalMembership", () => {
   // TODO add an integration test combining publisher and localMembership
   //
   it("tracks livekit state correctly", async () => {
-    const scope = new ObservableScope();
+    const scope = new Scope();
 
     const connectionManagerData = new ConnectionManagerData();
 
@@ -651,7 +651,7 @@ describe("LocalMembership", () => {
     });
 
     it("does not fire CallReconnecting for the initial non-connected state at startup", async () => {
-      const scope = new ObservableScope();
+      const scope = new Scope();
       const trackSpy = vi.spyOn(
         PosthogAnalytics.instance.eventCallReconnecting,
         "track",
@@ -694,7 +694,7 @@ describe("LocalMembership", () => {
     });
 
     it("fires CallReconnecting with homeserver reason and duration when reconnected", async () => {
-      const scope = new ObservableScope();
+      const scope = new Scope();
       const trackSpy = vi.spyOn(
         PosthogAnalytics.instance.eventCallReconnecting,
         "track",
@@ -740,7 +740,7 @@ describe("LocalMembership", () => {
     });
 
     it("reports livekit reason when livekit disconnects then reconnects", async () => {
-      const scope = new ObservableScope();
+      const scope = new Scope();
       const trackSpy = vi.spyOn(
         PosthogAnalytics.instance.eventCallReconnecting,
         "track",
@@ -792,7 +792,7 @@ describe("LocalMembership", () => {
     });
 
     it("fires one event per completed reconnection cycle", async () => {
-      const scope = new ObservableScope();
+      const scope = new Scope();
       const trackSpy = vi.spyOn(
         PosthogAnalytics.instance.eventCallReconnecting,
         "track",

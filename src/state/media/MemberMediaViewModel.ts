@@ -17,7 +17,7 @@ import { type Room as LivekitRoom } from "livekit-client";
 import { type Behavior, computed } from "../Behavior";
 import { type BaseMediaViewModel, createBaseMedia } from "./MediaViewModel";
 import { type EncryptionSystem } from "../../e2ee/sharedKeyManagement";
-import { type ObservableScope } from "../ObservableScope";
+import { type Scope } from "../Scope";
 import { trackReference$ } from "../trackReference";
 import { E2eeType } from "../../e2ee/e2eeType";
 import { type UserMediaViewModel } from "./UserMediaViewModel";
@@ -52,7 +52,7 @@ export interface MemberMediaInputs extends BaseMediaViewModel {
 }
 
 export function createMemberMedia(
-  scope: ObservableScope,
+  scope: Scope,
   {
     participant$,
     audioSource,

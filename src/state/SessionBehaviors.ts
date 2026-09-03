@@ -13,7 +13,7 @@ import {
   isLivekitTransportConfig,
 } from "matrix-js-sdk/lib/matrixrtc";
 
-import { type ObservableScope } from "./ObservableScope";
+import { type Scope } from "./Scope";
 import { type Behavior, computed, fromEvents } from "./Behavior";
 
 export const membershipsAndTransports$ = (
@@ -53,7 +53,7 @@ export const membershipsAndTransports$ = (
 };
 
 export const createMemberships$ = (
-  scope: ObservableScope,
+  scope: Scope,
   matrixRTCSession: MatrixRTCSession,
 ): Behavior<CallMembership[]> =>
   fromEvents(
@@ -69,7 +69,7 @@ export const createMemberships$ = (
  * key is generated when someone joins or leaves.
  */
 export const createKeyRotationSuppressed$ = (
-  scope: ObservableScope,
+  scope: Scope,
   matrixRTCSession: MatrixRTCSession,
 ): Behavior<boolean> =>
   fromEvents(

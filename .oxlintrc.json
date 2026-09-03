@@ -119,7 +119,7 @@
         "**/test-**"
       ],
       "rules": {
-        // Tests often initialize an ObservableScope in an outer scope in
+        // Tests often initialize an Scope in an outer scope in
         // beforeEach, which is not actually a problem
         "element-call/no-observablescope-leak": "off",
         "jsdoc/empty-tags": "off",

@@ -10,7 +10,7 @@ import { type LivekitTransportConfig } from "matrix-js-sdk/lib/matrixrtc";
 import { type RemoteParticipant } from "livekit-client";
 import { logger } from "matrix-js-sdk/lib/logger";
 
-import { ObservableScope } from "../../ObservableScope.ts";
+import { Scope } from "../../Scope.ts";
 import {
   createConnectionManager$,
   type ConnectionManagerData,
@@ -35,33 +35,31 @@ const TRANSPORT_2: LivekitTransportConfig = {
 };
 
 let fakeConnectionFactory: ConnectionFactory;
-let testScope: ObservableScope;
+let testScope: Scope;
 
 // Can be useful to track all created connections in tests, even the disposed ones
 let allCreatedConnections: Connection[];
 
 beforeEach(() => {
-  testScope = new ObservableScope();
+  testScope = new Scope();
   allCreatedConnections = [];
   fakeConnectionFactory = {} as unknown as ConnectionFactory;
   vi.mocked(fakeConnectionFactory).createConnection = vi
     .fn()
-    .mockImplementation(
-      (scope: ObservableScope, transport: LivekitTransportConfig) => {
-        const mockConnection = {
-          transport,
-          remoteParticipants$: state([]),
-        } as unknown as Connection;
-        vi.mocked(mockConnection).start = vi.fn();
-        vi.mocked(mockConnection).stop = vi.fn();
-        // Tie the connection's lifecycle to the scope to test scope lifecycle management
-        scope.onEnd(() => {
-          void mockConnection.stop();
-        });
-        allCreatedConnections.push(mockConnection);
-        return mockConnection;
-      },
-    );
+    .mockImplementation((scope: Scope, transport: LivekitTransportConfig) => {
+      const mockConnection = {
+        transport,
+        remoteParticipants$: state([]),
+      } as unknown as Connection;
+      vi.mocked(mockConnection).start = vi.fn();
+      vi.mocked(mockConnection).stop = vi.fn();
+      // Tie the connection's lifecycle to the scope to test scope lifecycle management
+      scope.onEnd(() => {
+        void mockConnection.stop();
+      });
+      allCreatedConnections.push(mockConnection);
+      return mockConnection;
+    });
 });
 
 afterEach(() => {
@@ -221,27 +219,25 @@ describe("connectionManagerData$ stream", () => {
     // need a more advanced fake connection factory
     vi.mocked(fakeConnectionFactory).createConnection = vi
       .fn()
-      .mockImplementation(
-        (scope: ObservableScope, transport: LivekitTransportConfig) => {
-          const fakeRemoteParticipants$ = state<RemoteParticipant[]>([]);
-          const mockConnection = {
-            transport,
-            remoteParticipants$: getRemoteParticipantsFor(transport),
-          } as unknown as Connection;
-          vi.mocked(mockConnection).start = vi.fn();
-          vi.mocked(mockConnection).stop = vi.fn();
-          // Tie the connection's lifecycle to the scope to test scope lifecycle management
-          scope.onEnd(() => {
-            void mockConnection.stop();
-          });
+      .mockImplementation((scope: Scope, transport: LivekitTransportConfig) => {
+        const fakeRemoteParticipants$ = state<RemoteParticipant[]>([]);
+        const mockConnection = {
+          transport,
+          remoteParticipants$: getRemoteParticipantsFor(transport),
+        } as unknown as Connection;
+        vi.mocked(mockConnection).start = vi.fn();
+        vi.mocked(mockConnection).stop = vi.fn();
+        // Tie the connection's lifecycle to the scope to test scope lifecycle management
+        scope.onEnd(() => {
+          void mockConnection.stop();
+        });
 
-          fakeRemoteParticipantsStreams.set(
-            keyForTransport(transport),
-            fakeRemoteParticipants$,
-          );
-          return mockConnection;
-        },
-      );
+        fakeRemoteParticipantsStreams.set(
+          keyForTransport(transport),
+          fakeRemoteParticipants$,
+        );
+        return mockConnection;
+      });
   });
 
   test("Should report connections with the remote participants", () => {

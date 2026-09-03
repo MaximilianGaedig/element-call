@@ -12,7 +12,7 @@ import {
 } from "matrix-js-sdk/lib/matrixrtc";
 import { type Behavior, computed } from "../../Behavior";
 import { type IConnectionManager } from "./ConnectionManager";
-import { type ObservableScope } from "../../ObservableScope";
+import { type Scope } from "../../Scope";
 import { type Connection } from "./Connection";
 import { keyedItems } from "../../keyedItems";
 
@@ -55,7 +55,7 @@ export interface RemoteMatrixLivekitMember extends MatrixLivekitMember {
 }
 
 interface Props {
-  scope: ObservableScope;
+  scope: Scope;
   membershipsWithTransport$: Behavior<
     { membership: CallMembership; transport?: LivekitTransportConfig }[]
   >;

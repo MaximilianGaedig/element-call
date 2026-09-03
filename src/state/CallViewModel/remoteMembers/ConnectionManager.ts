@@ -13,7 +13,7 @@ import { type CallMembershipIdentityParts } from "matrix-js-sdk/lib/matrixrtc/En
 
 import { type Behavior, computed } from "../../Behavior.ts";
 import { type Connection } from "./Connection.ts";
-import { type ObservableScope } from "../../ObservableScope.ts";
+import { type Scope } from "../../Scope.ts";
 import { keyedItems } from "../../keyedItems.ts";
 import { areLivekitTransportsEqual } from "./MatrixLivekitMembers.ts";
 import { type ConnectionFactory } from "./ConnectionFactory.ts";
@@ -70,7 +70,7 @@ export class ConnectionManagerData {
 }
 
 interface Props {
-  scope: ObservableScope;
+  scope: Scope;
   connectionFactory: ConnectionFactory;
   localTransport$: Behavior<LocalTransportWithSFUConfig | null>;
   remoteTransports$: Behavior<LivekitTransportConfig[]>;

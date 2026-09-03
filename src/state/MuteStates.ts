@@ -11,7 +11,7 @@ import { logger } from "matrix-js-sdk/lib/logger";
 
 import { type MediaDevices, type MediaDevice } from "../state/MediaDevices";
 import { ElementWidgetActions, widget } from "../widget";
-import { type ObservableScope } from "./ObservableScope";
+import { type Scope } from "./Scope";
 import { type Behavior, computed, constant, state } from "./Behavior";
 
 export type Handler = (desired: boolean) => Promise<boolean>;
@@ -91,7 +91,7 @@ export class MuteState<Label, Selected> {
   }
 
   public constructor(
-    scope: ObservableScope,
+    scope: Scope,
     private readonly device: MediaDevice<Label, Selected>,
     private readonly enabledByDefault: boolean,
     /**
@@ -150,7 +150,7 @@ export class MuteStates {
   );
 
   public constructor(
-    private readonly scope: ObservableScope,
+    private readonly scope: Scope,
     private readonly mediaDevices: MediaDevices,
     private readonly initialMuteState: {
       audioEnabled: boolean;

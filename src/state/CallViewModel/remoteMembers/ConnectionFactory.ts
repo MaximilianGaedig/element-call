@@ -18,7 +18,7 @@ import E2EEWorker from "livekit-client/e2ee-worker?worker&inline";
 import { type CallMembershipIdentityParts } from "matrix-js-sdk/lib/matrixrtc/EncryptionManager";
 import { type LivekitTransportConfig } from "matrix-js-sdk/lib/matrixrtc";
 
-import { type ObservableScope } from "../../ObservableScope.ts";
+import { type Scope } from "../../Scope.ts";
 import { Connection } from "./Connection.ts";
 import type {
   OpenIDClientParts,
@@ -43,7 +43,7 @@ import {
 // TODO evaluate if this should be done like the Publisher Factory
 export interface ConnectionFactory {
   createConnection(
-    scope: ObservableScope,
+    scope: Scope,
     transport: LivekitTransportConfig,
     ownMembershipIdentity: CallMembershipIdentityParts,
     logger: Logger,
@@ -102,7 +102,7 @@ export class ECConnectionFactory implements ConnectionFactory {
    * @returns
    */
   public createConnection(
-    scope: ObservableScope,
+    scope: Scope,
     transport: LivekitTransportConfig,
     ownMembershipIdentity: CallMembershipIdentityParts,
     logger: Logger,

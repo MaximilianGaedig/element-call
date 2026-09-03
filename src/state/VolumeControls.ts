@@ -6,7 +6,7 @@ Please see LICENSE in the repository root for full details.
 */
 
 import { type Behavior, computed, state } from "./Behavior";
-import { type ObservableScope } from "./ObservableScope";
+import { type Scope } from "./Scope";
 
 /**
  * Controls for audio playback volume.
@@ -39,7 +39,7 @@ interface VolumeControlsInputs {
  * audio playback module for the duration of the scope.
  */
 export function createVolumeControls(
-  scope: ObservableScope,
+  scope: Scope,
   { pretendToBeDisconnected$, sink$ }: VolumeControlsInputs,
 ): VolumeControls {
   const playbackVolume$ = state(1);

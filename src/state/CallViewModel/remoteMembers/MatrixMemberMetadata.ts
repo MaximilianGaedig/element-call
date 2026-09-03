@@ -13,7 +13,7 @@ import {
   type Room as MatrixRoom,
 } from "matrix-js-sdk/lib/matrix";
 
-import { type ObservableScope } from "../../ObservableScope";
+import { type Scope } from "../../Scope";
 import {
   calculateDisplayName,
   shouldDisambiguate,
@@ -39,7 +39,7 @@ export function roomToMembersMap(matrixRoom: MatrixRoom): RoomMemberMap {
 }
 
 export function createRoomMembers$(
-  scope: ObservableScope,
+  scope: Scope,
   matrixRoom: MatrixRoom,
 ): Behavior<RoomMemberMap> {
   return fromEvents(scope, matrixRoom, [RoomStateEvent.Members], (room) =>

@@ -20,7 +20,7 @@ import { App } from "./App";
 import { init as initRageshake } from "./settings/rageshake";
 import { Initializer } from "./initializer";
 import { AppViewModel } from "./state/AppViewModel";
-import { globalScope } from "./state/ObservableScope";
+import { globalScope } from "./state/Scope";
 
 initRageshake().catch((e) => {
   logger.error("Failed to initialize rageshake", e);

@@ -17,7 +17,7 @@ import {
   type SelectedDevice,
 } from "./MediaDevices";
 import { constant, state } from "./Behavior";
-import { ObservableScope } from "./ObservableScope";
+import { Scope } from "./Scope";
 import { flushPromises, mockMediaDevices } from "../utils/test";
 import { initializeWidget } from "../widget";
 initializeWidget();
@@ -25,10 +25,10 @@ initializeWidget();
 const getUrlParams = vi.hoisted(() => vi.fn(() => ({})));
 vi.mock("../UrlParams", () => ({ getUrlParams }));
 
-let testScope: ObservableScope;
+let testScope: Scope;
 
 beforeEach(() => {
-  testScope = new ObservableScope();
+  testScope = new Scope();
 });
 
 afterEach(() => {

@@ -13,7 +13,7 @@ import {
   untracked,
 } from "@preact/signals-core";
 
-import { type ObservableScope } from "./ObservableScope";
+import { type Scope } from "./Scope";
 
 const nothing = Symbol("nothing");
 
@@ -76,19 +76,19 @@ export interface Emitter {
  * follow it and `read` is also re-run whenever it changes.
  */
 export function fromEvents<E extends Emitter, T>(
-  scope: ObservableScope,
+  scope: Scope,
   emitter: E,
   events: readonly (string | symbol)[],
   read: (emitter: E) => T,
 ): Behavior<T>;
 export function fromEvents<E extends Emitter, T>(
-  scope: ObservableScope,
+  scope: Scope,
   emitter$: Behavior<E | null | undefined>,
   events: readonly (string | symbol)[],
   read: (emitter: E | null | undefined) => T,
 ): Behavior<T>;
 export function fromEvents<E extends Emitter, T>(
-  scope: ObservableScope,
+  scope: Scope,
   emitter: E | Behavior<E | null | undefined>,
   events: readonly (string | symbol)[],
   read: (emitter: E | null | undefined) => T,

@@ -37,7 +37,7 @@ import {
 import { type TextStreamInfo } from "../node_modules/livekit-client/dist/src/room/types";
 import { type Behavior, computed, constant } from "../src/state/Behavior";
 import { createCallViewModel$ } from "../src/state/CallViewModel/CallViewModel";
-import { ObservableScope } from "../src/state/ObservableScope";
+import { Scope } from "../src/state/Scope";
 import { getUrlParams } from "../src/UrlParams";
 import { MuteStates } from "../src/state/MuteStates";
 import { MediaDevices } from "../src/state/MediaDevices";
@@ -102,7 +102,7 @@ export async function createMatrixRTCSdk(
   sticky: boolean = false,
 ): Promise<MatrixRTCSdk> {
   const logger = rootLogger.getChild("[MatrixRTCSdk]");
-  const scope = new ObservableScope();
+  const scope = new Scope();
 
   // widget client
   initializeWidget(application, true);

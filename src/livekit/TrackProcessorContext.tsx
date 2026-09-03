@@ -26,7 +26,7 @@ import {
 } from "../settings/settings";
 import { BlurBackgroundTransformer } from "./BlurBackgroundTransformer";
 import { type Behavior } from "../state/Behavior";
-import { type ObservableScope } from "../state/ObservableScope";
+import { type Scope } from "../state/Scope";
 import { platform } from "../Platform";
 
 //TODO-MULTI-SFU: This is not yet fully there.
@@ -53,7 +53,7 @@ export function useTrackProcessor(): ProcessorState {
  * Updates your video tracks to always use the given processor.
  */
 export const trackProcessorSync = (
-  scope: ObservableScope,
+  scope: Scope,
   videoTrack$: Behavior<LocalVideoTrack | null>,
   processor$: Behavior<ProcessorState>,
 ): void => {

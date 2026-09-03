@@ -15,7 +15,7 @@ import { ClientEvent, type MatrixClient, SyncState } from "matrix-js-sdk";
 import { logger as rootLogger } from "matrix-js-sdk/lib/logger";
 
 import { Config } from "../../../config/Config";
-import { type ObservableScope } from "../../ObservableScope";
+import { type Scope } from "../../Scope";
 import {
   type Behavior,
   computed,
@@ -52,7 +52,7 @@ export interface HomeserverConnected {
  *                        If not provided, uses the config value (default 10000ms).
  */
 export function createHomeserverConnected$(
-  scope: ObservableScope,
+  scope: Scope,
   client: Emitter & Pick<MatrixClient, "getSyncState">,
   matrixRTCSession: Emitter &
     Pick<MatrixRTCSession, "membershipStatus" | "probablyLeft">,

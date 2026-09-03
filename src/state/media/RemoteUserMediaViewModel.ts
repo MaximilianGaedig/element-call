@@ -15,7 +15,7 @@ import {
   type BaseUserMediaViewModel,
   createBaseUserMedia,
 } from "./UserMediaViewModel";
-import { type ObservableScope } from "../ObservableScope";
+import { type Scope } from "../Scope";
 
 export interface RemoteUserMediaViewModel
   extends BaseUserMediaViewModel, VolumeControls {
@@ -36,7 +36,7 @@ export interface RemoteUserMediaInputs extends Omit<
 }
 
 export function createRemoteUserMedia(
-  scope: ObservableScope,
+  scope: Scope,
   { pretendToBeDisconnected$, ...inputs }: RemoteUserMediaInputs,
 ): RemoteUserMediaViewModel {
   const baseUserMedia = createBaseUserMedia(scope, {

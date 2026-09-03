@@ -14,7 +14,7 @@ const nothing = Symbol("nothing");
 /**
  * A scope which limits the lifetime of effects and other resources.
  */
-export class ObservableScope {
+export class Scope {
   private ended = false;
   private readonly endCallbacks: (() => void)[] = [];
 
@@ -98,4 +98,4 @@ export class ObservableScope {
 /**
  * The global scope, a scope which never ends.
  */
-export const globalScope = new ObservableScope();
+export const globalScope = new Scope();

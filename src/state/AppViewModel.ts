@@ -6,7 +6,7 @@ Please see LICENSE in the repository root for full details.
 */
 
 import { MediaDevices } from "./MediaDevices";
-import { type ObservableScope } from "./ObservableScope";
+import { type Scope } from "./Scope";
 
 /**
  * The top-level state holder for the application.
@@ -17,5 +17,5 @@ export class AppViewModel {
   // TODO: Move more application logic here. The CallViewModel, at the very
   // least, ought to be accessible from this object.
 
-  public constructor(private readonly scope: ObservableScope) {}
+  public constructor(private readonly scope: Scope) {}
 }

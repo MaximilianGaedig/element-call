@@ -29,7 +29,7 @@ import {
 import { getUrlParams } from "../../../UrlParams.ts";
 import { trackReference$ } from "../../trackReference";
 import { type Connection } from "../remoteMembers/Connection.ts";
-import { ObservableScope } from "../../ObservableScope.ts";
+import { Scope } from "../../Scope.ts";
 
 /**
  * A wrapper for a Connection object.
@@ -44,7 +44,7 @@ export class Publisher {
    */
   public shouldPublish = false;
 
-  private readonly scope = new ObservableScope();
+  private readonly scope = new Scope();
 
   /**
    * Creates a new Publisher.
@@ -301,7 +301,7 @@ export class Publisher {
   // device anyway, and audio outputs work differently.
   private workaroundRestartAudioInputTrackChrome(
     devices: MediaDevices,
-    scope: ObservableScope,
+    scope: Scope,
   ): void {
     const lkRoom = this.connection.livekitRoom;
     let previous: SelectedAudioInputDevice | undefined;
@@ -346,13 +346,13 @@ export class Publisher {
 
   // Observe changes in the selected media devices and update the LiveKit room accordingly.
   private observeMediaDevices(
-    scope: ObservableScope,
+    scope: Scope,
     devices: MediaDevices,
     controlledAudioDevices: boolean,
   ): void {
     const lkRoom = this.connection.livekitRoom;
     const syncDevice = (
-      scope: ObservableScope,
+      scope: Scope,
       kind: MediaDeviceKind,
       selected$: Behavior<SelectedDevice | undefined>,
     ): void =>
@@ -427,7 +427,7 @@ export class Publisher {
   }
 
   private observeTrackProcessors(
-    scope: ObservableScope,
+    scope: Scope,
     room: LivekitRoom,
     trackerProcessorState$: Behavior<ProcessorState>,
   ): void {

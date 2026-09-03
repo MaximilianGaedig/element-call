@@ -23,7 +23,7 @@ import {
   type SFUConfig,
 } from "../../../livekit/openIDSFU.ts";
 import { type Behavior, fromEvents, state } from "../../Behavior.ts";
-import { type ObservableScope } from "../../ObservableScope.ts";
+import { type Scope } from "../../Scope.ts";
 import {
   ElementCallError,
   InsufficientCapacityError,
@@ -48,7 +48,7 @@ export interface ConnectionOpts {
   /** The room ID this connection is associated with. */
   roomId: string;
   /** The observable scope to use for this connection. */
-  scope: ObservableScope;
+  scope: Scope;
 
   /** Optional factory to create the LiveKit room, mainly for testing purposes. */
   livekitRoomFactory: () => LivekitRoom;
@@ -94,7 +94,7 @@ export class Connection {
 
   public readonly livekitRoom: LivekitRoom;
 
-  private scope: ObservableScope;
+  private scope: Scope;
 
   /**
    * The remote LiveKit participants that are visible on this connection.

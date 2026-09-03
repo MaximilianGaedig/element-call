@@ -11,7 +11,7 @@ import { EventEmitter } from "events";
 import { ClientEvent, SyncState } from "matrix-js-sdk";
 import { MembershipManagerEvent, Status } from "matrix-js-sdk/lib/matrixrtc";
 
-import { ObservableScope } from "../../ObservableScope";
+import { Scope } from "../../Scope";
 import { createHomeserverConnected$ } from "./HomeserverConnected";
 import { testScope, withTestScheduler } from "../../../utils/test";
 
@@ -19,7 +19,7 @@ import { testScope, withTestScheduler } from "../../../utils/test";
  * Minimal stub of a Matrix client sufficient for our tests:
  ```
   createHomeserverConnected$(
-     scope: ObservableScope,
+     scope: Scope,
      client: NodeStyleEventEmitter & Pick<MatrixClient, "getSyncState">,
      matrixRTCSession: NodeStyleEventEmitter &
        Pick<MatrixRTCSession, "membershipStatus" | "probablyLeft">,
@@ -46,7 +46,7 @@ class MockMatrixClient extends EventEmitter {
  * Minimal stub of MatrixRTCSession (membership manager):
  ```
   createHomeserverConnected$(
-     scope: ObservableScope,
+     scope: Scope,
      client: NodeStyleEventEmitter & Pick<MatrixClient, "getSyncState">,
      matrixRTCSession: NodeStyleEventEmitter &
        Pick<MatrixRTCSession, "membershipStatus" | "probablyLeft">,
@@ -78,12 +78,12 @@ class MockMatrixRTCSession extends EventEmitter {
 }
 
 describe("createHomeserverConnected$", () => {
-  let scope: ObservableScope;
+  let scope: Scope;
   let client: MockMatrixClient;
   let session: MockMatrixRTCSession;
 
   beforeEach(() => {
-    scope = new ObservableScope();
+    scope = new Scope();
     client = new MockMatrixClient(SyncState.Error); // start disconnected
     session = new MockMatrixRTCSession({
       membershipStatus: Status.Disconnected,
@@ -204,12 +204,12 @@ describe("createHomeserverConnected$", () => {
 });
 
 describe("createHomeserverConnected$ - combined$ reason values", () => {
-  let scope: ObservableScope;
+  let scope: Scope;
   let client: MockMatrixClient;
   let session: MockMatrixRTCSession;
 
   beforeEach(() => {
-    scope = new ObservableScope();
+    scope = new Scope();
     // Start with sync failing and membership disconnected
     client = new MockMatrixClient(SyncState.Error);
     session = new MockMatrixRTCSession({

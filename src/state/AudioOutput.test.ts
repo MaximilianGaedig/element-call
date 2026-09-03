@@ -8,7 +8,7 @@ Please see LICENSE in the repository root for full details.
 import { afterEach, beforeEach, describe, expect, vi, it } from "vitest";
 import { Room as LivekitRoom } from "livekit-client";
 
-import { ObservableScope } from "./ObservableScope";
+import { Scope } from "./Scope";
 import { AudioOutput, type AudioOutputDeviceLabel } from "./MediaDevices";
 import { flushPromises } from "../utils/test";
 import { constant } from "./Behavior";
@@ -99,10 +99,10 @@ async function devicesChange(devices: MediaDeviceInfo[]): Promise<void> {
 }
 
 describe("AudioOutput Tests", () => {
-  let testScope: ObservableScope;
+  let testScope: Scope;
 
   beforeEach(() => {
-    testScope = new ObservableScope();
+    testScope = new Scope();
     vi.spyOn(LivekitRoom, "getLocalDevices").mockResolvedValue([]);
   });
 

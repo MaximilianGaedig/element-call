@@ -13,7 +13,7 @@ import {
   outputDevice$ as controlledOutputSelection$,
 } from "../controls.ts";
 import { type Behavior, computed, state } from "./Behavior.ts";
-import type { ObservableScope } from "./ObservableScope.ts";
+import type { Scope } from "./Scope.ts";
 import {
   type AudioOutputDeviceLabel,
   availableRawDevices$,
@@ -130,7 +130,7 @@ export class IOSControlledAudioOutput implements MediaDevice<
 
   public constructor(
     private readonly usingNames$: Behavior<boolean>,
-    private readonly scope: ObservableScope,
+    private readonly scope: Scope,
     private readonly initialIntent: RTCCallIntent | undefined = undefined,
   ) {
     // The host's selection takes effect like a user selection

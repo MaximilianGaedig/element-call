@@ -8,7 +8,7 @@ Please see LICENSE in the repository root for full details.
 
 import { Track } from "livekit-client";
 
-import { type ObservableScope } from "../ObservableScope";
+import { type Scope } from "../Scope";
 import { type LocalScreenShareViewModel } from "./LocalScreenShareViewModel";
 import {
   createMemberMedia,
@@ -37,7 +37,7 @@ export type BaseScreenShareInputs = Omit<
 >;
 
 export function createBaseScreenShare(
-  scope: ObservableScope,
+  scope: Scope,
   inputs: BaseScreenShareInputs,
 ): BaseScreenShareViewModel {
   return {

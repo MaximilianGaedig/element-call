@@ -8,7 +8,7 @@ Please see LICENSE in the repository root for full details.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Room as LivekitRoom } from "livekit-client";
 
-import { ObservableScope } from "./ObservableScope";
+import { Scope } from "./Scope";
 import { constant } from "./Behavior";
 import { type SelectedAudioOutputDevice } from "./MediaDevices";
 import {
@@ -44,10 +44,10 @@ const HEADSET: OutputDevice = {
   name: "AirPods",
 };
 
-let testScope: ObservableScope;
+let testScope: Scope;
 
 beforeEach(() => {
-  testScope = new ObservableScope();
+  testScope = new Scope();
   // Device enumeration is only used for its side effects here
   vi.spyOn(LivekitRoom, "getLocalDevices").mockResolvedValue([]);
   availableOutputDevices$.value = [];
