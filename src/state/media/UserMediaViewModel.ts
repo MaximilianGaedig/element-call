@@ -6,14 +6,7 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import {
-  combineLatest,
-  map,
-  type Observable,
-  of,
-  Subject,
-  switchMap,
-} from "rxjs";
+import { combineLatest, map, type Observable, of, switchMap } from "rxjs";
 import {
   observeParticipantEvents,
   observeParticipantMedia,
@@ -21,7 +14,7 @@ import {
 import { ParticipantEvent, Track } from "livekit-client";
 
 import { type ReactionOption } from "../../reactions";
-import { type Behavior, state } from "../Behavior";
+import { type Behavior, computed, state } from "../Behavior";
 import { type LocalUserMediaViewModel } from "./LocalUserMediaViewModel";
 import {
   createMemberMedia,
@@ -46,7 +39,6 @@ export interface BaseUserMediaViewModel extends BaseMemberMediaViewModel {
   audioEnabled$: Behavior<boolean>;
   videoEnabled$: Behavior<boolean>;
   videoOrientation$: Behavior<"landscape" | "portrait">;
-  toggleCropVideo: () => void;
   /**
    * The expected identity of the LiveKit participant. Exposed for debugging.
    */
@@ -91,7 +83,6 @@ export function createBaseUserMedia(
       switchMap((p) => (p && observeParticipantMedia(p)) ?? of(undefined)),
     ),
   );
-  const toggleCropVideo$ = new Subject<void>();
   const videoAspectRatio$ = state(NaN);
 
   return {
@@ -113,19 +104,13 @@ export function createBaseUserMedia(
         ),
       ),
     ),
-    audioEnabled$: scope.behavior(
-      media$.pipe(map((m) => m?.microphoneTrack?.isMuted === false)),
+    audioEnabled$: computed(
+      () => media$.value?.microphoneTrack?.isMuted === false,
     ),
-    videoEnabled$: scope.behavior(
-      media$.pipe(map((m) => m?.cameraTrack?.isMuted === false)),
+    videoEnabled$: computed(() => media$.value?.cameraTrack?.isMuted === false),
+    videoOrientation$: computed(() =>
+      videoAspectRatio$.value > 1 ? "landscape" : "portrait",
     ),
-    videoOrientation$: scope.behavior(
-      videoAspectRatio$.pipe(
-        map((aspect) => (aspect > 1 ? "landscape" : "portrait")),
-      ),
-      "portrait",
-    ),
-    toggleCropVideo: () => toggleCropVideo$.next(),
     rtcBackendIdentity,
     handRaised$,
     reaction$,

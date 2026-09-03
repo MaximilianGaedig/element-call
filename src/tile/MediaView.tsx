@@ -233,21 +233,6 @@ export const MediaView: FC<Props> = ({
           </>
         )}
         {status && <div className={styles.status}>{status}</div>}
-        {/* TODO: Bring this back once encryption status is less broken */}
-        {/*encryptionStatus !== EncryptionStatus.Okay && (
-            <div className={styles.status}>
-              <Text as="span" size="sm" weight="medium" className={styles.name}>
-                {encryptionStatus === EncryptionStatus.Connecting &&
-                  t("e2ee_encryption_status.connecting")}
-                {encryptionStatus === EncryptionStatus.KeyMissing &&
-                  t("e2ee_encryption_status.key_missing")}
-                {encryptionStatus === EncryptionStatus.KeyInvalid &&
-                  t("e2ee_encryption_status.key_invalid")}
-                {encryptionStatus === EncryptionStatus.PasswordInvalid &&
-                  t("e2ee_encryption_status.password_invalid")}
-              </Text>
-            </div>
-          )*/}
         {showNameTags && targetWidth >= 100 ? (
           <div className={styles.nameTag}>
             {nameTagLeadingIcon}

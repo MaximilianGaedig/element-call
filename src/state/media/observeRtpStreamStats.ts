@@ -18,7 +18,6 @@ import {
   type Observable,
   startWith,
   switchMap,
-  map,
   share,
 } from "rxjs";
 
@@ -61,14 +60,5 @@ export function observeRtpStreamStats$(
       return undefined;
     }),
     startWith(undefined),
-  );
-}
-
-export function observeInboundRtpStreamStats$(
-  participant: Participant,
-  source: Track.Source,
-): Observable<RTCInboundRtpStreamStats | undefined> {
-  return observeRtpStreamStats$(participant, source, "inbound-rtp").pipe(
-    map((x) => x as RTCInboundRtpStreamStats | undefined),
   );
 }

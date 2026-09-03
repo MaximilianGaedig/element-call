@@ -7,9 +7,8 @@ Please see LICENSE in the repository root for full details.
 */
 
 import { type RemoteParticipant } from "livekit-client";
-import { combineLatest, map, of, switchMap } from "rxjs";
 
-import { type Behavior } from "../Behavior";
+import { type Behavior, computed } from "../Behavior";
 import { createVolumeControls, type VolumeControls } from "../VolumeControls";
 import {
   type BaseUserMediaInputs,
@@ -49,34 +48,26 @@ export function createRemoteUserMedia(
     ...baseUserMedia,
     ...createVolumeControls(scope, {
       pretendToBeDisconnected$,
-      sink$: scope.behavior(
-        inputs.participant$.pipe(map((p) => (volume) => p?.setVolume(volume))),
+      sink$: computed(
+        () => (volume: number) => inputs.participant$.value?.setVolume(volume),
       ),
     }),
     local: false,
-    speaking$: scope.behavior(
-      pretendToBeDisconnected$.pipe(
-        switchMap((disconnected) =>
-          disconnected ? of(false) : baseUserMedia.speaking$,
-        ),
-      ),
+    speaking$: computed(() =>
+      pretendToBeDisconnected$.value ? false : baseUserMedia.speaking$.value,
     ),
-    videoEnabled$: scope.behavior(
-      pretendToBeDisconnected$.pipe(
-        switchMap((disconnected) =>
-          disconnected ? of(false) : baseUserMedia.videoEnabled$,
-        ),
-      ),
+    videoEnabled$: computed(() =>
+      pretendToBeDisconnected$.value
+        ? false
+        : baseUserMedia.videoEnabled$.value,
     ),
-    waitingForMedia$: scope.behavior(
-      combineLatest(
-        [inputs.livekitRoom$, inputs.participant$],
-        (livekitRoom, participant) =>
-          // If livekitRoom is undefined, the user is not attempting to publish on
-          // any transport and so we shouldn't expect a participant. (They might
-          // be a subscribe-only bot for example.)
-          livekitRoom !== undefined && participant === null,
-      ),
+    // If livekitRoom is undefined, the user is not attempting to publish on
+    // any transport and so we shouldn't expect a participant. (They might
+    // be a subscribe-only bot for example.)
+    waitingForMedia$: computed(
+      () =>
+        inputs.livekitRoom$.value !== undefined &&
+        inputs.participant$.value === null,
     ),
   };
 }

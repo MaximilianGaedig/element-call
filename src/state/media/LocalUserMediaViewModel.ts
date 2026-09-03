@@ -12,18 +12,10 @@ import {
   LocalVideoTrack,
   TrackEvent,
 } from "livekit-client";
-import {
-  fromEvent,
-  map,
-  merge,
-  type Observable,
-  of,
-  startWith,
-  switchMap,
-} from "rxjs";
+import { fromEvent, map, merge, of, startWith, switchMap } from "rxjs";
 import { logger } from "matrix-js-sdk/lib/logger";
 
-import { type Behavior } from "../Behavior";
+import { type Behavior, computed } from "../Behavior";
 import {
   type BaseUserMediaInputs,
   type BaseUserMediaViewModel,
@@ -67,10 +59,13 @@ export function createLocalUserMedia(
   });
 
   /**
-   * The local video track as an observable that emits whenever the track
-   * changes, the camera is switched, or the track is muted.
+   * The local video track and the direction its camera faces, updated whenever
+   * the track changes, the camera is switched, or the track is muted.
    */
-  const videoTrack$: Observable<LocalVideoTrack | null> =
+  const videoTrack$ = scope.behavior<{
+    track: LocalVideoTrack;
+    facingMode: string | undefined;
+  } | null>(
     baseUserMedia.video$.pipe(
       switchMap((v) => {
         const track = v?.publication.track;
@@ -80,58 +75,45 @@ export function createLocalUserMedia(
           // This event is also emitted when unmuting the track object.
           fromEvent(track, TrackEvent.Restarted).pipe(
             startWith(null),
-            map(() => track),
+            map(() => ({
+              track,
+              facingMode: facingModeFromLocalTrack(track).facingMode,
+            })),
           ),
           // When the track object is muted, reset it to null.
           fromEvent(track, TrackEvent.Muted).pipe(map(() => null)),
         );
       }),
-    );
+    ),
+  );
 
   return {
     ...baseUserMedia,
     local: true,
-    mirror$: scope.behavior(
-      videoTrack$.pipe(
-        // Mirror only front-facing cameras (those that face the user)
-        map(
-          (track) =>
-            track !== null &&
-            facingModeFromLocalTrack(track).facingMode === "user",
-        ),
-      ),
-    ),
+    // Mirror only front-facing cameras (those that face the user)
+    mirror$: computed(() => videoTrack$.value?.facingMode === "user"),
     alwaysShow$: alwaysShowSelf.value$,
     setAlwaysShow: alwaysShowSelf.setValue,
-    switchCamera$: scope.behavior(
-      platform === "desktop"
-        ? of(null)
-        : videoTrack$.pipe(
-            map((track) => {
-              if (track === null) return null;
-              const facingMode = facingModeFromLocalTrack(track).facingMode;
-              // If the camera isn't front or back-facing, don't provide a switch
-              // camera shortcut at all
-              if (facingMode !== "user" && facingMode !== "environment")
-                return null;
-              // Restart the track with a camera facing the opposite direction
-              return (): void =>
-                void track
-                  .restartTrack({
-                    facingMode: facingMode === "user" ? "environment" : "user",
-                  })
-                  .then(() => {
-                    // Inform the MediaDevices which camera was chosen
-                    const deviceId =
-                      track.mediaStreamTrack.getSettings().deviceId;
-                    if (deviceId !== undefined)
-                      mediaDevices.videoInput.select(deviceId);
-                  })
-                  .catch((e) =>
-                    logger.error("Failed to switch camera", facingMode, e),
-                  );
-            }),
-          ),
-    ),
+    switchCamera$: computed(() => {
+      if (platform === "desktop") return null;
+      if (videoTrack$.value === null) return null;
+      const { track, facingMode } = videoTrack$.value;
+      // If the camera isn't front or back-facing, don't provide a switch
+      // camera shortcut at all
+      if (facingMode !== "user" && facingMode !== "environment") return null;
+      // Restart the track with a camera facing the opposite direction
+      return (): void =>
+        void track
+          .restartTrack({
+            facingMode: facingMode === "user" ? "environment" : "user",
+          })
+          .then(() => {
+            // Inform the MediaDevices which camera was chosen
+            const deviceId = track.mediaStreamTrack.getSettings().deviceId;
+            if (deviceId !== undefined)
+              mediaDevices.videoInput.select(deviceId);
+          })
+          .catch((e) => logger.error("Failed to switch camera", facingMode, e));
+    }),
   };
 }

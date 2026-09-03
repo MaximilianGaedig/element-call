@@ -9,7 +9,7 @@ Please see LICENSE in the repository root for full details.
 import { Track, type RemoteParticipant } from "livekit-client";
 import { map, of, switchMap } from "rxjs";
 
-import { type Behavior } from "../Behavior";
+import { type Behavior, computed } from "../Behavior";
 import {
   type BaseScreenShareInputs,
   type BaseScreenShareViewModel,
@@ -45,19 +45,16 @@ export function createRemoteScreenShare(
     ...createBaseScreenShare(scope, inputs),
     ...createVolumeControls(scope, {
       pretendToBeDisconnected$,
-      sink$: scope.behavior(
-        inputs.participant$.pipe(
-          map(
-            (p) => (volume) =>
-              p?.setVolume(volume, Track.Source.ScreenShareAudio),
+      sink$: computed(
+        () => (volume: number) =>
+          inputs.participant$.value?.setVolume(
+            volume,
+            Track.Source.ScreenShareAudio,
           ),
-        ),
       ),
     }),
     local: false,
-    videoEnabled$: scope.behavior(
-      pretendToBeDisconnected$.pipe(map((disconnected) => !disconnected)),
-    ),
+    videoEnabled$: computed(() => !pretendToBeDisconnected$.value),
     audioEnabled$: scope.behavior(
       inputs.participant$.pipe(
         switchMap((p) =>

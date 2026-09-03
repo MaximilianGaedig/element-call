@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { combineLatest, map, of, switchMap } from "rxjs";
+import { of, switchMap } from "rxjs";
 import {
   type LocalParticipant,
   ParticipantEvent,
@@ -14,7 +14,7 @@ import {
 import { observeParticipantEvents } from "@livekit/components-core";
 
 import { type ObservableScope } from "../ObservableScope.ts";
-import type { Behavior } from "../Behavior.ts";
+import { type Behavior, computed } from "../Behavior.ts";
 import type { MediaDevices } from "../MediaDevices.ts";
 import { observeSpeaker$ } from "./observeSpeaker.ts";
 import { generateItems } from "../../utils/observable.ts";
@@ -163,34 +163,20 @@ export function createWrappedUserMedia(
   );
 
   const speaker$ = scope.behavior(observeSpeaker$(userMedia.speaking$));
-  const presenter$ = scope.behavior(
-    screenShares$.pipe(map((screenShares) => screenShares.length > 0)),
-  );
 
   return {
     ...userMedia,
     screenShares$,
-    bin$: scope.behavior(
-      combineLatest(
-        [
-          speaker$,
-          presenter$,
-          userMedia.videoEnabled$,
-          userMedia.handRaised$,
-          userMedia.local ? userMedia.alwaysShow$ : of<boolean | null>(null),
-        ],
-        (speaker, presenter, video, handRaised, alwaysShow) => {
-          if (alwaysShow !== null)
-            return alwaysShow
-              ? SortingBin.SelfAlwaysShown
-              : SortingBin.SelfNotAlwaysShown;
-          else if (presenter) return SortingBin.Presenters;
-          else if (speaker) return SortingBin.Speakers;
-          else if (handRaised) return SortingBin.HandRaised;
-          else if (video) return SortingBin.Video;
-          else return SortingBin.NoVideo;
-        },
-      ),
-    ),
+    bin$: computed(() => {
+      if (userMedia.local)
+        return userMedia.alwaysShow$.value
+          ? SortingBin.SelfAlwaysShown
+          : SortingBin.SelfNotAlwaysShown;
+      else if (screenShares$.value.length > 0) return SortingBin.Presenters;
+      else if (speaker$.value) return SortingBin.Speakers;
+      else if (userMedia.handRaised$.value) return SortingBin.HandRaised;
+      else if (userMedia.videoEnabled$.value) return SortingBin.Video;
+      else return SortingBin.NoVideo;
+    }),
   };
 }
