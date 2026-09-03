@@ -10,8 +10,6 @@ import { type LivekitTransportConfig } from "matrix-js-sdk/lib/matrixrtc";
 import { type RemoteParticipant } from "livekit-client";
 import { logger } from "matrix-js-sdk/lib/logger";
 
-import { map } from "rxjs";
-
 import { ObservableScope } from "../../ObservableScope.ts";
 import {
   createConnectionManager$,
@@ -21,7 +19,7 @@ import { type ConnectionFactory } from "./ConnectionFactory.ts";
 import { type Connection } from "./Connection.ts";
 import { ownMemberMock, withTestScheduler } from "../../../utils/test.ts";
 import { areLivekitTransportsEqual } from "./MatrixLivekitMembers.ts";
-import { constant, type Behavior } from "../../Behavior.ts";
+import { constant, type Behavior, computed } from "../../Behavior.ts";
 import { state } from "../../Behavior";
 
 // Some test constants
@@ -85,7 +83,7 @@ describe("connections$ stream", () => {
       });
 
       expectObservable(
-        connectionManagerData$.pipe(map((d) => d.getConnections())),
+        computed(() => connectionManagerData$.value.getConnections()),
       ).toBe("a", {
         a: expect.toSatisfy((connections: Connection[]) => {
           expect(connections.length).toBe(2);
@@ -130,7 +128,7 @@ describe("connections$ stream", () => {
       });
 
       expectObservable(
-        connectionManagerData$.pipe(map((d) => d.getConnections())),
+        computed(() => connectionManagerData$.value.getConnections()),
         // Identical transport lists don't produce new connection data
       ).toBe("x----a", {
         x: expect.anything(),
@@ -173,7 +171,7 @@ describe("connections$ stream", () => {
       });
 
       expectObservable(
-        connectionManagerData$.pipe(map((d) => d.getConnections())),
+        computed(() => connectionManagerData$.value.getConnections()),
       ).toBe("xab", {
         x: expect.anything(),
         a: expect.toSatisfy((connections: Connection[]) => {

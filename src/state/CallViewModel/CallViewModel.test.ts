@@ -7,15 +7,14 @@ Please see LICENSE in the repository root for full details.
 */
 
 import { test, vi, onTestFinished, it, describe, expect } from "vitest";
-import { map, NEVER, type Observable, of } from "rxjs";
 import { SyncState } from "matrix-js-sdk";
 import {
   ConnectionState,
   type LocalTrackPublication,
   type Participant,
   type RemoteParticipant,
+  Room as LivekitRoom,
 } from "livekit-client";
-import * as ComponentsCore from "@livekit/components-core";
 import {
   Status,
   type CallMembership,
@@ -61,14 +60,6 @@ import { initializeWidget } from "../../widget.ts";
 
 initializeWidget();
 
-vi.mock("rxjs", async (importOriginal) => ({
-  ...(await importOriginal()),
-  // Disable interval Observables for the following tests since the test
-  // scheduler will loop on them forever and never call the test 'done'
-  interval: (): Observable<number> => NEVER,
-}));
-
-vi.mock("@livekit/components-core");
 vi.mock("livekit-client/e2ee-worker?worker");
 
 vi.mock("../e2ee/matrixKeyProvider");
@@ -549,7 +540,7 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
             },
           });
           expectObservable(
-            vm.layoutSwitchVm$.pipe(map((vm) => vm !== null)),
+            computed(() => vm.layoutSwitchVm$.value !== null),
           ).toBe(expectedLayoutSwitchMarbles, yesNo);
         },
       );
@@ -1555,9 +1546,7 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
   it.skip("audio output changes when toggling earpiece mode", () => {
     withTestScheduler(({ schedule, expectObservable }) => {
       getUrlParams.mockReturnValue({ controlledAudioDevices: true });
-      vi.mocked(ComponentsCore.createMediaDeviceObserver).mockReturnValue(
-        of([]),
-      );
+      vi.spyOn(LivekitRoom, "getLocalDevices").mockResolvedValue([]);
 
       const devices = new MediaDevices(testScope());
 
@@ -1581,9 +1570,7 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
           yesNo,
         );
         expectObservable(
-          vm.audioOutputSwitcher$.pipe(
-            map((switcher) => switcher?.targetOutput),
-          ),
+          computed(() => vm.audioOutputSwitcher$.value?.targetOutput),
         ).toBe(expectedTargetStateMarbles, { s: "speaker", e: "earpiece" });
       });
     });

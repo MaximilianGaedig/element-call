@@ -24,7 +24,7 @@
       const div = document.getElementById("data");
       div.innerHTML = "<h3>Data:</h3>";
 
-      sdk.data$.subscribe((data) => {
+      sdk.onData((data) => {
         const child = document.createElement("p");
         child.innerHTML = JSON.stringify(data);
         div.appendChild(child);

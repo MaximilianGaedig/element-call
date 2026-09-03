@@ -15,7 +15,6 @@
     "eslint-plugin-storybook",
     "eslint-plugin-element-call"
     // TODO: Re-enable once oxlint supports lint rules that rely on TypeScript type-awareness.
-    // "eslint-plugin-rxjs"
   ],
   "categories": {
     "correctness": "error",
@@ -39,16 +38,6 @@
     "jsdoc/check-property-names": "error",
     "jsdoc/require-param-description": "warn",
     "react/display-name": "error",
-    // TODO: Re-enable once oxlint supports lint rules that rely on TypeScript type-awareness.
-    // "rxjs/no-exposed-subjects": "error",
-    // "rxjs/finnish": [
-    //   "error",
-    //   {
-    //     "names": {
-    //       "^this$": false
-    //     }
-    //   }
-    // ],
     "no-restricted-imports": [
       "error",
       {

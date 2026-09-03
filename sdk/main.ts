@@ -21,16 +21,6 @@ Please see LICENSE in the repository root for full details.
  */
 
 import {
-  combineLatest,
-  map,
-  type Observable,
-  of,
-  shareReplay,
-  Subject,
-  switchMap,
-  tap,
-} from "rxjs";
-import {
   type CallMembership,
   MatrixRTCSessionEvent,
   MatrixRTCSessionManager,
@@ -45,14 +35,14 @@ import {
 // TODO how can this get fixed? to just be part of `livekit-client`
 // Can this be done in the tsconfig.json
 import { type TextStreamInfo } from "../node_modules/livekit-client/dist/src/room/types";
-import { type Behavior, constant } from "../src/state/Behavior";
+import { type Behavior, computed, constant } from "../src/state/Behavior";
 import { createCallViewModel$ } from "../src/state/CallViewModel/CallViewModel";
 import { ObservableScope } from "../src/state/ObservableScope";
 import { getUrlParams } from "../src/UrlParams";
 import { MuteStates } from "../src/state/MuteStates";
 import { MediaDevices } from "../src/state/MediaDevices";
 import { E2eeType } from "../src/e2ee/e2eeType";
-import { currentAndPrev, TEXT_LK_TOPIC, tryMakeSticky } from "./helper";
+import { TEXT_LK_TOPIC, tryMakeSticky } from "./helper";
 import { logger as rootLogger } from "matrix-js-sdk/lib/logger";
 import {
   ElementWidgetActions,
@@ -75,7 +65,13 @@ interface MatrixRTCSdk {
    * A new sdk needs to be created via createMatrixRTCSdk.
    */
   stop: () => void;
-  data$: Observable<{ rtcBackendIdentity: string; data: string }>;
+  /**
+   * Registers a listener for data received from other members. Returns a
+   * function that removes the listener again.
+   */
+  onData: (
+    listener: (data: { rtcBackendIdentity: string; data: string }) => void,
+  ) => () => void;
   /**
    * flattened list of remote members
    */
@@ -149,7 +145,9 @@ export async function createMatrixRTCSdk(
   logger.info("CallViewModelCreated");
 
   // create data listener
-  const data$ = new Subject<{ rtcBackendIdentity: string; data: string }>();
+  const dataListeners = new Set<
+    (data: { rtcBackendIdentity: string; data: string }) => void
+  >();
 
   const lkTextStreamHandlerFunction = async (
     reader: TextStreamReader,
@@ -171,7 +169,8 @@ export async function createMatrixRTCSdk(
     if (participants && participants.includes(participantInfo.identity)) {
       const text = await reader.readAll();
       logger.info(`Received text: ${text}`);
-      data$.next({ rtcBackendIdentity: participantInfo.identity, data: text });
+      const data = { rtcBackendIdentity: participantInfo.identity, data: text };
+      for (const listener of dataListeners) listener(data);
     } else {
       logger.warn(
         "Received text from unknown participant",
@@ -180,74 +179,50 @@ export async function createMatrixRTCSdk(
     }
   };
 
-  const livekitRoomItemsSub = callViewModel.livekitRoomItems$
-    .pipe(
-      tap((beforecurrentAndPrev) => {
-        logger.info(
-          `LiveKit room items updated: ${beforecurrentAndPrev.length}`,
-          beforecurrentAndPrev,
-        );
-      }),
-      currentAndPrev,
-      tap((aftercurrentAndPrev) => {
-        logger.info(
-          `LiveKit room items updated: ${aftercurrentAndPrev.current.length}, ${aftercurrentAndPrev.prev.length}`,
-          aftercurrentAndPrev,
-        );
-      }),
-    )
-    .subscribe({
-      next: ({ prev, current }) => {
-        const prevRooms = prev.map((i) => i.livekitRoom);
-        const currentRooms = current.map((i) => i.livekitRoom);
-        const addedRooms = currentRooms.filter((r) => !prevRooms.includes(r));
-        const removedRooms = prevRooms.filter((r) => !currentRooms.includes(r));
-        addedRooms.forEach((r) => {
-          logger.info(`Registering text stream handler for room `);
-          r.registerTextStreamHandler(
-            TEXT_LK_TOPIC,
-            (reader, participantInfo) =>
-              void lkTextStreamHandlerFunction(reader, participantInfo, r),
-          );
-        });
-        removedRooms.forEach((r) => {
-          logger.info(`Unregistering text stream handler for room `);
-          r.unregisterTextStreamHandler(TEXT_LK_TOPIC);
-        });
-      },
-      complete: () => {
-        logger.info("Livekit room items subscription completed");
-        for (const item of callViewModel.livekitRoomItems$.value) {
-          logger.info("unregistering room item from room", item.url);
-          item.livekitRoom.unregisterTextStreamHandler(TEXT_LK_TOPIC);
-        }
-      },
-    });
+  // Listen for text streams on every LiveKit room we're connected to
+  let prevRooms: LivekitRoom[] = [];
+  scope.effect(() => {
+    const items = callViewModel.livekitRoomItems$.value;
+    logger.info(`LiveKit room items updated: ${items.length}`, items);
+    const currentRooms = items.map((i) => i.livekitRoom);
+    for (const r of currentRooms.filter((r) => !prevRooms.includes(r))) {
+      logger.info(`Registering text stream handler for room `);
+      r.registerTextStreamHandler(
+        TEXT_LK_TOPIC,
+        (reader, participantInfo) =>
+          void lkTextStreamHandlerFunction(reader, participantInfo, r),
+      );
+    }
+    for (const r of prevRooms.filter((r) => !currentRooms.includes(r))) {
+      logger.info(`Unregistering text stream handler for room `);
+      r.unregisterTextStreamHandler(TEXT_LK_TOPIC);
+    }
+    prevRooms = currentRooms;
+  });
+  scope.onEnd(() => {
+    for (const item of callViewModel.livekitRoomItems$.value) {
+      logger.info("unregistering room item from room", item.url);
+      item.livekitRoom.unregisterTextStreamHandler(TEXT_LK_TOPIC);
+    }
+  });
 
   // create sendData function
-  const sendFn: Behavior<(data: string) => Promise<TextStreamInfo>> =
-    scope.behavior(
-      callViewModel.localMatrixLivekitMember$.pipe(
-        switchMap((m) => {
-          if (!m)
-            return of((data: string): never => {
-              throw Error("local membership not yet ready.");
-            });
-          return m.participant.value$.pipe(
-            map((p) => {
-              if (p === null) {
-                return (data: string): never => {
-                  throw Error("local participant not yet ready to send data.");
-                };
-              } else {
-                return async (data: string): Promise<TextStreamInfo> =>
-                  p.sendText(data, { topic: TEXT_LK_TOPIC });
-              }
-            }),
-          );
-        }),
-      ),
-    );
+  const sendFn: Behavior<(data: string) => Promise<TextStreamInfo>> = computed(
+    () => {
+      const member = callViewModel.localMatrixLivekitMember$.value;
+      if (!member)
+        return (data: string): never => {
+          throw Error("local membership not yet ready.");
+        };
+      const participant = member.participant.value$.value;
+      if (participant === null)
+        return (data: string): never => {
+          throw Error("local participant not yet ready to send data.");
+        };
+      return async (data: string): Promise<TextStreamInfo> =>
+        participant.sendText(data, { topic: TEXT_LK_TOPIC });
+    },
+  );
 
   const sendData = async (data: unknown): Promise<void> => {
     const dataString = JSON.stringify(data);
@@ -313,56 +288,29 @@ export async function createMatrixRTCSdk(
       callViewModel.leave();
     },
     stop: (): void => {
-      livekitRoomItemsSub.unsubscribe();
       scope.end();
     },
-    data$,
-    localMember$: scope.behavior(
-      callViewModel.localMatrixLivekitMember$.pipe(
-        tap((member) =>
-          logger.info("localMatrixLivekitMember$ next: ", member),
-        ),
-        switchMap((member) => {
-          if (member === null) return of(null);
-          return combineLatest([
-            member.connection$,
-            member.membership$,
-            member.participant.value$,
-          ]).pipe(
-            map(([connection, membership, participant]) => ({
-              connection,
-              membership,
-              participant,
-            })),
-          );
-        }),
-        tap((member) => logger.info("localMember$ next: ", member)),
-      ),
-    ),
+    onData: (listener) => {
+      dataListeners.add(listener);
+      return () => dataListeners.delete(listener);
+    },
+    localMember$: computed(() => {
+      const member = callViewModel.localMatrixLivekitMember$.value;
+      return member === null
+        ? null
+        : {
+            connection: member.connection$.value,
+            membership: member.membership$.value,
+            participant: member.participant.value$.value,
+          };
+    }),
     connected$: callViewModel.connected$,
-    remoteMembers$: scope.behavior(
-      callViewModel.remoteMatrixLivekitMembers$.pipe(
-        switchMap((members) => {
-          const listOfMemberObservables = members.map((member) =>
-            combineLatest([
-              member.connection$,
-              member.membership$,
-              member.participant.value$,
-            ]).pipe(
-              map(([connection, membership, participant]) => ({
-                connection,
-                membership,
-                participant,
-              })),
-              // using shareReplay instead of a Behavior here because the behavior would need
-              // a tricky scope.end() setup.
-              shareReplay({ bufferSize: 1, refCount: true }),
-            ),
-          );
-          return combineLatest(listOfMemberObservables);
-        }),
-      ),
-      [],
+    remoteMembers$: computed(() =>
+      callViewModel.remoteMatrixLivekitMembers$.value.map((member) => ({
+        connection: member.connection$.value,
+        membership: member.membership$.value,
+        participant: member.participant.value$.value,
+      })),
     ),
     sendData,
     sendRoomMessage,

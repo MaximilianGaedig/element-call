@@ -5,40 +5,14 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
+import EventEmitter from "events";
 import { describe, expect, it } from "vitest";
-import { of, throwError } from "rxjs";
 
-import { computed, state } from "./Behavior";
+import { computed, fromEvents, state } from "./Behavior";
 import { ObservableScope } from "./ObservableScope";
 
-describe("State", () => {
-  it("notifies rxjs subscribers in order, with the latest value only", () => {
-    const s$ = state(0);
-    const first: number[] = [];
-    const second: number[] = [];
-    s$.subscribe((v) => {
-      first.push(v);
-      // Re-entrant write while the first subscriber is being notified
-      if (v === 1) s$.value = 2;
-    });
-    s$.subscribe((v) => second.push(v));
-    s$.value = 1;
-    expect(first).toEqual([0, 1, 2]);
-    expect(second).toEqual([0, 2]);
-    expect(s$.value).toBe(2);
-  });
-
-  it("skips writes of the same value", () => {
-    const s$ = state("a");
-    const seen: string[] = [];
-    s$.subscribe((v) => seen.push(v));
-    s$.value = "a";
-    expect(seen).toEqual(["a"]);
-  });
-});
-
 describe("computed", () => {
-  it("tracks States and bridges to rxjs", () => {
+  it("tracks States", () => {
     const a$ = state(1);
     const b$ = state(10);
     const sum$ = computed(() => a$.value + b$.value);
@@ -49,24 +23,81 @@ describe("computed", () => {
     expect(sum$.value).toBe(22);
     expect(seen).toEqual([11, 12, 22]);
   });
+
+  it("drops results that are equal to the previous one", () => {
+    const list$ = state([1, 2]);
+    const sorted$ = computed(
+      () => [...list$.value].sort((a, b) => a - b),
+      (a, b) => a.length === b.length && a.every((x, i) => x === b[i]),
+    );
+    const seen: number[][] = [];
+    sorted$.subscribe((v) => seen.push(v));
+    list$.value = [2, 1];
+    list$.value = [3, 1];
+    expect(seen).toEqual([
+      [1, 2],
+      [1, 3],
+    ]);
+  });
 });
 
-describe("scope.behavior", () => {
-  it("produces a trackable Behavior", () => {
+describe("fromEvents", () => {
+  it("re-reads the value on each event until the scope ends", () => {
     const scope = new ObservableScope();
-    const b$ = scope.behavior(of(3));
-    expect(computed(() => b$.value * 2).value).toBe(6);
+    const emitter = Object.assign(new EventEmitter(), { count: 0 });
+    const count$ = fromEvents(scope, emitter, ["tick"], (e) => e.count);
+    expect(count$.value).toBe(0);
+    emitter.count = 1;
+    emitter.emit("tick");
+    expect(count$.value).toBe(1);
     scope.end();
+    emitter.count = 2;
+    emitter.emit("tick");
+    expect(count$.value).toBe(1);
+    expect(emitter.listenerCount("tick")).toBe(0);
   });
 
-  it("propagates rxjs errors", () => {
+  it("follows a Behavior of emitters", () => {
     const scope = new ObservableScope();
-    const error = new Error("boom");
-    const b$ = scope.behavior(
-      throwError(() => error),
-      0,
-    );
-    expect(() => b$.value).toThrow(error);
+    const a = Object.assign(new EventEmitter(), { name: "a" });
+    const b = Object.assign(new EventEmitter(), { name: "b" });
+    const emitter$ = state<typeof a | null>(a);
+    const name$ = fromEvents(scope, emitter$, ["rename"], (e) => e?.name);
+    expect(name$.value).toBe("a");
+    emitter$.value = b;
+    expect(name$.value).toBe("b");
+    expect(a.listenerCount("rename")).toBe(0);
+    b.name = "bb";
+    b.emit("rename");
+    expect(name$.value).toBe("bb");
+    emitter$.value = null;
+    expect(name$.value).toBeUndefined();
     scope.end();
+  });
+});
+
+describe("ObservableScope", () => {
+  it("runs end callbacks once, in order, and immediately once ended", () => {
+    const scope = new ObservableScope();
+    const order: string[] = [];
+    scope.onEnd(() => order.push("first"));
+    scope.onEnd(() => order.push("second"));
+    scope.end();
+    scope.end();
+    scope.onEnd(() => order.push("late"));
+    expect(order).toEqual(["first", "second", "late"]);
+  });
+
+  it("disposes effects when it ends", () => {
+    const scope = new ObservableScope();
+    const s$ = state(0);
+    const seen: number[] = [];
+    scope.effect(() => {
+      seen.push(s$.value);
+    });
+    s$.value = 1;
+    scope.end();
+    s$.value = 2;
+    expect(seen).toEqual([0, 1]);
   });
 });

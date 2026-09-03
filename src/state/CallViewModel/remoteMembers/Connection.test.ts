@@ -200,7 +200,7 @@ describe("Start connection states", () => {
     const s = connection.state$.subscribe((value) => {
       capturedStates.push(value);
     });
-    onTestFinished(() => s.unsubscribe());
+    onTestFinished(s);
 
     const deferred = Promise.withResolvers<IOpenIDToken>();
 
@@ -252,7 +252,7 @@ describe("Start connection states", () => {
     const s = connection.state$.subscribe((value) => {
       capturedStates.push(value);
     });
-    onTestFinished(() => s.unsubscribe());
+    onTestFinished(s);
 
     const deferredSFU = Promise.withResolvers<void>();
     // mock the /sfu/get call
@@ -314,7 +314,7 @@ describe("Start connection states", () => {
     const s = connection.state$.subscribe((value) => {
       capturedStates.push(value);
     });
-    onTestFinished(() => s.unsubscribe());
+    onTestFinished(s);
 
     const deferredSFU = Promise.withResolvers<void>();
     // mock the /sfu/get call
@@ -374,7 +374,7 @@ describe("Start connection states", () => {
     const s = connection.state$.subscribe((value) => {
       capturedStates.push(value);
     });
-    onTestFinished(() => s.unsubscribe());
+    onTestFinished(s);
 
     await connection.start();
     await vi.runAllTimersAsync();
@@ -416,7 +416,7 @@ describe("remote participants", () => {
     const s = connection.remoteParticipants$.subscribe((participants) => {
       observedParticipants.push(participants);
     });
-    onTestFinished(() => s.unsubscribe());
+    onTestFinished(s);
     // The remoteParticipants$ observable is derived from the current members of the
     // livekitRoom and the rtc membership in order to publish the members that are publishing
     // on this connection.
@@ -471,7 +471,7 @@ describe("remote participants", () => {
     const s = connection.remoteParticipants$.subscribe((participants) => {
       observedParticipants.push(participants);
     });
-    onTestFinished(() => s.unsubscribe());
+    onTestFinished(s);
 
     let participants: RemoteParticipant[] = [
       mockRemoteParticipant({ identity: "@bob:example.org:DEV111" }),

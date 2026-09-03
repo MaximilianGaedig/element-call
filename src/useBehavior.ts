@@ -17,10 +17,7 @@ import { useLatest } from "./useLatest";
  */
 export function useBehavior<T>(behavior: Behavior<T>): T {
   const subscribe = useCallback(
-    (onChange: () => void) => {
-      const s = behavior.subscribe(onChange);
-      return (): void => s.unsubscribe();
-    },
+    (onChange: () => void) => behavior.subscribe(onChange),
     [behavior],
   );
   const getValue = useCallback(() => behavior.value, [behavior]);

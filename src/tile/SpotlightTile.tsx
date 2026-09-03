@@ -272,13 +272,13 @@ const SpotlightItem: FC<SpotlightItemProps> = ({
   useEffect(() => {
     const element = ourRef.current!;
     let prevIo: IntersectionObserver | null = null;
-    const subscription = intersectionObserver$.subscribe((io) => {
+    const unsubscribe = intersectionObserver$.subscribe((io) => {
       prevIo?.unobserve(element);
       io.observe(element);
       prevIo = io;
     });
     return (): void => {
-      subscription.unsubscribe();
+      unsubscribe();
       prevIo?.unobserve(element);
     };
   }, [intersectionObserver$]);

@@ -5,73 +5,18 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import {
-  BehaviorSubject,
-  filter,
-  type Observable,
-  share,
-  take,
-  takeUntil,
-} from "rxjs";
+import { effect, untracked } from "@preact/signals-core";
 
-import { effect, signal, untracked } from "@preact/signals-core";
-
-import { type Behavior, State } from "./Behavior";
-
-type MonoTypeOperator = <T>(o: Observable<T>) => Observable<T>;
+import { type Behavior } from "./Behavior";
 
 const nothing = Symbol("nothing");
 
 /**
- * A scope which limits the execution lifetime of its bound Observables.
+ * A scope which limits the lifetime of effects and other resources.
  */
 export class ObservableScope {
-  private readonly ended$ = new BehaviorSubject(false);
-
-  private readonly bindImpl: MonoTypeOperator = takeUntil(
-    this.ended$.pipe(filter((ended) => ended)),
-  );
-
-  /**
-   * Binds an Observable to this scope, so that it completes when the scope
-   * ends.
-   */
-  public bind(): MonoTypeOperator {
-    return this.bindImpl;
-  }
-
-  private readonly shareImpl: MonoTypeOperator = share({
-    resetOnError: false,
-    resetOnComplete: false,
-    resetOnRefCountZero: false,
-  });
-  /**
-   * Shares (multicasts) the Observable as a hot Observable.
-   */
-  public readonly share: MonoTypeOperator = (input$) =>
-    input$.pipe(this.bindImpl, this.shareImpl);
-
-  /**
-   * Converts an Observable to a Behavior. If no initial value is specified, the
-   * Observable must synchronously emit an initial value.
-   */
-  public behavior<T>(
-    setValue$: Observable<T>,
-    initialValue: T | typeof nothing = nothing,
-  ): Behavior<T> {
-    const state$ = new State<T | typeof nothing>(signal(initialValue));
-    setValue$.pipe(this.bind()).subscribe({
-      next(value) {
-        state$.value = value;
-      },
-      error(err: unknown) {
-        state$.fail(err);
-      },
-    });
-    if (state$.peek() === nothing)
-      throw new Error("Behavior failed to synchronously emit an initial value");
-    return state$ as Behavior<T>;
-  }
+  private ended = false;
+  private readonly endCallbacks: (() => void)[] = [];
 
   /**
    * Runs `fn` now and again whenever a Behavior it read has changed, until the
@@ -82,22 +27,22 @@ export class ObservableScope {
   }
 
   /**
-   * Ends the scope, causing any bound Observables to complete.
+   * Ends the scope, running all clean-up callbacks.
    */
   public end(): void {
-    this.ended$.next(true);
+    if (this.ended) return;
+    this.ended = true;
+    for (const callback of this.endCallbacks) callback();
+    this.endCallbacks.length = 0;
   }
 
   /**
-   * Register a callback to be executed when the scope is ended.
+   * Register a callback to be executed when the scope is ended. If the scope
+   * has already ended, the callback runs immediately.
    */
   public onEnd(callback: () => void): void {
-    this.ended$
-      .pipe(
-        filter((ended) => ended),
-        take(1),
-      )
-      .subscribe(callback);
+    if (this.ended) callback();
+    else this.endCallbacks.push(callback);
   }
 
   /**

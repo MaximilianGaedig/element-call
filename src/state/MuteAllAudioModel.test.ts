@@ -24,7 +24,7 @@ test("muteAllAudio$", () => {
   muteAllAudioSetting.setValue(true);
   audioEnabled$.value = false;
 
-  muteAllAudio.unsubscribe();
+  muteAllAudio();
 
   expect(valueMock).toHaveBeenCalledTimes(4);
   expect(valueMock).toHaveBeenNthCalledWith(1, false); // initial value

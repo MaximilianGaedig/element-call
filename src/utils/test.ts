@@ -4,7 +4,6 @@ Copyright 2023, 2024 New Vector Ltd.
 SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
-import { type Observable } from "rxjs";
 import {
   expect,
   type MockedObject,
@@ -101,7 +100,7 @@ export function testScope(): ObservableScope {
 }
 
 /**
- * Parses an rxjs-style marble diagram into the frame (millisecond) at which
+ * Parses a marble diagram into the frame (millisecond) at which
  * each marble occurs. Supports `-`, `(ab)` groups, and `Nms `/`Ns ` time
  * progression; `|`, `^` and `#` are accepted and ignored.
  */
@@ -166,7 +165,7 @@ export interface MarbleHelpers {
    * is recorded.
    */
   expectObservable: <T>(
-    behavior$: Observable<T>,
+    behavior$: Behavior<T>,
     options?: { settled?: boolean },
   ) => {
     toBe: (marbles: string, values?: Record<string, T>) => void;
@@ -211,14 +210,15 @@ export function withTestScheduler(
           }, frame);
         return state$;
       },
-      expectObservable<T>(behavior$: Observable<T>, { settled = false } = {}) {
+      expectObservable<T>(behavior$: Behavior<T>, { settled = false } = {}) {
         const actual: { frame: number; value: T }[] = [];
-        const subscription = behavior$.subscribe((value) => {
-          const frame = Date.now() - start;
-          if (settled && actual.at(-1)?.frame === frame) actual.pop();
-          actual.push({ frame, value });
-        });
-        subscriptions.push(() => subscription.unsubscribe());
+        subscriptions.push(
+          behavior$.subscribe((value) => {
+            const frame = Date.now() - start;
+            if (settled && actual.at(-1)?.frame === frame) actual.pop();
+            actual.push({ frame, value });
+          }),
+        );
         return {
           toBe(marbles: string, values?: Record<string, T>) {
             expectations.push(() => {
