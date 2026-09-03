@@ -185,7 +185,7 @@ describe("MuteStates", () => {
       ),
       selected$,
       select(id: string): void {
-        if (!this.available$.getValue().has(id)) {
+        if (!this.available$.value.has(id)) {
           logger.warn(`Attempted to select unknown device id: ${id}`);
           return;
         }
@@ -211,7 +211,7 @@ describe("MuteStates", () => {
       ),
       selected$,
       select(id: string): void {
-        if (!this.available$.getValue().has(id)) {
+        if (!this.available$.value.has(id)) {
           logger.warn(`Attempted to select unknown device id: ${id}`);
           return;
         }

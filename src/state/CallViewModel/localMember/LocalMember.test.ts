@@ -47,7 +47,7 @@ import {
   MatrixRTCTransportMissingError,
 } from "../../../utils/errors";
 import { Epoch, ObservableScope } from "../../ObservableScope";
-import { constant } from "../../Behavior";
+import { constant, type State } from "../../Behavior";
 import { ConnectionManagerData } from "../remoteMembers/ConnectionManager";
 import { ConnectionState, type Connection } from "../remoteMembers/Connection";
 import { type Publisher } from "./Publisher";
@@ -585,8 +585,8 @@ describe("LocalMembership", () => {
 
     (
       connectionManagerData2.getConnectionForTransport(aTransport)!
-        .state$ as BehaviorSubject<ConnectionState>
-    ).next(ConnectionState.LivekitConnected);
+        .state$ as State<ConnectionState>
+    ).value = ConnectionState.LivekitConnected;
     expect(localMembership.localMemberState$.value).toStrictEqual({
       matrix: RTCMemberStatus.Connected,
       media: {
@@ -635,7 +635,6 @@ describe("LocalMembership", () => {
 
     expect(publishers[0].destroy).not.toHaveBeenCalled();
 
-    expect(localMembership.localMemberState$.isStopped).toBe(false);
     scope.end();
     await flushPromises();
     // stays in connected state because it is stopped before the update to tracks update the state.

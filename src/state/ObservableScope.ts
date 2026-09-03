@@ -8,7 +8,6 @@ Please see LICENSE in the repository root for full details.
 import {
   BehaviorSubject,
   catchError,
-  distinctUntilChanged,
   EMPTY,
   endWith,
   filter,
@@ -20,7 +19,9 @@ import {
   takeUntil,
 } from "rxjs";
 
-import { type Behavior } from "./Behavior";
+import { effect, signal } from "@preact/signals-core";
+
+import { type Behavior, State } from "./Behavior";
 
 type MonoTypeOperator = <T>(o: Observable<T>) => Observable<T>;
 
@@ -67,23 +68,26 @@ export class ObservableScope {
     setValue$: Observable<T>,
     initialValue: T | typeof nothing = nothing,
   ): Behavior<T> {
-    const subject$ = new BehaviorSubject(initialValue);
-    // Push values from the Observable into the BehaviorSubject.
-    // BehaviorSubjects have an undesirable feature where if you call 'complete',
-    // they will no longer re-emit their current value upon subscription. We want
-    // to support Observables that complete (for example `of({})`), so we have to
-    // take care to not propagate the completion event.
-    setValue$.pipe(this.bind(), distinctUntilChanged()).subscribe({
+    const state$ = new State<T | typeof nothing>(signal(initialValue));
+    setValue$.pipe(this.bind()).subscribe({
       next(value) {
-        subject$.next(value);
+        state$.value = value;
       },
       error(err: unknown) {
-        subject$.error(err);
+        state$.fail(err);
       },
     });
-    if (subject$.value === nothing)
+    if (state$.peek() === nothing)
       throw new Error("Behavior failed to synchronously emit an initial value");
-    return subject$ as Behavior<T>;
+    return state$ as Behavior<T>;
+  }
+
+  /**
+   * Runs `fn` now and again whenever a Behavior it read has changed, until the
+   * scope ends. `fn` may return a clean-up function.
+   */
+  public effect(fn: () => void | (() => void)): void {
+    this.onEnd(effect(fn));
   }
 
   /**

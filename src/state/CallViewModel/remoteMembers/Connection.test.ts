@@ -178,7 +178,7 @@ describe("Start connection states", () => {
     };
     const connection = new Connection(opts, logger);
 
-    expect(connection.state$.getValue()).toEqual("Initialized");
+    expect(connection.state$.value).toEqual("Initialized");
   });
 
   it("fail to getOpenId token then error state", async () => {
