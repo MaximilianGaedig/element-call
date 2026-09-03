@@ -26,8 +26,6 @@ import {
   VolumeOnSolidIcon,
 } from "@vector-im/compound-design-tokens/assets/web/icons";
 import { animated } from "@react-spring/web";
-import { type Observable, map } from "rxjs";
-import { useObservableRef } from "observable-hooks";
 import { useTranslation } from "react-i18next";
 import classNames from "classnames";
 import { type TrackReferenceOrPlaceholder } from "@livekit/components-core";
@@ -43,6 +41,7 @@ import { useReactiveState } from "../useReactiveState";
 import { useLatest } from "../useLatest";
 import { type SpotlightTileViewModel } from "../state/TileViewModel";
 import { useBehavior } from "../useBehavior";
+import { type Behavior, computed, state } from "../state/Behavior";
 import { type MemberMediaViewModel } from "../state/media/MemberMediaViewModel";
 import { type LocalUserMediaViewModel } from "../state/media/LocalUserMediaViewModel";
 import { type RemoteUserMediaViewModel } from "../state/media/RemoteUserMediaViewModel";
@@ -240,7 +239,7 @@ interface SpotlightItemProps {
   showRingingStatus: boolean;
   background: "solid" | "transparent";
   focusable: boolean;
-  intersectionObserver$: Observable<IntersectionObserver>;
+  intersectionObserver$: Behavior<IntersectionObserver>;
   /**
    * Whether this item should act as a scroll snapping point.
    */
@@ -414,7 +413,13 @@ export const SpotlightTile: FC<Props> = ({
   style,
 }) => {
   const { t } = useTranslation();
-  const [ourRef, root$] = useObservableRef<HTMLDivElement | null>(null);
+  const root$ = useInitial(() => state<HTMLDivElement | null>(null));
+  const ourRef = useCallback(
+    (element: HTMLDivElement | null) => {
+      root$.value = element;
+    },
+    [root$],
+  );
   const ref = useMergedRefs(ourRef, theirRef);
   const maximised = useBehavior(vm.maximised$);
   const background = useBehavior(vm.background$);
@@ -451,21 +456,18 @@ export const SpotlightTile: FC<Props> = ({
   // hooked up to the root element and the items. Because the items will run
   // their effects before their parent does, we need to do this dance with an
   // Observable to actually give them the intersection observer.
-  const intersectionObserver$ = useInitial<Observable<IntersectionObserver>>(
-    () =>
-      root$.pipe(
-        map(
-          (r) =>
-            new IntersectionObserver(
-              (entries) => {
-                const visible = entries.find((e) => e.isIntersecting);
-                if (visible !== undefined)
-                  setVisibleId(visible.target.getAttribute("data-id")!);
-              },
-              { root: r, threshold: 0.5 },
-            ),
+  const intersectionObserver$ = useInitial(() =>
+    computed(
+      () =>
+        new IntersectionObserver(
+          (entries) => {
+            const visible = entries.find((e) => e.isIntersecting);
+            if (visible !== undefined)
+              setVisibleId(visible.target.getAttribute("data-id")!);
+          },
+          { root: root$.value, threshold: 0.5 },
         ),
-      ),
+    ),
   );
 
   const [scrollToId, setScrollToId] = useReactiveState<string | null>(

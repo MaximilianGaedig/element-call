@@ -11,14 +11,12 @@ import {
   useCallback,
   useMemo,
 } from "react";
-import { distinctUntilChanged } from "rxjs";
-import { useObservableEagerState } from "observable-hooks";
 
 import { type GridLayout as GridLayoutModel } from "../state/layout-types.ts";
 import styles from "./GridLayout.module.css";
-import { useInitial } from "../useInitial";
 import { type CallLayout, arrangeTiles } from "./CallLayout";
 import { type DragCallback, useUpdateLayout, useVisibleTiles } from "./Grid";
+import { useBehavior } from "../useBehavior";
 
 interface GridCSSProperties extends CSSProperties {
   "--gap": string;
@@ -39,15 +37,7 @@ export const makeGridLayout: CallLayout<GridLayoutModel> = ({
   // lives
   fixed: function GridLayoutFixed({ ref, model, Slot }): ReactNode {
     useUpdateLayout();
-    const alignment = useObservableEagerState(
-      useInitial(() =>
-        model.spotlightAlignment$.pipe(
-          distinctUntilChanged(
-            (a1, a2) => a1.block === a2.block && a1.inline === a2.inline,
-          ),
-        ),
-      ),
-    );
+    const alignment = useBehavior(model.spotlightAlignment$);
 
     const onDragSpotlight: DragCallback = useCallback(
       ({ xRatio, yRatio }) =>
@@ -78,7 +68,7 @@ export const makeGridLayout: CallLayout<GridLayoutModel> = ({
   scrolling: function GridLayout({ ref, model, Slot }): ReactNode {
     useUpdateLayout();
     useVisibleTiles(model.setVisibleTiles);
-    const { width, height: minHeight } = useObservableEagerState(minBounds$);
+    const { width, height: minHeight } = useBehavior(minBounds$);
     const { gap, tileWidth, tileHeight } = useMemo(
       () => arrangeTiles(width, minHeight, model.grid.length),
       [width, minHeight, model.grid.length],

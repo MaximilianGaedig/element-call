@@ -19,8 +19,6 @@ import {
   useMemo,
 } from "react";
 import { type LocalVideoTrack } from "livekit-client";
-import { combineLatest, map, type Observable } from "rxjs";
-import { useObservable } from "observable-hooks";
 
 import {
   backgroundBlur as backgroundBlurSettings,
@@ -51,20 +49,6 @@ export function useTrackProcessor(): ProcessorState {
   return state;
 }
 
-export function useTrackProcessorObservable$(): Observable<ProcessorState> {
-  const state = use(ProcessorContext);
-  if (state === undefined)
-    throw new Error(
-      "useTrackProcessor must be used within a ProcessorProvider",
-    );
-  const state$ = useObservable(
-    (init$) => init$.pipe(map(([init]) => init)),
-    [state],
-  );
-
-  return state$;
-}
-
 /**
  * Updates your video tracks to always use the given processor.
  */
@@ -73,19 +57,17 @@ export const trackProcessorSync = (
   videoTrack$: Behavior<LocalVideoTrack | null>,
   processor$: Behavior<ProcessorState>,
 ): void => {
-  combineLatest([videoTrack$, processor$])
-    .pipe(scope.bind())
-    .subscribe(([videoTrack, processorState]) => {
-      if (!processorState) return;
-      if (!videoTrack) return;
-      const { processor } = processorState;
-      if (processor && !videoTrack.getProcessor()) {
-        void videoTrack.setProcessor(processor);
-      }
-      if (!processor && videoTrack.getProcessor()) {
-        void videoTrack.stopProcessor();
-      }
-    });
+  scope.effect(() => {
+    const videoTrack = videoTrack$.value;
+    const { processor } = processor$.value;
+    if (!videoTrack) return;
+    if (processor && !videoTrack.getProcessor()) {
+      void videoTrack.setProcessor(processor);
+    }
+    if (!processor && videoTrack.getProcessor()) {
+      void videoTrack.stopProcessor();
+    }
+  });
 };
 
 export const useTrackProcessorSync = (

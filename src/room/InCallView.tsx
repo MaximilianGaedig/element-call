@@ -20,8 +20,6 @@ import {
 import useMeasure from "react-use-measure";
 import { type MatrixRTCSession } from "matrix-js-sdk/lib/matrixrtc";
 import classNames from "classnames";
-import { map } from "rxjs";
-import { useObservable } from "observable-hooks";
 import { logger as rootLogger } from "matrix-js-sdk/lib/logger";
 import { useTranslation } from "react-i18next";
 
@@ -73,11 +71,11 @@ import {
   useAppBarSecondaryButton,
   useAppBarSubtitle,
 } from "../AppBar.tsx";
-import { useBehavior } from "../useBehavior.ts";
+import { useBehavior, useValueBehavior } from "../useBehavior.ts";
 import { constant } from "../state/Behavior.ts";
 import { Toast } from "../Toast.tsx";
 import overlayStyles from "../Overlay.module.css";
-import { useTrackProcessorObservable$ } from "../livekit/TrackProcessorContext.tsx";
+import { useTrackProcessor } from "../livekit/TrackProcessorContext.tsx";
 import { type Layout } from "../state/layout-types.ts";
 import { ObservableScope } from "../state/ObservableScope.ts";
 import { CallFooter, type FooterSnapshot } from "../components/CallFooter.tsx";
@@ -117,7 +115,7 @@ export const ActiveCall: FC<ActiveCallProps> = (props) => {
 
   const urlParams = useUrlParams();
   const mediaDevices = useMediaDevices();
-  const trackProcessorState$ = useTrackProcessorObservable$();
+  const trackProcessorState$ = useValueBehavior(useTrackProcessor());
   useEffect(() => {
     rootLogger.info("START CALL VIEW SCOPE");
     const scope = new ObservableScope();
@@ -139,7 +137,7 @@ export const ActiveCall: FC<ActiveCallProps> = (props) => {
       },
       reactionsReader.raisedHands$,
       reactionsReader.reactions$,
-      scope.behavior(trackProcessorState$),
+      trackProcessorState$,
     );
     // TODO move this somewhere else once we use the callViewModel in the lobby as well!
     vm.join();
@@ -342,10 +340,7 @@ export const InCallView: FC<InCallViewProps> = ({
       edgeToEdge,
     ],
   );
-  const gridBoundsObservable$ = useObservable(
-    (inputs$) => inputs$.pipe(map(([gridBounds]) => gridBounds)),
-    [gridBounds],
-  );
+  const gridBounds$ = useValueBehavior(gridBounds);
 
   useAppBarHidden(!showHeader);
   useAppBarSubtitle(
@@ -491,7 +486,7 @@ export const InCallView: FC<InCallViewProps> = ({
   );
 
   const layouts = useMemo(() => {
-    const inputs = { minBounds$: gridBoundsObservable$ };
+    const inputs = { minBounds$: gridBounds$ };
     return {
       grid: makeGridLayout(inputs),
       "spotlight-landscape": makeSpotlightLandscapeLayout(inputs),
@@ -500,7 +495,7 @@ export const InCallView: FC<InCallViewProps> = ({
       "one-on-one-desktop": makeOneOnOneDesktopLayout(inputs),
       "one-on-one-mobile": makeOneOnOneMobileLayout(inputs),
     };
-  }, [gridBoundsObservable$]);
+  }, [gridBounds$]);
 
   const showFooter = useBehavior(footerVm.showFooter$);
   const renderContent = (): JSX.Element => {
