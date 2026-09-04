@@ -177,6 +177,9 @@ const showFooterMs = 4000;
 
 export type WindowMode = "normal" | "narrow" | "flat" | "pip";
 
+/** What giving a tile emphasis does in the current layout. */
+export type TileEmphasis = "enlarge" | "pin";
+
 interface LayoutInternals {
   layout: Layout;
   overflowing: boolean;
@@ -319,6 +322,10 @@ export interface CallViewModel {
    * the spotlight layouts it pins the user to the spotlight.
    */
   emphasiseTile: (tile: GridTileViewModel) => void;
+  /**
+   * What emphasiseTile would do in the current layout, if anything.
+   */
+  tileEmphasis$: Behavior<TileEmphasis | null>;
   showSpotlightIndicators$: Behavior<boolean>;
   /**
    * Whether a spotlight holding several media should show them all at once as
@@ -675,6 +682,17 @@ export function createCallViewModel$(
   );
 
   /**
+   * IDs of the user media the local user has pinned to the spotlight (by
+   * double-clicking their tile or choosing Pin from its menu).
+   */
+  const pinnedIds$ = state<ReadonlySet<string>>(new Set());
+  const togglePinned = (media: UserMediaViewModel): void => {
+    const next = new Set(pinnedIds$.peek());
+    if (!next.delete(media.id)) next.add(media.id);
+    pinnedIds$.value = next;
+  };
+
+  /**
    * All user media (camera feeds) in the call, before auditorium mode hides
    * any.
    */
@@ -723,6 +741,7 @@ export function createCallViewModel$(
             ? constant(null)
             : floorControl.moderator$(mediaId),
         memberActions$: floorControl.memberActions$(userId),
+        pinned$: computed(() => pinnedIds$.value.has(`${mediaId}:${dup}`)),
         handRaised$: computed(() => handsRaised$.value[mediaId]?.time ?? null),
         handRaisedOrder$: computed(() => {
           const hands = handsRaised$.value;
@@ -824,19 +843,12 @@ export function createCallViewModel$(
   }
 
   /**
-   * Users the local user has pinned to the spotlight (by double-clicking their
-   * tile), excluding any who have since left.
+   * Users pinned to the spotlight, excluding any who have since left.
    */
-  const pinnedInput$ = state<ReadonlySet<UserMediaViewModel>>(new Set());
   const pinned$ = computed<WrappedUserMediaViewModel[]>(
-    () => userMedia$.value.filter((m) => pinnedInput$.value.has(m)),
+    () => userMedia$.value.filter((m) => m.pinned$.value),
     shallowArrayEquals,
   );
-  const togglePinned = (media: UserMediaViewModel): void => {
-    const next = new Set(pinnedInput$.peek());
-    if (!next.delete(media)) next.add(media);
-    pinnedInput$.value = next;
-  };
 
   // The previous pick is fed back in, so this is a state written by an effect
   // rather than a computed (computeds must be pure). Pinned users are shown
@@ -1503,6 +1515,17 @@ export function createCallViewModel$(
     tileStoreGeneration$: tileStoreGeneration$,
     floorControl,
     emphasiseTile,
+    tileEmphasis$: computed(() => {
+      switch (layoutMedia$.value.type) {
+        case "grid":
+          return "enlarge";
+        case "spotlight-landscape":
+        case "spotlight-portrait":
+          return "pin";
+        default:
+          return null;
+      }
+    }),
     showSpotlightIndicators$: showSpotlightIndicators$,
     spotlightTiled$,
     showSpeakingIndicators$: showSpeakingIndicators$,

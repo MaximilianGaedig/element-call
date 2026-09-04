@@ -85,6 +85,8 @@ test("GridTile displays remote media", async () => {
         showRingingStatus
         showOutline
         focusable
+        emphasis={null}
+        onEmphasise={() => {}}
       />
     </ReactionsSenderProvider>,
   );
@@ -119,6 +121,8 @@ test("GridTile displays local media", async () => {
         showRingingStatus
         showOutline
         focusable
+        emphasis={null}
+        onEmphasise={() => {}}
       />
     </ReactionsSenderProvider>,
   );
@@ -151,6 +155,8 @@ test("GridTile displays ringing media", async () => {
         showRingingStatus
         showOutline
         focusable
+        emphasis={null}
+        onEmphasise={() => {}}
       />
     </ReactionsSenderProvider>,
   );

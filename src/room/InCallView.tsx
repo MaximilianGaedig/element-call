@@ -458,6 +458,7 @@ export const InCallView: FC<InCallViewProps> = ({
             ? model.showOutline$
             : constant(false),
         );
+        const emphasis = useBehavior(vm.tileEmphasis$);
 
         return model instanceof GridTileViewModel ? (
           <GridTile
@@ -473,7 +474,8 @@ export const InCallView: FC<InCallViewProps> = ({
             showRingingStatus={showRingingStatus}
             showOutline={showOutline}
             focusable={!contentObscured}
-            onDoubleClick={() => vm.emphasiseTile(model)}
+            emphasis={emphasis}
+            onEmphasise={() => vm.emphasiseTile(model)}
           />
         ) : (
           <SpotlightTile

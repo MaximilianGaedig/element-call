@@ -32,6 +32,10 @@ import {
   VideoCallOffIcon,
   LeaveIcon,
   BlockIcon,
+  PinIcon,
+  UnpinIcon,
+  ExpandIcon,
+  CollapseIcon,
 } from "@vector-im/compound-design-tokens/assets/web/icons";
 import {
   ContextMenu,
@@ -46,6 +50,8 @@ import { Slider } from "../Slider";
 import { MediaView } from "./MediaView";
 import { useLatest } from "../useLatest";
 import { type GridTileViewModel } from "../state/TileViewModel";
+import { type TileEmphasis } from "../state/CallViewModel/CallViewModel";
+import { constant } from "../state/Behavior";
 import { useMergedRefs } from "../useMergedRefs";
 import { useReactionsSender } from "../reactions/useReactionsSender";
 import { useBehavior } from "../useBehavior";
@@ -68,6 +74,11 @@ interface TileProps {
   focusable: boolean;
   /** A warning to show prominently on the tile. */
   warning?: string;
+  /** What emphasising this tile (double-clicking it) does, if anything. */
+  emphasis?: TileEmphasis | null;
+  /** Whether the tile currently has that emphasis. */
+  emphasised?: boolean;
+  onEmphasise?: () => void;
 }
 
 interface RingingMediaTileProps extends TileProps {
@@ -79,11 +90,15 @@ const RingingMediaTile: FC<RingingMediaTileProps> = ({
   vm,
   showStatus,
   className,
+  emphasis: _emphasis,
+  emphasised: _emphasised,
+  onEmphasise,
   ...props
 }) => {
   return (
     <MediaView
       className={classNames(className, styles.tile)}
+      onDoubleClick={onEmphasise}
       video={undefined}
       userId={vm.userId}
       unencryptedWarning={false}
@@ -132,6 +147,9 @@ const UserMediaTileInner: FC<UserMediaTileProps & { menu: ReactNode }> = ({
   focusable,
   targetWidth,
   targetHeight,
+  emphasis: _emphasis,
+  emphasised: _emphasised,
+  onEmphasise,
   ...props
 }) => {
   const { toggleRaisedHand } = useReactionsSender();
@@ -229,6 +247,7 @@ const UserMediaTileInner: FC<UserMediaTileProps & { menu: ReactNode }> = ({
       rtcBackendIdentity={rtcBackendIdentity}
       targetWidth={targetWidth}
       targetHeight={targetHeight}
+      onDoubleClick={onEmphasise}
       {...props}
     />
   );
@@ -240,9 +259,25 @@ const UserMediaTileInner: FC<UserMediaTileProps & { menu: ReactNode }> = ({
 const UserMediaTile: FC<
   UserMediaTileProps & { menuStart?: ReactNode; menuEnd?: ReactNode }
 > = ({ menuStart, menuEnd, ...props }) => {
+  const { t } = useTranslation();
+  const { emphasis, emphasised, onEmphasise } = props;
+  // The same thing double-clicking the tile does, for the menu
+  const emphasiseItem = useMemo(() => {
+    if (!emphasis || !onEmphasise) return null;
+    const [Icon, label] =
+      emphasis === "pin"
+        ? emphasised
+          ? [UnpinIcon, t("video_tile.unpin")]
+          : [PinIcon, t("video_tile.pin")]
+        : emphasised
+          ? [CollapseIcon, t("video_tile.shrink")]
+          : [ExpandIcon, t("video_tile.enlarge")];
+    return <MenuItem Icon={Icon} label={label} onSelect={onEmphasise} />;
+  }, [t, emphasis, emphasised, onEmphasise]);
   const menu = useMemo(
     () => (
       <>
+        {emphasiseItem}
         {menuStart}
         {/*
        No additional menu item (used to be the manual fit to frame.
@@ -251,7 +286,7 @@ const UserMediaTile: FC<
         {menuEnd}
       </>
     ),
-    [menuStart, menuEnd],
+    [emphasiseItem, menuStart, menuEnd],
   );
 
   // ContextMenu is expensive to render, so we avoid subscribing to any
@@ -508,7 +543,9 @@ interface GridTileProps {
   showRingingStatus: boolean;
   showOutline: boolean;
   focusable: boolean;
-  onDoubleClick?: () => void;
+  /** What emphasising this tile (double-clicking it) does, if anything. */
+  emphasis: TileEmphasis | null;
+  onEmphasise: () => void;
 }
 
 export const GridTile: FC<GridTileProps> = ({
@@ -519,6 +556,7 @@ export const GridTile: FC<GridTileProps> = ({
   showOutline,
   onOpenProfile,
   className,
+  emphasis,
   ...props
 }) => {
   const ourRef = useRef<HTMLDivElement | null>(null);
@@ -526,6 +564,11 @@ export const GridTile: FC<GridTileProps> = ({
   const media = useBehavior(vm.media$);
   const displayName = useBehavior(media.displayName$);
   const mxcAvatarUrl = useBehavior(media.mxcAvatarUrl$);
+  const enlarged = useBehavior(vm.enlarged$);
+  const pinned = useBehavior(
+    media.type === "user" ? media.pinned$ : constant(false),
+  );
+  const emphasised = emphasis === "pin" ? pinned : enlarged;
 
   if (media.type === "ringing") {
     return (
@@ -536,6 +579,8 @@ export const GridTile: FC<GridTileProps> = ({
         mxcAvatarUrl={mxcAvatarUrl}
         showStatus={showRingingStatus}
         className={classNames(className, { [styles.outline]: showOutline })}
+        emphasis={emphasis}
+        emphasised={emphasised}
         {...props}
       />
     );
@@ -549,6 +594,8 @@ export const GridTile: FC<GridTileProps> = ({
         displayName={displayName}
         mxcAvatarUrl={mxcAvatarUrl}
         className={classNames(className, { [styles.outline]: showOutline })}
+        emphasis={emphasis}
+        emphasised={emphasised}
         {...props}
       />
     );
@@ -561,6 +608,8 @@ export const GridTile: FC<GridTileProps> = ({
         displayName={displayName}
         mxcAvatarUrl={mxcAvatarUrl}
         className={classNames(className, { [styles.outline]: showOutline })}
+        emphasis={emphasis}
+        emphasised={emphasised}
         {...props}
       />
     );

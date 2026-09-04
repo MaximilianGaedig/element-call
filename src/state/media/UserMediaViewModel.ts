@@ -57,6 +57,8 @@ export interface BaseUserMediaViewModel extends BaseMemberMediaViewModel {
   moderator$: Behavior<ModeratorControls | null>;
   /** Kicking or banning this user, if the local user has the power to. */
   memberActions$: Behavior<MemberActions | null>;
+  /** Whether this user is pinned to the spotlight. */
+  pinned$: Behavior<boolean>;
   audioStreamStats$: Behavior<RtpStreamStats | undefined>;
   videoStreamStats$: Behavior<RtpStreamStats | undefined>;
   /**
@@ -76,6 +78,7 @@ export interface BaseUserMediaInputs extends Omit<
   moderation$: Behavior<Moderation>;
   moderator$: Behavior<ModeratorControls | null>;
   memberActions$: Behavior<MemberActions | null>;
+  pinned$: Behavior<boolean>;
   statsType: "inbound-rtp" | "outbound-rtp";
 }
 
@@ -89,6 +92,7 @@ export function createBaseUserMedia(
     moderation$,
     moderator$,
     memberActions$,
+    pinned$,
     statsType,
     ...inputs
   }: BaseUserMediaInputs,
@@ -148,6 +152,7 @@ export function createBaseUserMedia(
     moderation$,
     moderator$,
     memberActions$,
+    pinned$,
     audioStreamStats$: streamStats$(Track.Source.Microphone),
     videoStreamStats$: streamStats$(Track.Source.Camera),
     setVideoAspectRatio: (ratio) => (videoAspectRatio$.value = ratio),
