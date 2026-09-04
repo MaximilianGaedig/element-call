@@ -117,8 +117,7 @@ describe("MatrixMemberMetadata", () => {
           memberships$,
           createRoomMembers$(testScope, mockMatrixRoom),
         );
-        const dn$ = metadataStore.displayName$("@local:example.com",
-        );
+        const dn$ = metadataStore.displayName$("@local:example.com");
 
         expectObservable(dn$).toBe("a", {
           a: "it's a me",
@@ -156,8 +155,7 @@ describe("MatrixMemberMetadata", () => {
           memberships$,
           createRoomMembers$(testScope, mockMatrixRoom),
         );
-        const aliceDispName$ = metadataStore.displayName$("@alice:example.com",
-        );
+        const aliceDispName$ = metadataStore.displayName$("@alice:example.com");
 
         expectObservable(aliceDispName$).toBe("a", {
           a: "Alice",
@@ -402,12 +400,9 @@ describe("MatrixMemberMetadata", () => {
           createRoomMembers$(testScope, mockMatrixRoom),
         );
 
-        const bob$ = metadataStore.displayName$("@bob:example.org",
-        );
-        const bob2$ = metadataStore.displayName$("@bob2:example.org",
-        );
-        const carol$ = metadataStore.displayName$("@carol:example.org",
-        );
+        const bob$ = metadataStore.displayName$("@bob:example.org");
+        const bob2$ = metadataStore.displayName$("@bob2:example.org");
+        const carol$ = metadataStore.displayName$("@carol:example.org");
         expectObservable(bob$).toBe("ab", {
           a: "Bob",
           b: "Bob (@bob:example.org)",
@@ -525,11 +520,9 @@ describe("MatrixMemberMetadata", () => {
           memberships$,
           createRoomMembers$(testScope, mockMatrixRoom),
         );
-        const local$ = metadataStore.avatarUrl$("@local:example.com",
-        );
+        const local$ = metadataStore.avatarUrl$("@local:example.com");
 
-        const alice$ = metadataStore.avatarUrl$("@alice:example.com",
-        );
+        const alice$ = metadataStore.avatarUrl$("@alice:example.com");
 
         expectObservable(local$).toBe("a", {
           a: "mxc://example.com/@local:example.com",
@@ -573,10 +566,8 @@ describe("MatrixMemberMetadata", () => {
           },
         });
 
-        const bob$ = metadataStore.avatarUrl$("@bob:example.com",
-        );
-        const carl$ = metadataStore.avatarUrl$("@carl:example.com",
-        );
+        const bob$ = metadataStore.avatarUrl$("@bob:example.com");
+        const carl$ = metadataStore.avatarUrl$("@carl:example.com");
         expectObservable(bob$).toBe("a---", {
           a: "mxc://example.com/@bob:example.com",
         });
