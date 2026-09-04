@@ -60,11 +60,14 @@ except where switched back on, as here, so hovering the gap reaches it. */
 
 .handle::before {
   content: "";
-  position: absolute;
-  inset-block: 0;
-  inset-inline-start: 50%;
-  margin-block: auto;
-  translate: -50%;
+  /* Centred on the page vertically rather than on the handle, whose height
+  re-resizable rewrites while dragging. Fixed positioning here is relative to
+  the Grid, which contains layout; the inline position stays put by using the
+  handle's own position. */
+  position: fixed;
+  inset-block-start: 50%;
+  translate: 0 -50%;
+  margin-inline-start: calc((var(--gap) - 4px) / 2);
   inline-size: 4px;
   block-size: 64px;
   border-radius: 4px;

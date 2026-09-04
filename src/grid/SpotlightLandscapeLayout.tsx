@@ -67,9 +67,10 @@ export const makeSpotlightLandscapeLayout: CallLayout<
           className={styles.rail}
           size={{ width: railWidth, height: "100%" }}
           minWidth={minRailWidth}
-          // A pixel maximum: re-resizable works percentages out by measuring
-          // a probe element in the parent, which a CSS grid parent defeats
-          maxWidth={Math.max(minRailWidth, width * 0.7)}
+          // No more than half the page. A pixel maximum: re-resizable works
+          // percentages out by measuring a probe element in the parent, which
+          // a CSS grid parent defeats
+          maxWidth={Math.max(minRailWidth, width / 2)}
           enable={{ left: true }}
           handleClasses={{ left: styles.handle }}
           handleWrapperClass={styles.handleWrapper}
