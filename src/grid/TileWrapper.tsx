@@ -10,6 +10,7 @@ import {
   type JSX,
   memo,
   type RefObject,
+  useEffect,
   useRef,
 } from "react";
 import { type EventTypes, type Handler, useDrag } from "@use-gesture/react";
@@ -63,17 +64,46 @@ const TileWrapper_ = memo(
     height,
   }: Props<M, R>) => {
     const ref = useRef<R | null>(null);
+    // Whether the gesture that just ended was a drag rather than a tap
+    const dragged = useRef(false);
 
-    useDrag((state) => onDrag?.current!(id, state), {
-      target: ref,
-      filterTaps: true,
-      // Previous designs, which allowed tiles to be dragged and dropped around
-      // the scrolling grid, required us to set preventScroll to true here. But
-      // our designs no longer call for this, and meanwhile there's a bug in
-      // use-gesture that causes filterTaps + preventScroll to break buttons
-      // within tiles (like the 'switch camera' button) on mobile.
-      // https://github.com/pmndrs/use-gesture/issues/593
-    });
+    useDrag(
+      (state) => {
+        if (state.last && !state.tap) dragged.current = true;
+        onDrag?.current!(id, state);
+      },
+      {
+        target: ref,
+        enabled: onDrag !== null,
+        // Ignore movements too small to be intentional (the same threshold
+        // filterTaps would apply)
+        threshold: 3,
+        // On touchscreens, the tile must be held for a moment before it can
+        // be dragged; moving straight away scrolls as normal.
+        preventScroll: 250,
+        preventScrollAxis: "xy",
+        // We deliberately don't use filterTaps: together with preventScroll
+        // it swallows the clicks of buttons within tiles (like the 'switch
+        // camera' button) on mobile, because a short tap never reaches the
+        // point where use-gesture works out that it was a tap.
+        // https://github.com/pmndrs/use-gesture/issues/593
+        // Instead we swallow the click that follows a drag ourselves, below.
+      },
+    );
+
+    useEffect(() => {
+      const element = ref.current;
+      if (element === null) return;
+      const onClick = (e: MouseEvent): void => {
+        if (dragged.current) {
+          dragged.current = false;
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      };
+      element.addEventListener("click", onClick, true);
+      return (): void => element.removeEventListener("click", onClick, true);
+    }, []);
 
     return (
       <Tile
