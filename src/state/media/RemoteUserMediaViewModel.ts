@@ -56,8 +56,12 @@ export function createRemoteUserMedia(
           inputs.moderation$.value;
         // Clients need not honour more than a doubling
         const scale = Math.min(2, moderatedVolume ?? 1);
+        // The sliders run to 2x, but without LiveKit's web audio mixing
+        // (webAudioMix, deliberately off in options.ts) the volume is set
+        // straight on an <audio> element, which can't go above 1. Until that
+        // changes, anything louder than 1x is capped.
         return (volume: number) =>
-          participant?.setVolume(audioMuted ? 0 : volume * scale);
+          participant?.setVolume(audioMuted ? 0 : Math.min(1, volume * scale));
       }),
     }),
     local: false,
