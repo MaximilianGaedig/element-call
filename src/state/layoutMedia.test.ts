@@ -80,6 +80,25 @@ describe("chooseSpotlightSpeaker", () => {
   });
 });
 
+describe("chooseSpotlightSpeaker without a fallback", () => {
+  it("still follows speakers but never picks somebody arbitrary", () => {
+    const items: { media: UserMediaViewModel; speaking: boolean }[] = [
+      { media: local, speaking: false },
+      { media: alice, speaking: false },
+    ];
+    expect(chooseSpotlightSpeaker(undefined, items, false)).toBe(undefined);
+    expect(
+      chooseSpotlightSpeaker(
+        undefined,
+        [items[0], { media: alice, speaking: true }],
+        false,
+      ),
+    ).toBe(alice);
+    // The last speaker stays
+    expect(chooseSpotlightSpeaker(alice, items, false)).toBe(alice);
+  });
+});
+
 describe("computeSpotlight", () => {
   it("spotlights ringing media with the local user in the PiP", () => {
     expect(

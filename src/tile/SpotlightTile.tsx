@@ -75,6 +75,7 @@ interface SpotlightMemberMediaItemBaseProps extends SpotlightItemBaseProps {
   video: TrackReferenceOrPlaceholder | undefined;
   unencryptedWarning: boolean;
   focusUrl: string | undefined;
+  videoFit?: "cover" | "contain";
 }
 
 interface SpotlightUserMediaItemBaseProps extends SpotlightMemberMediaItemBaseProps {
@@ -169,10 +170,12 @@ const SpotlightRemoteScreenShareItem: FC<
 
 interface SpotlightMemberMediaItemProps extends SpotlightItemBaseProps {
   vm: MemberMediaViewModel;
+  tiled: boolean;
 }
 
 const SpotlightMemberMediaItem: FC<SpotlightMemberMediaItemProps> = ({
   vm,
+  tiled,
   ...props
 }) => {
   const video = useBehavior(vm.video$);
@@ -187,8 +190,16 @@ const SpotlightMemberMediaItem: FC<SpotlightMemberMediaItemProps> = ({
     ...props,
   };
 
+  // Tiled cells are often a different shape from the video, and letterboxing
+  // several of them looks like a wall of black bars, so fill the cell instead
   if (vm.type === "user")
-    return <SpotlightUserMediaItem vm={vm} {...baseProps} />;
+    return (
+      <SpotlightUserMediaItem
+        vm={vm}
+        videoFit={tiled ? "cover" : undefined}
+        {...baseProps}
+      />
+    );
   return vm.local ? (
     <SpotlightScreenShareItem vm={vm} videoEnabled {...baseProps} />
   ) : (
@@ -245,6 +256,8 @@ interface SpotlightItemProps {
    * Whether this item should act as a scroll snapping point.
    */
   snap: boolean;
+  /** Whether this item shares the spotlight with others as a tile. */
+  tiled: boolean;
   className?: string;
   "aria-hidden"?: boolean;
 }
@@ -260,6 +273,7 @@ const SpotlightItem: FC<SpotlightItemProps> = ({
   focusable,
   intersectionObserver$,
   snap,
+  tiled,
   className,
   "aria-hidden": ariaHidden,
 }) => {
@@ -306,7 +320,7 @@ const SpotlightItem: FC<SpotlightItemProps> = ({
       {...baseProps}
     />
   ) : (
-    <SpotlightMemberMediaItem vm={vm} {...baseProps} />
+    <SpotlightMemberMediaItem vm={vm} tiled={tiled} {...baseProps} />
   );
 };
 
@@ -546,6 +560,7 @@ export const SpotlightTile: FC<Props> = ({
             // remove all scroll snap points except for just the one media
             // that we want to bring into view
             snap={scrollToId === null || scrollToId === vm.id}
+            tiled={tiled}
             className={itemClassName}
             aria-hidden={!tiled && (scrollToId ?? visibleId) !== vm.id}
           />

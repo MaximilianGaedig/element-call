@@ -795,6 +795,8 @@ export function createCallViewModel$(
       userMedia$.value
         .filter((m) => !pinned.includes(m))
         .map((m) => ({ media: m, speaking: m.speaking$.value })),
+      // With people pinned, nobody needs to be spotlit just to fill the space
+      pinned.length === 0,
     );
   });
 

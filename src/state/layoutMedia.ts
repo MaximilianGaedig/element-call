@@ -36,10 +36,14 @@ const smallMobileCallThreshold = 3;
  *
  * @param prev The previous pick, if any.
  * @param items All user media in the call along with whether each is speaking.
+ * @param fallback Whether to spotlight somebody arbitrary when nobody has
+ *   spoken. The spotlight shouldn't be empty on its own, but if pinned users
+ *   are already filling it there's no need to pull in a random extra person.
  */
 export function chooseSpotlightSpeaker<M extends { local: boolean }>(
   prev: M | undefined,
   items: readonly { media: M; speaking: boolean }[],
+  fallback = true,
 ): M | undefined {
   // Only remote users that are still in the call should be sticky
   const sticky = items.find((i) => i.media === prev && !i.media.local);
@@ -50,10 +54,12 @@ export function chooseSpotlightSpeaker<M extends { local: boolean }>(
     items.find((i) => !i.media.local && i.speaking)?.media ??
     // Otherwise, stick with the person who was last speaking
     sticky?.media ??
-    // Otherwise, spotlight an arbitrary remote user
-    items.find((i) => !i.media.local)?.media ??
-    // Otherwise, spotlight the local user
-    items.find((i) => i.media.local)?.media
+    (fallback
+      ? // Otherwise, spotlight an arbitrary remote user
+        (items.find((i) => !i.media.local)?.media ??
+        // Otherwise, spotlight the local user
+        items.find((i) => i.media.local)?.media)
+      : undefined)
   );
 }
 
