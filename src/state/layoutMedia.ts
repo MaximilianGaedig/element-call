@@ -75,8 +75,8 @@ export interface SpotlightInputs {
 
 /**
  * Decides what goes in the spotlight, and what goes in the picture-in-picture
- * tile of the expanded spotlight layout. Pinned users come after whatever
- * would be there anyway.
+ * tile of the expanded spotlight layout. Pinned users take the spotlight the
+ * way screen shares do: the speaker is left to the grid (or the PiP).
  */
 export function computeSpotlight({
   ringing,
@@ -89,10 +89,9 @@ export function computeSpotlight({
   pip: UserMediaViewModel | undefined;
 } {
   if (ringing !== null) return { spotlight: [ringing], pip: localPip };
-  if (screenShares.length > 0)
-    return { spotlight: [...screenShares, ...pinned], pip: speaker };
+  const prominent: MediaViewModel[] = [...screenShares, ...pinned];
+  if (prominent.length > 0) return { spotlight: prominent, pip: speaker };
   const spotlight: MediaViewModel[] = speaker ? [speaker] : [];
-  for (const m of pinned) if (!spotlight.includes(m)) spotlight.push(m);
   return {
     spotlight,
     // Hide PiP if redundant (i.e. if local user is already in spotlight)

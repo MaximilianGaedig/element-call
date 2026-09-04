@@ -145,7 +145,7 @@ describe("computeSpotlight", () => {
     ).toEqual({ spotlight: [local], pip: undefined });
   });
 
-  it("adds pinned users after the speaker or screen shares", () => {
+  it("shows pinned users in place of the speaker, after screen shares", () => {
     expect(
       computeSpotlight({
         ringing: null,
@@ -154,7 +154,7 @@ describe("computeSpotlight", () => {
         pinned: [local],
         localPip: local,
       }),
-    ).toEqual({ spotlight: [alice, local], pip: undefined });
+    ).toEqual({ spotlight: [local], pip: alice });
     expect(
       computeSpotlight({
         ringing: null,
