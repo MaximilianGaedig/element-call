@@ -218,6 +218,24 @@ describe("createFloorControl", () => {
     );
   });
 
+  it("applies an entry for all of a user's devices, under any specific one", () => {
+    const { room } = setup(
+      {
+        devices: {
+          "@alice:e:*": { hidden: true, audio_muted: true },
+          "@alice:e:A": { audio_muted: false },
+        },
+      },
+      ["@mod:e"],
+    );
+    const fc = createFloorControl(testScope(), room, "@mod:e", slot);
+    const a = fc.moderation$("@alice:e:A", "@alice:e").value;
+    expect([a.hidden, a.audioMuted, a.explicit]).toEqual([true, false, true]);
+    const b = fc.moderation$("@alice:e:B", "@alice:e").value;
+    expect([b.hidden, b.audioMuted, b.explicit]).toEqual([true, true, true]);
+    expect(fc.moderation$("@bob:e:B", "@bob:e").value.hidden).toBe(false);
+  });
+
   it("hides users below the auditorium power level", async () => {
     const { room, sendStateEvent } = setup(
       { auditorium_visibility: 50 },

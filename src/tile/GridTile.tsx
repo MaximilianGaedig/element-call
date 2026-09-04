@@ -332,11 +332,14 @@ const LocalUserMediaTile: FC<LocalUserMediaTileProps> = ({
       focusable={focusable}
       focusUrl={focusUrl}
       // Our own camera keeps showing to us; the warning is that nobody else
-      // sees it, which only matters while it's on
+      // sees it, which only matters while it's on. Being hidden altogether
+      // matters regardless.
       warning={
-        moderation.videoMuted && videoEnabled
-          ? t("video_tile.video_muted_by_moderator")
-          : undefined
+        moderation.hidden
+          ? t("video_tile.hidden_by_moderator")
+          : moderation.videoMuted && videoEnabled
+            ? t("video_tile.video_muted_by_moderator")
+            : undefined
       }
       {...props}
     />

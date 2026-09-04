@@ -242,11 +242,15 @@
     "feedback_tab_title": "Feedback",
     "framerate_label": "Framerate",
     "moderator": {
+      "all_devices": "all devices",
       "auditorium_label": "Auditorium mode: only show tiles from…",
       "auditorium_off": "Everyone",
       "defaults_description": "Applies to everyone, moderators included. Individual devices can be unmuted from their tile's menu.",
+      "hidden_heading": "Hidden participants",
       "mute_audio_by_default": "Mute everyone's microphone by default",
-      "mute_video_by_default": "Turn off everyone's camera by default"
+      "mute_video_by_default": "Turn off everyone's camera by default",
+      "none_hidden": "Nobody is hidden.",
+      "show": "Show"
     },
     "moderator_settings": "Moderator settings",
     "noise_suppression_label": "Noise suppression",
@@ -289,6 +293,8 @@
     "collapse": "Collapse",
     "enlarge": "Enlarge",
     "expand": "Expand",
+    "hidden_by_moderator": "Your tile has been hidden",
+    "hide_for_everyone": "Hide from everyone",
     "kick": "Remove from room",
     "moderator_controls": "Moderator controls",
     "mute_audio_for_everyone": "Mute for everyone",

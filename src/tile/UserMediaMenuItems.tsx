@@ -16,6 +16,7 @@ import {
   UnpinIcon,
   UserProfileIcon,
   VideoCallOffIcon,
+  VisibilityOffIcon,
   VisibilityOnIcon,
   VolumeOffIcon,
   VolumeOnIcon,
@@ -206,6 +207,13 @@ const RemoteItems: FC<{ vm: RemoteUserMediaViewModel }> = ({ vm }) => {
                 : t("video_tile.pin_for_everyone")
             }
             onSelect={() => void moderator.setPinned(!moderation.pinned)}
+          />
+          {/* Once hidden the tile is gone, so unhiding is in Moderator
+          settings instead */}
+          <MenuItem
+            Icon={VisibilityOffIcon}
+            label={t("video_tile.hide_for_everyone")}
+            onSelect={() => void moderator.setHidden(true)}
           />
           <MenuItem as="div" Icon={VolumeOnIcon} label={null} onSelect={null}>
             <Slider

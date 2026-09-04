@@ -656,6 +656,7 @@ export const InCallView: FC<InCallViewProps> = ({
             open={moderatorSettingsOpen}
             onDismiss={(): void => setModeratorSettingsOpen(false)}
             floorControl={vm.floorControl}
+            room={matrixRoom}
           />
           <SettingsModal
             client={client}

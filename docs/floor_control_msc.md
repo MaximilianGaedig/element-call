@@ -58,6 +58,12 @@ the same room.
     events cannot carry floats.
   - `pinned` (boolean): the device is pinned to the spotlight for everyone, as
     if each viewer had pinned it themselves.
+  - `hidden` (boolean): the device's tile is not shown to anyone. The device
+    itself still sees and hears the call, and its media is still heard unless
+    also muted.
+- A device ID of `*` (for example `@alice:example.org:*`) makes an entry apply
+  to all of that user's devices. Where a device also has its own entry, its
+  fields take precedence over the wildcard's, field by field.
 - A device's effective controls are its own entry, falling back to `defaults`
   for any field the entry does not set. This applies to everyone in the room,
   moderators included: anyone who can send this event can control anyone,
@@ -90,6 +96,11 @@ stays muted until its user chooses to unmute.
 A device whose video is controlled keeps its camera as it is: viewers simply do
 not display the video. The device should warn its user that nobody can see
 them, so that they know their camera is not doing anything.
+
+A `hidden` device likewise carries on as normal; viewers do not show its tile.
+The device should warn its user that they are hidden. Because a hidden tile
+can't be reached to unhide it, clients should offer moderators a list of
+hidden devices to restore.
 
 ## Potential issues
 

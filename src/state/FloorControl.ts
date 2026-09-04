@@ -41,11 +41,20 @@ export interface DeviceControlContent {
   volume?: number;
   /** Whether the device is pinned to the spotlight for everyone. */
   pinned?: boolean;
+  /**
+   * Whether the device's tile is hidden from everyone. The device still sees
+   * and hears the call as normal.
+   */
+  hidden?: boolean;
 }
 
 export interface FloorControlContent {
   defaults?: DeviceControlContent;
-  /** Keyed by media ID: `${userId}:${deviceId}`. */
+  /**
+   * Keyed by media ID: `${userId}:${deviceId}`. A device ID of `*` applies to
+   * all of that user's devices, with a specific device's entry taking
+   * precedence field by field.
+   */
   devices?: Record<string, DeviceControlContent>;
   /**
    * Auditorium mode: the power level a user needs for their tile to be shown
@@ -60,7 +69,7 @@ export interface Moderation {
   videoMuted: boolean;
   /** A multiplier to apply to the device's audio, if a moderator set one. */
   volume: number | undefined;
-  /** Whether the device's tile is hidden by auditorium mode. */
+  /** Whether the device's tile is hidden, by a moderator or auditorium mode. */
   hidden: boolean;
   /** Whether a moderator has pinned the device to the spotlight for everyone. */
   pinned: boolean;
@@ -87,6 +96,7 @@ export interface ModeratorControls {
   setVideoMuted: (muted: boolean) => Promise<void>;
   setVolume: (volume: number) => Promise<void>;
   setPinned: (pinned: boolean) => Promise<void>;
+  setHidden: (hidden: boolean) => Promise<void>;
 }
 
 /** Actions a moderator can take on a user's room membership. */
@@ -130,6 +140,25 @@ export interface FloorControl {
 
 export const mediaId = (userId: string, deviceId: string): string =>
   `${userId}:${deviceId}`;
+
+/** The media ID that stands for all of a user's devices. */
+export const wildcardMediaId = (userId: string): string => mediaId(userId, "*");
+
+/**
+ * The entry that applies to a device: its own, over any for all of its user's
+ * devices. Undefined if there's neither.
+ */
+export function deviceEntry(
+  devices: Record<string, DeviceControlContent> | undefined,
+  id: string,
+  userId: string,
+): DeviceControlContent | undefined {
+  const own = devices?.[id];
+  const all = devices?.[wildcardMediaId(userId)];
+  return own === undefined && all === undefined
+    ? undefined
+    : { ...all, ...own };
+}
 
 const toMultiplier = (volume: number | undefined): number | undefined =>
   volume === undefined ? undefined : volume / volumeUnit;
@@ -210,6 +239,7 @@ export function createFloorControl(
     // No volume means 1x, so a volume dragged back to 1x is dropped too
     volume: volumeUnit,
     pinned: false,
+    hidden: false,
   };
   const setDevice = async (
     id: string,
@@ -255,14 +285,15 @@ export function createFloorControl(
           devices,
           auditorium_visibility: visibility,
         } = content$.value;
-        const device = devices?.[id];
+        const device = deviceEntry(devices, id, userId);
         return {
           audioMuted: device?.audio_muted ?? defaults?.audio_muted ?? false,
           videoMuted: device?.video_muted ?? defaults?.video_muted ?? false,
           volume: toMultiplier(device?.volume ?? defaults?.volume),
           hidden:
-            visibility !== undefined &&
-            (powerLevel$.value(userId) ?? usersDefault$.value) < visibility,
+            (device?.hidden ?? defaults?.hidden ?? false) ||
+            (visibility !== undefined &&
+              (powerLevel$.value(userId) ?? usersDefault$.value) < visibility),
           pinned: device?.pinned ?? false,
           explicit: device !== undefined,
         };
@@ -280,6 +311,7 @@ export function createFloorControl(
                   volume: Math.round(volume * volumeUnit),
                 }),
               setPinned: async (pinned) => setDevice(id, userId, { pinned }),
+              setHidden: async (hidden) => setDevice(id, userId, { hidden }),
             }
           : null,
       ),
