@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { type Behavior, state } from "./Behavior";
+import { type Behavior, computed, state } from "./Behavior";
 import { type MediaViewModel } from "./media/MediaViewModel";
 import { type RingingMediaViewModel } from "./media/RingingMediaViewModel";
 import { type UserMediaViewModel } from "./media/UserMediaViewModel";
@@ -21,10 +21,15 @@ export class GridTileViewModel {
   public readonly showOutline$: Behavior<boolean> = this._showOutline$;
   private readonly _enlarged$ = state(false);
   /**
-   * Whether the user has asked for this tile to take up twice the space in
-   * the grid.
+   * Whether this tile takes up twice the space in the grid: because the user
+   * asked for it, or because a moderator pinned the media, which in the grid
+   * layout means enlarging it.
    */
-  public readonly enlarged$: Behavior<boolean> = this._enlarged$;
+  public readonly enlarged$: Behavior<boolean> = computed(() => {
+    if (this._enlarged$.value) return true;
+    const media = this.media$.value;
+    return media.type === "user" && media.moderation$.value.pinned;
+  });
 
   public constructor(
     public readonly media$: Behavior<

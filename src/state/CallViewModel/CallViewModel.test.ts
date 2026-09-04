@@ -1684,3 +1684,49 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
     });
   });
 });
+
+describe("floor control", () => {
+  const withCallViewModel = withCallViewModelInMode(
+    MatrixRTCMode.Compatibility,
+  );
+  const alice2RtcMember = mockRtcMembership(aliceUserId, "AAA2");
+  const alice2Id = `${aliceUserId}:AAA2`;
+  const alice2Participant = mockRemoteParticipant({ identity: alice2Id });
+
+  test("pins apply to one device, not all of a user's devices", () => {
+    withTestScheduler(({ schedule, expectObservable }) => {
+      withCallViewModel(
+        {
+          remoteParticipants$: constant([
+            aliceParticipant,
+            alice2Participant,
+            bobParticipant,
+          ]),
+          rtcMembers$: constant([
+            localRtcMember,
+            aliceRtcMember,
+            alice2RtcMember,
+            bobRtcMember,
+          ]),
+          floorControl: { devices: { [aliceId]: { pinned: true } } },
+        },
+        (vm) => {
+          schedule("s", {
+            s: () => vm.layoutSwitchVm$.value!.setLayout("spotlight"),
+          });
+          // Only the pinned device is spotlit: nobody is speaking, and with
+          // a pin in place no arbitrary speaker is pulled in beside it
+          expectObservable(summarizeLayout$(vm.layout$), {
+            settled: true,
+          }).toBe("a", {
+            a: {
+              type: "spotlight-landscape",
+              spotlight: [`${aliceId}:0`],
+              grid: [`${localId}:0`, `${alice2Id}:0`, `${bobId}:0`],
+            },
+          });
+        },
+      );
+    });
+  });
+});

@@ -17,7 +17,13 @@ import {
   type TrackPublication,
 } from "livekit-client";
 import { SyncState } from "matrix-js-sdk/lib/sync";
-import { ClientEvent, type RoomMember, type MatrixClient } from "matrix-js-sdk";
+import {
+  ClientEvent,
+  type MatrixEvent,
+  type RoomMember,
+  type RoomState,
+  type MatrixClient,
+} from "matrix-js-sdk";
 import EventEmitter from "events";
 
 import type { CallMembership } from "matrix-js-sdk/lib/matrixrtc";
@@ -56,6 +62,10 @@ import { type Behavior, constant, state, type State } from "../Behavior";
 import { type ProcessorState } from "../../livekit/TrackProcessorContext";
 import { type MediaDevices } from "../MediaDevices";
 import { type MatrixRTCMode } from "../../config/ConfigOptions";
+import {
+  type FloorControlContent,
+  FloorControlEventType,
+} from "../FloorControl";
 
 mockConfig({
   livekit: { livekit_service_url: "http://my-default-service-url.com" },
@@ -76,6 +86,8 @@ export interface CallViewModelInputs {
   mediaDevices: MediaDevices;
   initialSyncState: SyncState;
   windowSize$: Behavior<{ width: number; height: number }>;
+  /** The content of the room's floor control state event, if any. */
+  floorControl: FloorControlContent | undefined;
 }
 
 export const localParticipant = mockLocalParticipant({ identity: "" });
@@ -103,6 +115,7 @@ export function withCallViewModel(mode: MatrixRTCMode) {
       mediaDevices = mockMediaDevices({}),
       initialSyncState = SyncState.Syncing,
       windowSize$ = constant({ width: 1000, height: 800 }),
+      floorControl,
     }: Partial<CallViewModelInputs> = {},
     continuation: (
       vm: CallViewModel,
@@ -140,6 +153,15 @@ export function withCallViewModel(mode: MatrixRTCMode) {
       })() as Partial<MatrixClient> as MatrixClient,
       getMembers: () => roomMembers,
       getMembersWithMembership: () => roomMembers,
+      currentState: {
+        getStateEvents: (type: string) =>
+          type === FloorControlEventType && floorControl !== undefined
+            ? ({ getContent: () => floorControl } as unknown as MatrixEvent)
+            : null,
+        maySendStateEvent: () => false,
+        getMember: () => null,
+        hasSufficientPowerLevelFor: () => false,
+      } as unknown as RoomState,
     });
     const rtcSession = new MockRTCSession(room, []).withMemberships(
       rtcMembers$,
