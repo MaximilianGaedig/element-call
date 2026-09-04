@@ -83,6 +83,6 @@ except where switched back on, as here, so hovering the gap reaches it. */
 }
 
 .grid > .slot {
-  inline-size: 180px;
-  block-size: 135px;
+  inline-size: var(--rail-tile-width);
+  block-size: var(--rail-tile-height);
 }

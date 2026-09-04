@@ -20,15 +20,32 @@ import { useReorderTiles } from "./reorder.ts";
 
 interface LayerCSSProperties extends CSSProperties {
   "--rail-width": string;
+  "--rail-tile-width": string;
+  "--rail-tile-height": string;
 }
-
-const layerStyle = (railWidth: number): LayerCSSProperties => ({
-  "--rail-width": `${railWidth}px`,
-});
 
 // The rail's fixed width before it became resizable, so nothing gets
 // narrower than it was
 const minRailWidth = 180;
+const railGap = 20; // Must match --gap in the CSS
+
+/**
+ * Sizes the rail's tiles to fill as many columns as fit its width. The tiles
+ * wrap in reading order, so widening the rail turns one column of a, b, c…
+ * into rows of a, b, c / d, e, f / …
+ */
+const layerStyle = (railWidth: number): LayerCSSProperties => {
+  const columns = Math.max(
+    1,
+    Math.floor((railWidth + railGap) / (minRailWidth + railGap)),
+  );
+  const tileWidth = Math.floor((railWidth - (columns - 1) * railGap) / columns);
+  return {
+    "--rail-width": `${railWidth}px`,
+    "--rail-tile-width": `${tileWidth}px`,
+    "--rail-tile-height": `${Math.floor((tileWidth * 3) / 4)}px`,
+  };
+};
 
 /**
  * An implementation of the "spotlight landscape" layout, in which the spotlight
