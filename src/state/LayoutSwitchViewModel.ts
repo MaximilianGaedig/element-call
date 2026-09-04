@@ -22,16 +22,16 @@ export interface LayoutSwitchViewModel {
 /**
  * Creates a layout mode switch that allows switching between grid and spotlight layouts.
  * The actual layout mode might switch automatically to spotlight if there is a
- * remote screen share active or if the window mode is flat.
+ * screen share active or if the window mode is flat.
  *
  * @param scope - The observable scope to manage subscriptions.
  * @param windowMode$ - The current window mode.
- * @param hasRemoteScreenShares$ - A behavior indicating if there are remote screen shares active.
+ * @param hasScreenShares$ - A behavior indicating if there are screen shares active.
  */
 export function createLayoutSwitchViewModel(
   scope: Scope,
   windowMode$: Behavior<WindowMode>,
-  hasRemoteScreenShares$: Behavior<boolean>,
+  hasScreenShares$: Behavior<boolean>,
 ): LayoutSwitchViewModel {
   /**
    * The natural layout - the layout that the interface would prefer to be in,
@@ -44,7 +44,7 @@ export function createLayoutSwitchViewModel(
     if (windowMode$.value === "flat") return "grid";
     // When there are screen shares, spotlight is a better experience. We
     // want them to be big and readable.
-    return hasRemoteScreenShares$.value ? "spotlight" : "grid";
+    return hasScreenShares$.value ? "spotlight" : "grid";
   });
 
   /**

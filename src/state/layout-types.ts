@@ -8,6 +8,7 @@ Please see LICENSE in the repository root for full details.
 import { type LocalUserMediaViewModel } from "./media/LocalUserMediaViewModel.ts";
 import { type MediaViewModel } from "./media/MediaViewModel.ts";
 import { type RingingMediaViewModel } from "./media/RingingMediaViewModel.ts";
+import { type ScreenShareViewModel } from "./media/ScreenShareViewModel.ts";
 import { type UserMediaViewModel } from "./media/UserMediaViewModel.ts";
 import {
   type GridTileViewModel,
@@ -17,11 +18,14 @@ import { type Behavior, type State } from "./Behavior.ts";
 import { type OrderedMember } from "./gridOrder.ts";
 import { shallowEquals as arrayShallowEquals } from "../utils/array.ts";
 
+/** What the grid layout shows as tiles: screen shares get tiles of their own. */
+export type GridMedia = UserMediaViewModel | ScreenShareViewModel;
+
 export interface GridLayoutMedia {
   type: "grid";
   edgeToEdge: false;
   spotlight?: MediaViewModel[];
-  grid: OrderedMember<UserMediaViewModel>[];
+  grid: OrderedMember<GridMedia>[];
 }
 
 export interface SpotlightLandscapeLayoutMedia {

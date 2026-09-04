@@ -43,6 +43,7 @@ import { type RemoteUserMediaViewModel } from "../state/media/RemoteUserMediaVie
 import { UserMediaMenuItems } from "./UserMediaMenuItems";
 import { type UserMediaViewModel } from "../state/media/UserMediaViewModel";
 import { type RingingMediaViewModel } from "../state/media/RingingMediaViewModel";
+import { type ScreenShareViewModel } from "../state/media/ScreenShareViewModel";
 import { RingingStatus } from "./RingingStatus";
 
 interface TileProps {
@@ -377,6 +378,43 @@ const RemoteUserMediaTile: FC<RemoteUserMediaTileProps> = ({
 
 RemoteUserMediaTile.displayName = "RemoteUserMediaTile";
 
+interface ScreenShareTileProps extends TileProps {
+  vm: ScreenShareViewModel;
+}
+
+const ScreenShareTile: FC<ScreenShareTileProps> = ({
+  vm,
+  className,
+  emphasis: _emphasis,
+  emphasised: _emphasised,
+  onEmphasise,
+  ...props
+}) => {
+  const video = useBehavior(vm.video$);
+  const videoEnabled = useBehavior(
+    vm.local ? constant(true) : vm.videoEnabled$,
+  );
+  const unencryptedWarning = useBehavior(vm.unencryptedWarning$);
+  const focusUrl = useBehavior(vm.focusUrl$);
+
+  return (
+    <MediaView
+      className={classNames(className, styles.tile)}
+      onDoubleClick={onEmphasise}
+      video={video ?? undefined}
+      videoFit="contain"
+      userId={vm.userId}
+      videoEnabled={videoEnabled}
+      unencryptedWarning={unencryptedWarning}
+      focusUrl={focusUrl}
+      mirror={false}
+      {...props}
+    />
+  );
+};
+
+ScreenShareTile.displayName = "ScreenShareTile";
+
 interface GridTileProps {
   ref?: Ref<HTMLDivElement>;
   vm: GridTileViewModel;
@@ -417,7 +455,20 @@ export const GridTile: FC<GridTileProps> = ({
   );
   const emphasised = emphasis === "pin" ? pinned : enlarged;
 
-  if (media.type === "ringing") {
+  if (media.type === "screen share") {
+    return (
+      <ScreenShareTile
+        ref={ref}
+        vm={media}
+        displayName={displayName}
+        mxcAvatarUrl={mxcAvatarUrl}
+        className={classNames(className, { [styles.outline]: showOutline })}
+        emphasis={emphasis}
+        emphasised={emphasised}
+        {...props}
+      />
+    );
+  } else if (media.type === "ringing") {
     return (
       <RingingMediaTile
         ref={ref}

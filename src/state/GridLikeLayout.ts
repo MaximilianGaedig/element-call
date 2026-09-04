@@ -73,7 +73,7 @@ export function gridLikeLayout(
       ? prevTiles.gridMedia
       : moveMember(prevTiles.gridMedia, move.media, move.to);
   const grid = reconcileOrder(prevOrder, {
-    members: media.grid.filter((m) => !spotlit.includes(m.media)),
+    members: media.grid.filter((m) => !spotlit.some((s) => s === m.media)),
     visibleTiles,
     entering: spotlit[0],
     leaving: prevSpotlit[0],

@@ -981,9 +981,7 @@ export function createCallViewModel$(
     () => spotlightAndPip$.value.pip,
   );
 
-  const hasRemoteScreenShares$ = computed(() =>
-    spotlight$.value.some((vm) => vm.type === "screen share" && !vm.local),
-  );
+  const hasScreenShares$ = computed(() => screenShares$.value.length > 0);
 
   // Let the embedding app know that its picture-in-picture controls can be used
   callActive$.value = true;
@@ -1021,7 +1019,7 @@ export function createCallViewModel$(
   const layoutSwitchVm = createLayoutSwitchViewModel(
     scope,
     windowMode$,
-    hasRemoteScreenShares$,
+    hasScreenShares$,
   );
 
   const oneOnOneLayoutMedia$ = computed<OneOnOneMedia | null>(() => {

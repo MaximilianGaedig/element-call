@@ -7,11 +7,14 @@ Please see LICENSE in the repository root for full details.
 
 import { logger } from "matrix-js-sdk/lib/logger";
 
-import { GridTileViewModel, SpotlightTileViewModel } from "./TileViewModel";
+import {
+  type GridTileMedia,
+  GridTileViewModel,
+  SpotlightTileViewModel,
+} from "./TileViewModel";
 import { debugTileLayout } from "../settings/settings";
 import { type MediaViewModel } from "./media/MediaViewModel";
 import { type UserMediaViewModel } from "./media/UserMediaViewModel";
-import { type RingingMediaViewModel } from "./media/RingingMediaViewModel";
 import { state, type State } from "./Behavior";
 
 type SpotlightBackground = "solid" | "transparent";
@@ -67,8 +70,8 @@ class SpotlightTileData {
 }
 
 class GridTileData {
-  private readonly media$: State<UserMediaViewModel | RingingMediaViewModel>;
-  public get media(): UserMediaViewModel | RingingMediaViewModel {
+  private readonly media$: State<GridTileMedia>;
+  public get media(): GridTileMedia {
     return this.media$.peek();
   }
   public set media(value: UserMediaViewModel) {
@@ -77,7 +80,7 @@ class GridTileData {
 
   public readonly vm: GridTileViewModel;
 
-  public constructor(media: UserMediaViewModel | RingingMediaViewModel) {
+  public constructor(media: GridTileMedia) {
     this.media$ = state(media);
     this.vm = new GridTileViewModel(this.media$);
   }
@@ -190,9 +193,7 @@ export class TileStoreBuilder {
    * Sets up a grid tile for the given media. If this is never called for some
    * media, then that media will have no grid tile.
    */
-  public registerGridTile(
-    media: UserMediaViewModel | RingingMediaViewModel,
-  ): void {
+  public registerGridTile(media: GridTileMedia): void {
     if (DEBUG_ENABLED)
       logger.debug(
         `[TileStore, ${this.generation}] register grid tile: ${media.displayName$.value}`,

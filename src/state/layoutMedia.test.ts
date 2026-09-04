@@ -184,16 +184,16 @@ describe("computeLayoutMedia", () => {
   ): ReturnType<typeof computeLayoutMedia> =>
     computeLayoutMedia({ ...base, ...overrides });
 
-  it("uses a plain grid unless a screen share needs the spotlight", () => {
+  it("shows screen shares as grid tiles ahead of the users", () => {
     expect(layout({})).toEqual({
       type: "grid",
       edgeToEdge: false,
-      spotlight: undefined,
       grid: base.grid,
     });
-    expect(layout({ spotlight: [screenShare] }).spotlight).toEqual([
-      screenShare,
-    ]);
+    expect(layout({ spotlight: [screenShare] })).toMatchObject({
+      type: "grid",
+      grid: [{ media: screenShare }, ...base.grid],
+    });
   });
 
   it("switches between landscape and expanded spotlight", () => {

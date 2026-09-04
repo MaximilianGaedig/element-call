@@ -136,11 +136,24 @@ export function computeLayoutMedia({
   desktop,
 }: LayoutMediaInputs): LayoutMedia {
   const hasScreenShare = spotlight.some((vm) => vm.type === "screen share");
+  // In the grid layout, screen shares are tiles like any other (enlarged, see
+  // GridTileViewModel) rather than a small floating spotlight
   const gridLayout = (): GridLayoutMedia => ({
     type: "grid",
     edgeToEdge: false,
-    spotlight: hasScreenShare ? spotlight : undefined,
-    grid,
+    grid: [
+      ...spotlight
+        .filter((vm) => vm.type === "screen share")
+        .map((media) => ({
+          media,
+          presenting: true,
+          handRaised: false,
+          speaking: false,
+          video: true,
+          lastActive: Infinity,
+        })),
+      ...grid,
+    ],
   });
   const spotlightLandscape = (
     edgeToEdge: boolean,

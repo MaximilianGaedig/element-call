@@ -342,12 +342,14 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
     });
   });
 
-  test("local screen sharing stays in grid layout", () => {
-    withTestScheduler(({ behavior, expectObservable }) => {
+  test("local screen sharing switches to spotlight, and back to grid on request", () => {
+    withTestScheduler(({ behavior, schedule, expectObservable }) => {
       // Local participant shares their screen, then stops sharing
-      const sharingInputMarbles = "  nyn";
-      // Layout should show the screen share but stay in type: "grid"
-      const expectedLayoutMarbles = "aba";
+      const sharingInputMarbles = "  ny-n";
+      // Meanwhile the user asks for the grid layout back
+      const layoutInputMarbles = "  --g";
+      // Layout should switch to spotlight, then show the share as a grid tile
+      const expectedLayoutMarbles = "abca";
       withCallViewModel(
         {
           remoteParticipants$: constant([aliceParticipant, bobParticipant]),
@@ -357,6 +359,9 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
           ]),
         },
         (vm) => {
+          schedule(layoutInputMarbles, {
+            g: () => vm.layoutSwitchVm$.value!.setLayout("grid"),
+          });
           expectObservable(summarizeLayout$(vm.layout$), {
             settled: true,
           }).toBe(expectedLayoutMarbles, {
@@ -366,9 +371,19 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
               grid: [`${localId}:0`, `${aliceId}:0`, `${bobId}:0`],
             },
             b: {
-              type: "grid",
+              type: "spotlight-landscape",
               spotlight: [`${localId}:0:screen-share`],
               grid: [`${localId}:0`, `${aliceId}:0`, `${bobId}:0`],
+            },
+            c: {
+              type: "grid",
+              spotlight: undefined,
+              grid: [
+                `${localId}:0`,
+                `${localId}:0:screen-share`,
+                `${aliceId}:0`,
+                `${bobId}:0`,
+              ],
             },
           });
         },
@@ -376,11 +391,11 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
     });
   });
 
-  test("local screen sharing in one-on-one call activates grid layout", () => {
+  test("local screen sharing in one-on-one call activates spotlight layout", () => {
     withTestScheduler(({ behavior, expectObservable }) => {
       // Local participant shares their screen, then stops sharing
       const sharingInputMarbles = "  nyn";
-      // Layout should switch to grid layout then back to one-on-one layout
+      // Layout should switch to spotlight layout then back to one-on-one layout
       const expectedLayoutMarbles = "aba";
       withCallViewModel(
         {
@@ -400,7 +415,7 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
               spotlight: `${aliceId}:0`,
             },
             b: {
-              type: "grid",
+              type: "spotlight-landscape",
               spotlight: [`${localId}:0:screen-share`],
               grid: [`${localId}:0`, `${aliceId}:0`],
             },
