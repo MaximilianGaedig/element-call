@@ -65,6 +65,11 @@ export function usedColumns(
   enlarged: readonly boolean[],
   columns: number,
 ): number {
+  // arrangeTiles can produce fractional columns, or NaN before the layout
+  // has a size; the scan below needs a whole number of at least 1 or it
+  // would never find a fit
+  if (!(columns >= 1)) return 1;
+  columns = Math.floor(columns);
   const span = Math.min(2, columns);
   const rows: boolean[][] = [];
   const free = (r: number, c: number): boolean => !rows[r]?.[c];

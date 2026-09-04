@@ -140,7 +140,8 @@ export const makeGridLayout: CallLayout<GridLayoutModel> = ({
             "--height": `${Math.floor(tileHeight)}px`,
             // Only as many columns as get filled, so the grid stays centred
             // when an enlarged tile wraps onto a row of its own
-            "--columns": usedColumns(enlarged, columns),
+            "--columns":
+              enlargedCount > 0 ? usedColumns(enlarged, columns) : columns,
             "--span": Math.min(2, columns),
           } as GridCSSProperties
         }

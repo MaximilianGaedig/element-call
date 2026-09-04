@@ -29,3 +29,9 @@ test("small tiles flow around an enlarged tile", () => {
 test("spans are capped by the column count", () => {
   expect(usedColumns([true, true], 1)).toBe(1);
 });
+
+test("nonsense column counts don't hang the layout", () => {
+  expect(usedColumns([true, false], NaN)).toBe(1);
+  expect(usedColumns([true, false], 0)).toBe(1);
+  expect(usedColumns([false, false, false], 2.6)).toBe(2);
+});
