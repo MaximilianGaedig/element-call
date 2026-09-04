@@ -18,6 +18,7 @@ import styles from "./GridLayout.module.css";
 import { type CallLayout, arrangeTiles } from "./CallLayout";
 import { type DragCallback, useUpdateLayout, useVisibleTiles } from "./Grid";
 import { useBehavior } from "../useBehavior";
+import { useReorderTiles } from "./reorder.ts";
 import { droppedPosition, floatingClass, floatingStyle } from "./floating.ts";
 
 interface GridCSSProperties extends CSSProperties {
@@ -65,6 +66,7 @@ export const makeGridLayout: CallLayout<GridLayoutModel> = ({
   scrolling: function GridLayout({ ref, model, Slot }): ReactNode {
     useUpdateLayout();
     useVisibleTiles(model.setVisibleTiles);
+    const onDragTile = useReorderTiles(model);
     const { width, height: minHeight } = useBehavior(minBounds$);
     const { gap, tileWidth, tileHeight } = useMemo(
       () => arrangeTiles(width, minHeight, model.grid.length),
@@ -85,7 +87,13 @@ export const makeGridLayout: CallLayout<GridLayoutModel> = ({
         }
       >
         {model.grid.map((m) => (
-          <Slot key={m.id} className={styles.slot} id={m.id} model={m} />
+          <Slot
+            key={m.id}
+            className={styles.slot}
+            id={m.id}
+            model={m}
+            onDrag={onDragTile(m)}
+          />
         ))}
       </div>
     );

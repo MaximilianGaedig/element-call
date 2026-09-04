@@ -60,6 +60,7 @@ const gridLayout: Layout = {
   grid: [],
   spotlightPosition$: state<FloatingPosition>({ x: 1, y: 1 }),
   setVisibleTiles: (_: number) => {},
+  moveTile: () => {},
 };
 
 /** A PiP layout – only the `type` matters for the tests. */

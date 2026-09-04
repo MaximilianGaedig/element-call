@@ -15,6 +15,7 @@ import { useUpdateLayout, useVisibleTiles } from "./Grid";
 import { type MediaViewModel } from "../state/media/MediaViewModel.ts";
 import { type Behavior } from "../state/Behavior.ts";
 import { useBehavior } from "../useBehavior.ts";
+import { useReorderTiles } from "./reorder.ts";
 
 /**
  * An implementation of the "spotlight landscape" layout, in which the spotlight
@@ -56,13 +57,20 @@ export const makeSpotlightLandscapeLayout: CallLayout<
     useUpdateLayout();
     useVisibleTiles(model.setVisibleTiles);
     useBehavior(minBounds$);
+    const onDragTile = useReorderTiles(model);
 
     return (
       <div ref={ref} className={styles.layer}>
         <SpotlightSlot media$={model.spotlight.media$} />
         <div className={styles.grid}>
           {model.grid.map((m) => (
-            <Slot key={m.id} className={styles.slot} id={m.id} model={m} />
+            <Slot
+              key={m.id}
+              className={styles.slot}
+              id={m.id}
+              model={m}
+              onDrag={onDragTile(m)}
+            />
           ))}
         </div>
       </div>

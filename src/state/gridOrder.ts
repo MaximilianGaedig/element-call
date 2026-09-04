@@ -55,6 +55,20 @@ function need<M>(m: OrderedMember<M>): number {
 }
 
 /**
+ * Moves `media` to where `to` currently sits, shifting whatever lies between.
+ * This is how the user rearranges the list by hand; the result becomes the
+ * starting point for reconcileOrder like any other previous order.
+ */
+export function moveMember<M>(order: readonly M[], media: M, to: M): M[] {
+  const from = order.indexOf(media);
+  const dest = order.indexOf(to);
+  if (from === -1 || dest === -1 || from === dest) return order as M[];
+  const next = order.filter((m) => m !== media);
+  next.splice(dest, 0, media);
+  return next;
+}
+
+/**
  * Updates the previous order for the current members.
  */
 export function reconcileOrder<M>(

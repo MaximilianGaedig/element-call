@@ -13,6 +13,7 @@ import { type SpotlightPortraitLayout as SpotlightPortraitLayoutModel } from "..
 import styles from "./SpotlightPortraitLayout.module.css";
 import { useUpdateLayout, useVisibleTiles } from "./Grid";
 import { useBehavior } from "../useBehavior";
+import { useReorderTiles } from "./reorder.ts";
 
 interface GridCSSProperties extends CSSProperties {
   "--grid-gap": string;
@@ -57,6 +58,7 @@ export const makeSpotlightPortraitLayout: CallLayout<
   }): ReactNode {
     useUpdateLayout();
     useVisibleTiles(model.setVisibleTiles);
+    const onDragTile = useReorderTiles(model);
     const { width } = useBehavior(minBounds$);
     const { gap, tileWidth, tileHeight } = arrangeTiles(
       width,
@@ -86,7 +88,13 @@ export const makeSpotlightPortraitLayout: CallLayout<
         />
         <div className={styles.grid}>
           {model.grid.map((m) => (
-            <Slot key={m.id} className={styles.slot} id={m.id} model={m} />
+            <Slot
+              key={m.id}
+              className={styles.slot}
+              id={m.id}
+              model={m}
+              onDrag={onDragTile(m)}
+            />
           ))}
         </div>
       </div>

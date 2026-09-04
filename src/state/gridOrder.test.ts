@@ -7,7 +7,7 @@ Please see LICENSE in the repository root for full details.
 
 import { describe, expect, it } from "vitest";
 
-import { type OrderedMember, reconcileOrder } from "./gridOrder";
+import { type OrderedMember, moveMember, reconcileOrder } from "./gridOrder";
 
 type Flags = Partial<Omit<OrderedMember<string>, "media">>;
 
@@ -176,4 +176,22 @@ describe("reconcileOrder", () => {
       ),
     ).toEqual(["me", "a", "c"]);
   });
+});
+
+it("moveMember puts a member where another sits", () => {
+  expect(moveMember(["a", "b", "c", "d"], "a", "c")).toEqual([
+    "b",
+    "c",
+    "a",
+    "d",
+  ]);
+  expect(moveMember(["a", "b", "c", "d"], "d", "b")).toEqual([
+    "a",
+    "d",
+    "b",
+    "c",
+  ]);
+  const order = ["a", "b"];
+  expect(moveMember(order, "a", "a")).toBe(order);
+  expect(moveMember(order, "a", "z")).toBe(order);
 });

@@ -83,12 +83,18 @@ export interface FloatingPosition {
   y: number;
 }
 
+/**
+ * Puts `tile` where `to` currently sits in the grid, at the user's request.
+ */
+export type MoveTile = (tile: GridTileViewModel, to: GridTileViewModel) => void;
+
 export interface GridLayout {
   type: "grid";
   spotlight?: SpotlightTileViewModel;
   grid: GridTileViewModel[];
   spotlightPosition$: State<FloatingPosition>;
   setVisibleTiles: (value: number) => void;
+  moveTile: MoveTile;
 }
 
 export interface SpotlightLandscapeLayout {
@@ -96,6 +102,7 @@ export interface SpotlightLandscapeLayout {
   spotlight: SpotlightTileViewModel;
   grid: GridTileViewModel[];
   setVisibleTiles: (value: number) => void;
+  moveTile: MoveTile;
 }
 
 export interface SpotlightPortraitLayout {
@@ -103,6 +110,7 @@ export interface SpotlightPortraitLayout {
   spotlight: SpotlightTileViewModel;
   grid: GridTileViewModel[];
   setVisibleTiles: (value: number) => void;
+  moveTile: MoveTile;
 }
 
 export interface SpotlightExpandedLayout {

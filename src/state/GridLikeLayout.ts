@@ -9,10 +9,20 @@ import {
   type FloatingPosition,
   type Layout,
   type LayoutMedia,
+  type MoveTile,
 } from "./layout-types.ts";
 import { type TileStore } from "./TileStore";
 import { type State } from "./Behavior";
-import { reconcileOrder } from "./gridOrder.ts";
+import { moveMember, reconcileOrder } from "./gridOrder.ts";
+import { type UserMediaViewModel } from "./media/UserMediaViewModel.ts";
+
+/**
+ * A request from the user to move one grid tile's media onto another's spot.
+ */
+export interface GridMove {
+  media: UserMediaViewModel;
+  to: UserMediaViewModel;
+}
 
 export type GridLikeLayoutType =
   | "grid"
@@ -28,6 +38,8 @@ export function gridLikeLayout(
   spotlightPosition$: State<FloatingPosition>,
   visibleTiles: number,
   setVisibleTiles: (value: number) => void,
+  moveTile: MoveTile,
+  move: GridMove | null,
   prevTiles: TileStore,
 ): [Layout & { type: GridLikeLayoutType }, TileStore] {
   // Spotlit users don't also appear in the grid (except for the local user)
@@ -37,7 +49,11 @@ export function gridLikeLayout(
   const prevSpotlit = prevTiles.spotlightMedia.find(
     (vm) => vm.type === "user" && !vm.local,
   );
-  const grid = reconcileOrder(prevTiles.gridMedia, {
+  const prevOrder =
+    move === null
+      ? prevTiles.gridMedia
+      : moveMember(prevTiles.gridMedia, move.media, move.to);
+  const grid = reconcileOrder(prevOrder, {
     members: media.grid.filter((m) => m.media !== spotlit),
     visibleTiles,
     entering: spotlit,
@@ -60,6 +76,7 @@ export function gridLikeLayout(
       grid: tiles.gridTiles,
       spotlightPosition$,
       setVisibleTiles,
+      moveTile,
     } as Layout & { type: GridLikeLayoutType },
     tiles,
   ];

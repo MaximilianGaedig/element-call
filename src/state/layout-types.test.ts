@@ -32,6 +32,7 @@ const spotlightPortrait: Layout = {
   spotlight: spotlightTile,
   grid: [gridTile],
   setVisibleTiles: () => {},
+  moveTile: () => {},
 };
 
 test("layoutShallowEquals considers a layout to be equal to its shallow clone", () =>

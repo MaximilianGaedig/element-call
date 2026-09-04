@@ -206,6 +206,10 @@ interface Drag {
    * with the top edge, 1 when flush with the bottom edge.
    */
   yRatio: number;
+  /**
+   * The ID of the tile whose slot the dragged tile was dropped onto, if any.
+   */
+  over: string | undefined;
 }
 
 export type DragCallback = (drag: Drag) => void;
@@ -490,11 +494,21 @@ export function Grid<
 
     if (endOfGesture) {
       const { container } = tile;
+      const centerX = tileX + tile.width / 2;
+      const centerY = tileY + tile.height / 2;
       callback({
         x: tileX,
         y: tileY,
         xRatio: (tileX - container.x) / (container.width - tile.width),
         yRatio: (tileY - container.y) / (container.height - tile.height),
+        over: placedTiles.find(
+          (t) =>
+            t.id !== tileId &&
+            centerX >= t.x &&
+            centerX < t.x + t.width &&
+            centerY >= t.y &&
+            centerY < t.y + t.height,
+        )?.id,
       });
     }
   };

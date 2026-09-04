@@ -30,7 +30,7 @@ import { MatrixRTCMode } from "../../config/ConfigOptions";
 import { isFirefox, platform } from "../../Platform";
 import { callActive$, pipEnabled$ } from "../../controls";
 import { TileStore } from "../TileStore";
-import { gridLikeLayout } from "../GridLikeLayout";
+import { type GridMove, gridLikeLayout } from "../GridLikeLayout";
 import { spotlightExpandedLayout } from "../SpotlightExpandedLayout";
 import { oneOnOneDesktopLayout } from "../OneOnOneDesktopLayout";
 import { oneOnOneMobileLayout } from "../OneOnOneMobileLayout";
@@ -59,6 +59,7 @@ import { ElementWidgetActions, widget } from "../../widget";
 import {
   layoutShallowEquals,
   type FloatingPosition,
+  type MoveTile,
   type Layout,
   type LayoutMedia,
 } from "../layout-types.ts";
@@ -1094,12 +1095,30 @@ export function createCallViewModel$(
     visibleTiles$.value = value;
   };
 
+  // The user can drag a tile onto another's spot to rearrange the grid. The
+  // move is a one-shot input to the layout effect below: it's applied to the
+  // previous order once, after which the new order lives in the tile store like
+  // any other. A counter wakes the effect rather than the move itself so that
+  // consuming the move doesn't re-trigger it.
+  let pendingMove: GridMove | null = null;
+  const moves$ = state(0);
+  const moveTile: MoveTile = (tile, to) => {
+    const media = tile.media$.peek();
+    const toMedia = to.media$.peek();
+    if (media.type !== "user" || toMedia.type !== "user") return;
+    pendingMove = { media, to: toMedia };
+    moves$.value++;
+  };
+
   // This is an effect rather than a computed because the TileStore mutates the
   // tile view models it reuses
   const layoutInternals$ = state<LayoutInternals | null>(null);
   scope.effect(() => {
     const media = layoutMedia$.value;
     const visibleTiles = visibleTiles$.value;
+    void moves$.value; // wake up on each move
+    const move = pendingMove;
+    pendingMove = null;
     const prevTiles = layoutInternals$.peek()?.tiles ?? TileStore.empty();
     let layout: Layout;
     let tiles: TileStore;
@@ -1114,6 +1133,8 @@ export function createCallViewModel$(
           spotlightPosition$,
           visibleTiles,
           setVisibleTiles,
+          moveTile,
+          move,
           prevTiles,
         );
         overflowing = tiles.gridTiles.length > visibleTiles;

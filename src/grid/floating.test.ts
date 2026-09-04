@@ -10,7 +10,7 @@ import { expect, test } from "vitest";
 import { droppedPosition } from "./floating.ts";
 
 const drop = (xRatio: number, yRatio: number): { x: number; y: number } =>
-  droppedPosition({ x: 0, y: 0, xRatio, yRatio });
+  droppedPosition({ x: 0, y: 0, xRatio, yRatio, over: undefined });
 
 test("tiles dropped near an edge snap to it", () => {
   expect(drop(0.05, 0.97)).toEqual({ x: 0, y: 1 });
