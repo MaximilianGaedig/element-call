@@ -43,7 +43,9 @@ export const makeGridLayout: CallLayout<GridLayoutModel> = ({
     const position = useBehavior(model.spotlightPosition$);
 
     const onDragSpotlight: DragCallback = useCallback(
-      (drag) => (model.spotlightPosition$.value = droppedPosition(drag)),
+      (drag) => {
+        if (drag.final) model.spotlightPosition$.value = droppedPosition(drag);
+      },
       [model.spotlightPosition$],
     );
 

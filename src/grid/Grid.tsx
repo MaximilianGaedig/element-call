@@ -87,6 +87,8 @@ interface DragState {
   tileY: number;
   cursorX: number;
   cursorY: number;
+  /** The tile the dragged tile was last reported to be over. */
+  over: string | undefined;
 }
 
 interface SlotProps<Model> extends Omit<ComponentProps<"div">, "onDrag"> {
@@ -214,9 +216,15 @@ interface Drag {
    */
   tile: { width: number; height: number };
   /**
-   * The ID of the tile whose slot the dragged tile was dropped onto, if any.
+   * The ID of the tile whose slot the dragged tile is over, if any.
    */
   over: string | undefined;
+  /**
+   * Whether this is the end of the gesture. The callback is also called
+   * mid-gesture whenever the tile moves over a different tile, so that
+   * layouts can reflow around it as it's dragged.
+   */
+  final: boolean;
 }
 
 export type DragCallback = (drag: Drag) => void;
@@ -506,10 +514,19 @@ export function Grid<
       )
       .catch(logger.error);
 
-    if (endOfGesture) {
+    const centerX = tileX + tile.width / 2;
+    const centerY = tileY + tile.height / 2;
+    const over = placedTiles.find(
+      (t) =>
+        t.id !== tileId &&
+        centerX >= t.x &&
+        centerX < t.x + t.width &&
+        centerY >= t.y &&
+        centerY < t.y + t.height,
+    )?.id;
+    if (endOfGesture || over !== dragState.current!.over) {
+      dragState.current!.over = over;
       const { container } = tile;
-      const centerX = tileX + tile.width / 2;
-      const centerY = tileY + tile.height / 2;
       callback({
         x: tileX,
         y: tileY,
@@ -517,14 +534,8 @@ export function Grid<
         containerY: tileY - container.y,
         container: { width: container.width, height: container.height },
         tile: { width: tile.width, height: tile.height },
-        over: placedTiles.find(
-          (t) =>
-            t.id !== tileId &&
-            centerX >= t.x &&
-            centerX < t.x + t.width &&
-            centerY >= t.y &&
-            centerY < t.y + t.height,
-        )?.id,
+        over,
+        final: endOfGesture,
       });
     }
   };
@@ -570,6 +581,7 @@ export function Grid<
             tileY: tileSpring.y,
             cursorX: initialX - gridBounds.x,
             cursorY: initialY - gridBounds.y + scrollOffset.current,
+            over: undefined,
           };
         }
 

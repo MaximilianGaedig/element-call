@@ -17,8 +17,10 @@ interface ReorderableLayout {
 }
 
 /**
- * Makes drag callbacks for the tiles of a grid, so that dropping a tile onto
- * another moves it to that tile's spot.
+ * Makes drag callbacks for the tiles of a grid, so that dragging a tile over
+ * another moves it to that tile's spot. This happens as soon as the dragged
+ * tile crosses into another's slot, so the grid reflows around it as it's
+ * dragged and its own slot is free for it to be dropped into.
  */
 export function useReorderTiles({
   grid,

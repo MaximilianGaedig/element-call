@@ -48,7 +48,9 @@ export const makeOneOnOneMobileLayout: CallLayout<
     const pipSize = useBehavior(model.pipSize$);
     const pipPosition = useBehavior(model.pipPosition$);
     const onDragLocalTile: DragCallback = useCallback(
-      (drag) => (model.pipPosition$.value = droppedPosition(drag)),
+      (drag) => {
+        if (drag.final) model.pipPosition$.value = droppedPosition(drag);
+      },
       [model.pipPosition$],
     );
 

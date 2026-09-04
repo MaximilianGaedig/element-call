@@ -768,13 +768,26 @@ export function createCallViewModel$(
   });
 
   /**
+   * Whether the user has placed the local tile (or displaced it) by dragging,
+   * releasing it from its usual pinned spot.
+   */
+  const localTileMoved$ = state(false);
+
+  /**
    * The user media to show in the grid (or in the thumbnails next to the
    * spotlight), with what the layout needs to know to order them.
    */
   const gridMembers$ = computed<OrderedMember<UserMediaViewModel>[]>(() =>
     userMedia$.value.map((m) => ({
       media: m,
-      pin: m.local ? (m.alwaysShow$.value ? "first" : "last") : undefined,
+      // The local tile keeps to an end of the grid, until the user drags it
+      // (or something onto it) somewhere in particular
+      pin:
+        m.local && !localTileMoved$.value
+          ? m.alwaysShow$.value
+            ? "first"
+            : "last"
+          : undefined,
       presenting: m.screenShares$.value.length > 0,
       handRaised: m.handRaised$.value !== null,
       speaking: m.isSpeaker$.value && m.speaking$.value,
@@ -1115,6 +1128,7 @@ export function createCallViewModel$(
     const media = tile.media$.peek();
     const toMedia = to.media$.peek();
     if (media.type !== "user" || toMedia.type !== "user") return;
+    if (media.local || toMedia.local) localTileMoved$.value = true;
     pendingMove = { media, to: toMedia };
     moves$.value++;
   };

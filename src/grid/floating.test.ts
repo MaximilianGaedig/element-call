@@ -22,6 +22,7 @@ const drop = (
     container: { width: 1000, height: 500 },
     tile: { width: 100, height: 50 },
     over: undefined,
+    final: true,
   });
 
 test("tiles dropped within the margin of an edge snap to it", () => {

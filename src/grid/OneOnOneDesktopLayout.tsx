@@ -45,7 +45,9 @@ export const makeOneOnOneDesktopLayout: CallLayout<
     );
 
     const onDragLocalTile: DragCallback = useCallback(
-      (drag) => (model.pipPosition$.value = droppedPosition(drag)),
+      (drag) => {
+        if (drag.final) model.pipPosition$.value = droppedPosition(drag);
+      },
       [model.pipPosition$],
     );
 
