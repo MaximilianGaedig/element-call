@@ -552,7 +552,7 @@ export function Grid<
 
     const centerX = tileX + tile.width / 2;
     const centerY = tileY + tile.height / 2;
-    const over = placedTiles.find(
+    let over = placedTiles.find(
       (t) =>
         t.id !== tileId &&
         centerX >= t.x &&
@@ -560,6 +560,27 @@ export function Grid<
         centerY >= t.y &&
         centerY < t.y + t.height,
     )?.id;
+    if (over === undefined) {
+      // Dropped in the blank space past the end of the list (below the last
+      // tile, or to its right on its row): treat that as over the last tile,
+      // so that the dragged tile goes to the end
+      const sameContainer = (t: PlacedTile<TileModel>): boolean =>
+        t.container.x === tile.container.x &&
+        t.container.y === tile.container.y &&
+        t.container.width === tile.container.width &&
+        t.container.height === tile.container.height;
+      const peers = placedTiles.filter(
+        (t) => t.onDrag !== undefined && sameContainer(t),
+      );
+      const last = peers.at(-1);
+      if (
+        last !== undefined &&
+        last.id !== tileId &&
+        (centerY >= last.y + last.height ||
+          (centerY >= last.y && centerX >= last.x + last.width))
+      )
+        over = last.id;
+    }
     if (endOfGesture || over !== dragState.current!.over) {
       dragState.current!.over = over;
       const { container } = tile;
