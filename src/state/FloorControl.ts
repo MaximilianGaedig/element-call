@@ -25,6 +25,8 @@ export const FloorControlEventType = "org.matrix.rtc.floor_control";
 export interface DeviceControlContent {
   audio_muted?: boolean;
   video_muted?: boolean;
+  /** A multiplier from 0 to 1 to apply to the device's audio. */
+  volume?: number;
 }
 
 export interface FloorControlContent {
@@ -37,14 +39,21 @@ export interface FloorControlContent {
 export interface Moderation {
   audioMuted: boolean;
   videoMuted: boolean;
+  /** A multiplier to apply to the device's audio, if a moderator set one. */
+  volume: number | undefined;
 }
 
-export const unmoderated: Moderation = { audioMuted: false, videoMuted: false };
+export const unmoderated: Moderation = {
+  audioMuted: false,
+  videoMuted: false,
+  volume: undefined,
+};
 
 /** Actions a moderator can take on a device. */
 export interface ModeratorControls {
   setAudioMuted: (muted: boolean) => Promise<void>;
   setVideoMuted: (muted: boolean) => Promise<void>;
+  setVolume: (volume: number) => Promise<void>;
 }
 
 export interface FloorControl {
@@ -125,14 +134,14 @@ export function createFloorControl(
   return {
     content$,
     canModerate$,
-    // Floor control applies to everyone in the room, moderators included
-    moderation$: (id, _userId) =>
+    moderation$: (id, userId) =>
       computed(() => {
         const { defaults, devices } = content$.value;
         const device = devices?.[id];
         return {
           audioMuted: device?.audio_muted ?? defaults?.audio_muted ?? false,
           videoMuted: device?.video_muted ?? defaults?.video_muted ?? false,
+          volume: device?.volume ?? defaults?.volume,
         };
       }),
     moderator$: (id) =>
@@ -143,6 +152,7 @@ export function createFloorControl(
                 setDevice(id, { audio_muted: muted }),
               setVideoMuted: async (muted) =>
                 setDevice(id, { video_muted: muted }),
+              setVolume: async (volume) => setDevice(id, { volume }),
             }
           : null,
       ),

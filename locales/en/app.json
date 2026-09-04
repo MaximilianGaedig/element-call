@@ -279,6 +279,7 @@
     "screen_share_volume": "Screen share volume",
     "video_muted_by_moderator": "Your video has been muted",
     "volume": "Volume",
+    "volume_for_everyone": "Volume for everyone",
     "waiting_for_media": "Waiting for media..."
   }
 }

@@ -47,7 +47,7 @@ describe("createFloorControl", () => {
   it("applies explicit controls over defaults, to everyone", () => {
     const { room } = setup(
       {
-        defaults: { audio_muted: true },
+        defaults: { audio_muted: true, volume: 0.5 },
         devices: { "@bob:e:B": { audio_muted: false, video_muted: true } },
       },
       ["@mod:e"],
@@ -57,15 +57,18 @@ describe("createFloorControl", () => {
     expect(fc.moderation$("@alice:e:A", "@alice:e").value).toEqual({
       audioMuted: true,
       videoMuted: false,
+      volume: 0.5,
     });
     expect(fc.moderation$("@bob:e:B", "@bob:e").value).toEqual({
       audioMuted: false,
       videoMuted: true,
+      volume: 0.5,
     });
     // Moderators are subject to the defaults like anyone else
     expect(fc.moderation$("@mod:e:M", "@mod:e").value).toEqual({
       audioMuted: true,
       videoMuted: false,
+      volume: undefined,
     });
   });
 
@@ -84,7 +87,11 @@ describe("createFloorControl", () => {
       slot,
     );
     room.emit(RoomStateEvent.Update, null!);
-    expect(bob$.value).toEqual({ audioMuted: true, videoMuted: true });
+    expect(bob$.value).toEqual({
+      audioMuted: true,
+      videoMuted: true,
+      volume: undefined,
+    });
   });
 
   it("gives non-moderators no controls", () => {

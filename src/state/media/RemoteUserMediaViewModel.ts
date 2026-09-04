@@ -50,9 +50,14 @@ export function createRemoteUserMedia(
       pretendToBeDisconnected$,
       sink$: computed(() => {
         const participant = inputs.participant$.value;
-        // Silence devices a moderator has muted, whatever the user's volume
-        const muted = inputs.moderation$.value.audioMuted;
-        return (volume: number) => participant?.setVolume(muted ? 0 : volume);
+        // Silence devices a moderator has muted, whatever the user's volume,
+        // and scale by any volume a moderator has set
+        const { audioMuted, volume: moderatedVolume } =
+          inputs.moderation$.value;
+        return (volume: number) =>
+          participant?.setVolume(
+            audioMuted ? 0 : volume * (moderatedVolume ?? 1),
+          );
       }),
     }),
     local: false,

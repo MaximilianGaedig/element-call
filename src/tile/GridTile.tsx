@@ -374,6 +374,16 @@ const RemoteUserMediaTile: FC<RemoteUserMediaTileProps> = ({
   const focusUrl = useBehavior(vm.focusUrl$);
   const moderation = useBehavior(vm.moderation$);
   const moderator = useBehavior(vm.moderator$);
+  // The volume for everyone as it's being dragged, before it's sent
+  const [draftModeratedVolume, setDraftModeratedVolume] = useState<
+    number | null
+  >(null);
+  const onCommitModeratedVolume = useCallback(() => {
+    if (draftModeratedVolume !== null) {
+      void moderator?.setVolume(draftModeratedVolume);
+      setDraftModeratedVolume(null);
+    }
+  }, [moderator, draftModeratedVolume]);
 
   const onSelectMute = useCallback(
     (e: Event) => {
@@ -436,6 +446,18 @@ const RemoteUserMediaTile: FC<RemoteUserMediaTileProps> = ({
                 void moderator.setVideoMuted(!moderation.videoMuted);
               }}
             />
+            <MenuItem as="div" Icon={VolumeOnIcon} label={null} onSelect={null}>
+              <Slider
+                className={styles.volumeSlider}
+                label={t("video_tile.volume_for_everyone")}
+                value={draftModeratedVolume ?? moderation.volume ?? 1}
+                onValueChange={setDraftModeratedVolume}
+                onValueCommit={onCommitModeratedVolume}
+                min={0}
+                max={1}
+                step={0.01}
+              />
+            </MenuItem>
           </>
         )
       }
