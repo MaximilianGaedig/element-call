@@ -12,6 +12,7 @@ import { Text } from "@vector-im/compound-web";
 import { FieldRow, InputField } from "../input/Input";
 import {
   showHandRaisedTimer as showHandRaisedTimerSetting,
+  enlargeActiveSpeakers as enlargeActiveSpeakersSetting,
   showReactions as showReactionsSetting,
   playReactionsSound as playReactionsSoundSetting,
   developerMode as developerModeSetting,
@@ -25,6 +26,10 @@ export const PreferencesSettingsTab: FC = () => {
   );
 
   const [showReactions, setShowReactions] = useSetting(showReactionsSetting);
+
+  const [enlargeActiveSpeakers, setEnlargeActiveSpeakers] = useSetting(
+    enlargeActiveSpeakersSetting,
+  );
 
   const [playReactionsSound, setPlayReactionSound] = useSetting(
     playReactionsSoundSetting,
@@ -52,6 +57,18 @@ export const PreferencesSettingsTab: FC = () => {
           type="checkbox"
           checked={showHandRaisedTimer}
           onChange={(e) => onChangeSetting(e, setShowHandRaisedTimer)}
+        />
+      </FieldRow>
+      <FieldRow>
+        <InputField
+          id="enlargeActiveSpeakers"
+          label={t("settings.preferences_tab.enlarge_active_speakers_label")}
+          description={t(
+            "settings.preferences_tab.enlarge_active_speakers_description",
+          )}
+          type="checkbox"
+          checked={enlargeActiveSpeakers}
+          onChange={(e) => onChangeSetting(e, setEnlargeActiveSpeakers)}
         />
       </FieldRow>
       <FieldRow>

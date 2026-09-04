@@ -137,6 +137,11 @@ export const muteAllAudio = new Setting<boolean>("mute-all-audio", false);
 
 export const alwaysShowSelf = new Setting<boolean>("always-show-self", true);
 
+export const enlargeActiveSpeakers = new Setting<boolean>(
+  "enlarge-active-speakers",
+  false,
+);
+
 export const alwaysShowIphoneEarpiece = new Setting<boolean>(
   "always-show-iphone-earpiece",
   false,
