@@ -8,7 +8,7 @@ Please see LICENSE in the repository root for full details.
 import { type LocalParticipant, type RemoteParticipant } from "livekit-client";
 
 import { type Scope } from "../Scope.ts";
-import { type Behavior, computed, fromEvents } from "../Behavior.ts";
+import { type Behavior, fromEvents, state } from "../Behavior.ts";
 import type { MediaDevices } from "../MediaDevices.ts";
 import { speaker$ } from "./speaker.ts";
 import { keyedItems } from "../keyedItems.ts";
@@ -28,40 +28,6 @@ import { createLocalScreenShare } from "./LocalScreenShareViewModel.ts";
 import { createRemoteScreenShare } from "./RemoteScreenShareViewModel.ts";
 
 /**
- * Sorting bins defining the order in which media tiles appear in the layout.
- */
-enum SortingBin {
-  /**
-   * Yourself, when the "always show self" option is on.
-   */
-  SelfAlwaysShown,
-  /**
-   * Participants that are sharing their screen.
-   */
-  Presenters,
-  /**
-   * Participants that have been speaking recently.
-   */
-  Speakers,
-  /**
-   * Participants that have their hand raised.
-   */
-  HandRaised,
-  /**
-   * Participants with video.
-   */
-  Video,
-  /**
-   * Participants not sharing any video.
-   */
-  NoVideo,
-  /**
-   * Yourself, when the "always show self" option is off.
-   */
-  SelfNotAlwaysShown,
-}
-
-/**
  * A user media item to be presented in a tile. This is a thin wrapper around
  * UserMediaViewModel which additionally carries data relevant to the tile
  * layout algorithms (data which the MediaView component should be ignorant of).
@@ -72,9 +38,13 @@ export type WrappedUserMediaViewModel = UserMediaViewModel & {
    */
   screenShares$: Behavior<ScreenShareViewModel[]>;
   /**
-   * Which sorting bin the media item should be placed in.
+   * Whether this user counts as a speaker (with the usual hysteresis).
    */
-  bin$: Behavior<SortingBin>;
+  isSpeaker$: Behavior<boolean>;
+  /**
+   * When this user last spoke, or joined the call.
+   */
+  lastActive$: Behavior<number>;
 };
 
 interface WrappedUserMediaInputs extends Omit<
@@ -145,20 +115,10 @@ export function createWrappedUserMedia(
   );
 
   const isSpeaker$ = speaker$(scope, userMedia.speaking$);
+  const lastActive$ = state(Date.now());
+  scope.effect(() => {
+    if (userMedia.speaking$.value) lastActive$.value = Date.now();
+  });
 
-  return {
-    ...userMedia,
-    screenShares$,
-    bin$: computed(() => {
-      if (userMedia.local)
-        return userMedia.alwaysShow$.value
-          ? SortingBin.SelfAlwaysShown
-          : SortingBin.SelfNotAlwaysShown;
-      else if (screenShares$.value.length > 0) return SortingBin.Presenters;
-      else if (isSpeaker$.value) return SortingBin.Speakers;
-      else if (userMedia.handRaised$.value) return SortingBin.HandRaised;
-      else if (userMedia.videoEnabled$.value) return SortingBin.Video;
-      else return SortingBin.NoVideo;
-    }),
-  };
+  return { ...userMedia, screenShares$, isSpeaker$, lastActive$ };
 }

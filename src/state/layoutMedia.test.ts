@@ -17,6 +17,8 @@ import { type LocalUserMediaViewModel } from "./media/LocalUserMediaViewModel";
 import { type RemoteUserMediaViewModel } from "./media/RemoteUserMediaViewModel";
 import { type RingingMediaViewModel } from "./media/RingingMediaViewModel";
 import { type ScreenShareViewModel } from "./media/ScreenShareViewModel";
+import { type UserMediaViewModel } from "./media/UserMediaViewModel";
+import { type OrderedMember } from "./gridOrder";
 
 // The layout functions only look at `type` and `local`, so stubs suffice
 const local = { type: "user", local: true } as LocalUserMediaViewModel;
@@ -28,6 +30,16 @@ const screenShare = {
   local: false,
 } as ScreenShareViewModel;
 const ringing = { type: "ringing" } as RingingMediaViewModel;
+const member = (
+  media: LocalUserMediaViewModel | RemoteUserMediaViewModel,
+): OrderedMember<UserMediaViewModel> => ({
+  media,
+  presenting: false,
+  handRaised: false,
+  speaking: false,
+  video: false,
+  lastActive: 0,
+});
 
 describe("chooseSpotlightSpeaker", () => {
   const items = (...speaking: boolean[]) =>
@@ -119,7 +131,7 @@ describe("computeLayoutMedia", () => {
     oneOnOne: null,
     localVideoEnabled: true,
     spotlight: [alice],
-    grid: [local, alice, bob],
+    grid: [local, alice, bob].map(member),
     pip: local,
     desktop: false,
   };
@@ -184,7 +196,10 @@ describe("computeLayoutMedia", () => {
   it("uses a portrait spotlight in narrow windows for big calls or screen shares", () => {
     expect(layout({ windowMode: "narrow" }).type).toBe("grid");
     expect(
-      layout({ windowMode: "narrow", grid: [local, alice, bob, carol] }).type,
+      layout({
+        windowMode: "narrow",
+        grid: [local, alice, bob, carol].map(member),
+      }).type,
     ).toBe("spotlight-portrait");
     expect(
       layout({ windowMode: "narrow", spotlight: [screenShare] }).type,

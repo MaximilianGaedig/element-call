@@ -14,27 +14,28 @@ import {
   type SpotlightTileViewModel,
 } from "./TileViewModel.ts";
 import { type Behavior, type State } from "./Behavior.ts";
+import { type OrderedMember } from "./gridOrder.ts";
 import { shallowEquals as arrayShallowEquals } from "../utils/array.ts";
 
 export interface GridLayoutMedia {
   type: "grid";
   edgeToEdge: false;
   spotlight?: MediaViewModel[];
-  grid: UserMediaViewModel[];
+  grid: OrderedMember<UserMediaViewModel>[];
 }
 
 export interface SpotlightLandscapeLayoutMedia {
   type: "spotlight-landscape";
   edgeToEdge: boolean;
   spotlight: MediaViewModel[];
-  grid: UserMediaViewModel[];
+  grid: OrderedMember<UserMediaViewModel>[];
 }
 
 export interface SpotlightPortraitLayoutMedia {
   type: "spotlight-portrait";
   edgeToEdge: false;
   spotlight: MediaViewModel[];
-  grid: UserMediaViewModel[];
+  grid: OrderedMember<UserMediaViewModel>[];
 }
 
 export interface SpotlightExpandedLayoutMedia {

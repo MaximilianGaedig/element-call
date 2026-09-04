@@ -62,6 +62,7 @@ import {
   type Layout,
   type LayoutMedia,
 } from "../layout-types.ts";
+import { type OrderedMember } from "../gridOrder.ts";
 import {
   chooseSpotlightSpeaker,
   computeLayoutMedia,
@@ -766,15 +767,19 @@ export function createCallViewModel$(
   });
 
   /**
-   * The user media sorted into the order they should appear in the grid.
+   * The user media to show in the grid (or in the thumbnails next to the
+   * spotlight), with what the layout needs to know to order them.
    */
-  const grid$ = computed<UserMediaViewModel[]>(
-    () =>
-      userMedia$.value
-        .map((m) => [m, m.bin$.value] as const)
-        .sort(([, bin1], [, bin2]) => bin1 - bin2)
-        .map(([m]) => m),
-    shallowArrayEquals,
+  const gridMembers$ = computed<OrderedMember<UserMediaViewModel>[]>(() =>
+    userMedia$.value.map((m) => ({
+      media: m,
+      pin: m.local ? (m.alwaysShow$.value ? "first" : "last") : undefined,
+      presenting: m.screenShares$.value.length > 0,
+      handRaised: m.handRaised$.value !== null,
+      speaking: m.isSpeaker$.value && m.speaking$.value,
+      video: m.videoEnabled$.value,
+      lastActive: m.lastActive$.value,
+    })),
   );
 
   /**
@@ -895,7 +900,7 @@ export function createCallViewModel$(
       localVideoEnabled:
         oneOnOneLayoutMedia$.value?.local.videoEnabled$.value ?? false,
       spotlight: spotlight$.value,
-      grid: grid$.value,
+      grid: gridMembers$.value,
       pip: spotlightPip$.value,
       desktop: platform === "desktop",
     }),

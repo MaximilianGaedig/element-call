@@ -22,7 +22,7 @@ export function oneOnOneDesktopLayout(
   pipAlignment$: State<Alignment>,
   prevTiles: TileStore,
 ): [OneOnOneDesktopLayout, TileStore] {
-  const update = prevTiles.from(2);
+  const update = prevTiles.from();
   update.registerGridTile(media.pip);
   update.registerGridTile(media.spotlight);
   const tiles = update.build();

@@ -16,7 +16,7 @@ export function pipLayout(
   media: PipLayoutMedia,
   prevTiles: TileStore,
 ): [PipLayout, TileStore] {
-  const update = prevTiles.from(0);
+  const update = prevTiles.from();
   // Dont maximise in pip on EW since we want the rounded corners and the footer
   update.registerSpotlight(
     media.spotlight,

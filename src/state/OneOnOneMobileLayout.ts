@@ -23,7 +23,7 @@ export function oneOnOneMobileLayout(
   pipAlignment$: State<Alignment>,
   prevTiles: TileStore,
 ): [OneOnOneMobileLayout, TileStore] {
-  const update = prevTiles.from(media.pip === undefined ? 0 : 1);
+  const update = prevTiles.from();
   update.registerSpotlight([media.spotlight], true, "transparent");
   if (media.pip !== undefined) update.registerGridTile(media.pip);
   const tiles = update.build();

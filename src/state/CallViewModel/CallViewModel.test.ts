@@ -557,8 +557,9 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
       // Nothing should change when Bob speaks, because Bob is already on screen.
       // When Dave has spoken for a second he should switch with Alice because
       // she's the one who hasn't spoken at all. Then when Alice has spoken for
-      // a second, she should return to her place at the top.
-      const expectedLayoutMarbles = " a  2999ms b 1999ms a 56999ms c 1999ms a";
+      // a second, she should switch with Bob, who has been quiet the longest.
+      // After that, nothing needs to change, so nothing does.
+      const expectedLayoutMarbles = " a  2999ms b 1999ms c";
 
       withCallViewModel(
         {
@@ -618,8 +619,8 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
               spotlight: undefined,
               grid: [
                 `${localId}:0`,
-                `${aliceId}:0`,
                 `${daveId}:0`,
+                `${aliceId}:0`,
                 `${bobId}:0`,
               ],
             },

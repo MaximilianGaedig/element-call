@@ -8,7 +8,6 @@ Please see LICENSE in the repository root for full details.
 import { logger } from "matrix-js-sdk/lib/logger";
 
 import { GridTileViewModel, SpotlightTileViewModel } from "./TileViewModel";
-import { fillGaps } from "../utils/iter";
 import { debugTileLayout } from "../settings/settings";
 import { type MediaViewModel } from "./media/MediaViewModel";
 import { type UserMediaViewModel } from "./media/UserMediaViewModel";
@@ -98,7 +97,9 @@ export class TileStore {
   ) {}
 
   public readonly spotlightTile = this.spotlight?.vm;
+  public readonly spotlightMedia = this.spotlight?.media ?? [];
   public readonly gridTiles = this.grid.map(({ vm }) => vm);
+  public readonly gridMedia = this.grid.map(({ media }) => media);
   public readonly gridTilesByMedia = new Map(
     this.grid.map(({ vm, media }) => [media, vm]),
   );
@@ -114,20 +115,20 @@ export class TileStore {
    * Creates a builder which can be used to update the collection, passing
    * ownership of the tiles to the updated collection.
    */
-  public from(visibleTiles: number): TileStoreBuilder {
+  public from(): TileStoreBuilder {
     return new TileStoreBuilder(
       this.spotlight,
       this.grid,
       (spotlight, grid) => new TileStore(spotlight, grid, this.generation + 1),
-      visibleTiles,
       this.generation,
     );
   }
 }
 
 /**
- * A builder for a new collection of tiles. Will reuse tiles and destroy unused
- * tiles from a previous collection where appropriate.
+ * A builder for a new collection of tiles. Grid tiles appear in the order they
+ * are registered, reusing tiles from the previous collection for the same
+ * media, and destroying tiles that are no longer used.
  */
 export class TileStoreBuilder {
   private spotlight: SpotlightTileData | null = null;
@@ -137,24 +138,11 @@ export class TileStoreBuilder {
       ? this.prevSpotlight.media[0]
       : null;
 
-  private readonly prevGridByMedia: Map<
-    MediaViewModel,
-    [GridTileData, number]
-  > = new Map(
-    this.prevGrid.map((entry, i) => [entry.media, [entry, i]] as const),
+  private readonly prevGridByMedia: Map<MediaViewModel, GridTileData> = new Map(
+    this.prevGrid.map((entry) => [entry.media, entry]),
   );
 
-  // The total number of grid entries that we have so far
-  private numGridEntries = 0;
-  // A sparse array of grid entries which should be kept in the same spots as
-  // which they appeared in the previous grid
-  private readonly stationaryGridEntries: GridTileData[] = Array.from({
-    length: this.prevGrid.length,
-  });
-  // Grid entries which should now enter the visible section of the grid
-  private readonly visibleGridEntries: GridTileData[] = [];
-  // Grid entries which should now enter the invisible section of the grid
-  private readonly invisibleGridEntries: GridTileData[] = [];
+  private readonly grid: GridTileData[] = [];
 
   public constructor(
     private readonly prevSpotlight: SpotlightTileData | null,
@@ -163,7 +151,6 @@ export class TileStoreBuilder {
       spotlight: SpotlightTileData | null,
       grid: GridTileData[],
     ) => TileStore,
-    private readonly visibleTiles: number,
     /**
      * A number incremented on each update, just for debugging purposes.
      */
@@ -185,7 +172,7 @@ export class TileStoreBuilder {
       );
 
     if (this.spotlight !== null) throw new Error("Spotlight already set");
-    if (this.numGridEntries > 0)
+    if (this.grid.length > 0)
       throw new Error("Spotlight must be registered before grid tiles");
 
     // Reuse the previous spotlight tile if it exists
@@ -219,71 +206,29 @@ export class TileStoreBuilder {
         this.spotlight.media.includes(media)
       )
         return;
-      // When the spotlight speaker changes, we would see one grid tile appear
-      // and another grid tile disappear. This would be an undesirable layout
-      // shift, so instead what we do is take the speaker's grid tile and swap
-      // the media out, so it can remain where it is in the layout.
+      // When the spotlight speaker changes, the previous speaker takes the
+      // new speaker's place in the grid (see reconcileOrder). Reuse the new
+      // speaker's tile with the media swapped out, so that the tile itself
+      // stays put rather than one tile leaving and another arriving.
+      const [spotlit] = this.spotlight.media;
       if (
         media === this.prevSpotlightSpeaker &&
         this.spotlight.media.length === 1 &&
-        "speaking$" in this.spotlight.media[0] &&
-        this.prevSpotlightSpeaker !==
-          (this.spotlight.media[0] satisfies UserMediaViewModel)
+        "speaking$" in spotlit &&
+        spotlit !== media
       ) {
-        const prev = this.prevGridByMedia.get(this.spotlight.media[0]);
-        if (prev !== undefined) {
-          const [entry, prevIndex] = prev;
-          const previouslyVisible = prevIndex < this.visibleTiles;
-          const nowVisible = this.numGridEntries < this.visibleTiles;
-
-          // If it doesn't need to move between the visible/invisible sections of
-          // the grid, then we can keep it where it was and swap the media
-          if (previouslyVisible === nowVisible) {
-            this.stationaryGridEntries[prevIndex] = entry;
-            // Do the media swap
-            entry.media = media;
-            this.prevGridByMedia.delete(this.spotlight.media[0]);
-            this.prevGridByMedia.set(media, prev);
-          } else {
-            // Create a new tile; this will cause a layout shift but I'm not
-            // sure there's any other straightforward option in this case
-            (nowVisible
-              ? this.visibleGridEntries
-              : this.invisibleGridEntries
-            ).push(new GridTileData(media));
-          }
-
-          this.numGridEntries++;
+        const entry = this.prevGridByMedia.get(spotlit);
+        if (entry !== undefined) {
+          entry.media = media;
+          this.prevGridByMedia.delete(spotlit);
+          this.grid.push(entry);
           return;
         }
       }
     }
 
-    // Was there previously a tile with this same media?
-    const prev = this.prevGridByMedia.get(media);
-    if (prev === undefined) {
-      // Create a new tile
-      (this.numGridEntries < this.visibleTiles
-        ? this.visibleGridEntries
-        : this.invisibleGridEntries
-      ).push(new GridTileData(media));
-    } else {
-      // Reuse the existing tile
-      const [entry, prevIndex] = prev;
-      const previouslyVisible = prevIndex < this.visibleTiles;
-      const nowVisible = this.numGridEntries < this.visibleTiles;
-      // If it doesn't need to move between the visible/invisible sections of
-      // the grid, then we can keep it exactly where it was previously
-      if (previouslyVisible === nowVisible)
-        this.stationaryGridEntries[prevIndex] = entry;
-      // Otherwise, queue this tile to be moved
-      else
-        (nowVisible ? this.visibleGridEntries : this.invisibleGridEntries).push(
-          entry,
-        );
-    }
-
-    this.numGridEntries++;
+    // Reuse the previous tile for this media if there was one
+    this.grid.push(this.prevGridByMedia.get(media) ?? new GridTileData(media));
   }
 
   /**
@@ -301,16 +246,12 @@ export class TileStoreBuilder {
     // If there is a single grid tile that we can reuse
     if (this.prevGrid.length === 1) {
       const entry = this.prevGrid[0];
-      this.stationaryGridEntries[0] = entry;
       // Do the media swap
       entry.media = media;
-      this.prevGridByMedia.delete(entry.media);
-      this.prevGridByMedia.set(media, [entry, 0]);
+      this.grid.push(entry);
     } else {
-      this.visibleGridEntries.push(new GridTileData(media));
+      this.grid.push(new GridTileData(media));
     }
-
-    this.numGridEntries++;
   }
 
   /**
@@ -319,28 +260,10 @@ export class TileStoreBuilder {
    * collection but not the new collection will be destroyed.
    */
   public build(): TileStore {
-    // Piece together the grid
-    const grid = [
-      ...fillGaps(this.stationaryGridEntries, [
-        ...this.visibleGridEntries,
-        ...this.invisibleGridEntries,
-      ]),
-    ];
-    if (DEBUG_ENABLED) {
+    if (DEBUG_ENABLED)
       logger.debug(
-        `[TileStore, ${this.generation}] stationary: ${debugEntries(this.stationaryGridEntries)}`,
+        `[TileStore, ${this.generation}] result: ${debugEntries(this.grid)}`,
       );
-      logger.debug(
-        `[TileStore, ${this.generation}] visible: ${debugEntries(this.visibleGridEntries)}`,
-      );
-      logger.debug(
-        `[TileStore, ${this.generation}] invisible: ${debugEntries(this.invisibleGridEntries)}`,
-      );
-      logger.debug(
-        `[TileStore, ${this.generation}] result: ${debugEntries(grid)}`,
-      );
-    }
-
-    return this.construct(this.spotlight, grid);
+    return this.construct(this.spotlight, this.grid);
   }
 }

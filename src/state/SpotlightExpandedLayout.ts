@@ -21,7 +21,7 @@ export function spotlightExpandedLayout(
   pipAlignment$: State<Alignment>,
   prevTiles: TileStore,
 ): [SpotlightExpandedLayout, TileStore] {
-  const update = prevTiles.from(1);
+  const update = prevTiles.from();
   update.registerSpotlight(media.spotlight, true, "transparent");
   if (media.pip !== undefined) update.registerPipTile(media.pip);
   const tiles = update.build();

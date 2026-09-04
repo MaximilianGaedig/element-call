@@ -6,6 +6,7 @@ Please see LICENSE in the repository root for full details.
 */
 
 import { type LayoutMode } from "./LayoutSwitchViewModel.ts";
+import { type OrderedMember } from "./gridOrder.ts";
 import {
   type GridLayoutMedia,
   type LayoutMedia,
@@ -100,7 +101,7 @@ export interface LayoutMediaInputs {
   oneOnOne: OneOnOneMedia | null;
   localVideoEnabled: boolean;
   spotlight: MediaViewModel[];
-  grid: UserMediaViewModel[];
+  grid: OrderedMember<UserMediaViewModel>[];
   pip: UserMediaViewModel | undefined;
   desktop: boolean;
 }
