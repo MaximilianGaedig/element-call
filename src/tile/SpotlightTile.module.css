@@ -134,6 +134,11 @@ Please see LICENSE in the repository root for full details.
   z-index: 1;
 }
 
+/* Sit above a user item's options button (its 10px inset plus its height) */
+.tile[data-options-button] .bottomRightButtons {
+  inset-block-end: calc(10px + 28px + var(--cpd-space-2x));
+}
+
 .volumeSlider {
   width: 100%;
   min-width: 172px;

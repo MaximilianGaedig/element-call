@@ -600,6 +600,9 @@ export const SpotlightTile: FC<Props> = ({
       ref={ref}
       className={classNames(className, styles.tile)}
       data-maximised={maximised}
+      // User items have an options button in the bottom-right corner, which
+      // the tile's own buttons must stay clear of
+      data-options-button={media.some((vm) => vm.type === "user") || undefined}
       style={style}
     >
       {canGoBack && (
