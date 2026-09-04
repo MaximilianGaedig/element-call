@@ -40,6 +40,11 @@ export interface BaseUserMediaViewModel extends BaseMemberMediaViewModel {
    */
   rtcBackendIdentity: string;
   handRaised$: Behavior<Date | null>;
+  /**
+   * Where this user's raised hand comes in the queue of raised hands (1 for
+   * the first), or null if theirs is the only one or it isn't raised.
+   */
+  handRaisedOrder$: Behavior<number | null>;
   reaction$: Behavior<ReactionOption | null>;
   audioStreamStats$: Behavior<RtpStreamStats | undefined>;
   videoStreamStats$: Behavior<RtpStreamStats | undefined>;
@@ -55,6 +60,7 @@ export interface BaseUserMediaInputs extends Omit<
 > {
   rtcBackendIdentity: string;
   handRaised$: Behavior<Date | null>;
+  handRaisedOrder$: Behavior<number | null>;
   reaction$: Behavior<ReactionOption | null>;
   statsType: "inbound-rtp" | "outbound-rtp";
 }
@@ -64,6 +70,7 @@ export function createBaseUserMedia(
   {
     rtcBackendIdentity,
     handRaised$,
+    handRaisedOrder$,
     reaction$,
     statsType,
     ...inputs
@@ -109,6 +116,7 @@ export function createBaseUserMedia(
     ),
     rtcBackendIdentity,
     handRaised$,
+    handRaisedOrder$,
     reaction$,
     audioStreamStats$: streamStats$(Track.Source.Microphone),
     videoStreamStats$: streamStats$(Track.Source.Camera),

@@ -422,6 +422,7 @@ export function mockLocalMedia(
     displayName$: constant(member.rawDisplayName ?? "nodisplayname"),
     mxcAvatarUrl$: constant(member.getMxcAvatarUrl()),
     handRaised$: constant(null),
+    handRaisedOrder$: constant(null),
     reaction$: constant(null),
   });
 }
@@ -465,6 +466,7 @@ export function mockRemoteMedia(
     displayName$: constant(member.rawDisplayName ?? "nodisplayname"),
     mxcAvatarUrl$: constant(member.getMxcAvatarUrl()),
     handRaised$: constant(null),
+    handRaisedOrder$: constant(null),
     reaction$: constant(null),
   });
 }

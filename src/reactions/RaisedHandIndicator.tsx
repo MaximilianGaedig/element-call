@@ -16,15 +16,22 @@ import {
 import { useTranslation } from "react-i18next";
 
 import { ReactionIndicator } from "./ReactionIndicator";
+import styles from "./ReactionIndicator.module.css";
 
 export function RaisedHandIndicator({
   raisedHandTime,
+  order,
   miniature,
   showTimer,
   onClick,
   tabIndex,
 }: {
   raisedHandTime?: Date;
+  /**
+   * Where this hand comes in the queue of raised hands, shown as a number
+   * after the emoji when several hands are up.
+   */
+  order?: number;
   miniature?: boolean;
   showTimer?: boolean;
   onClick?: () => void;
@@ -83,6 +90,7 @@ export function RaisedHandIndicator({
 
   const content = (
     <ReactionIndicator emoji="✋" miniature={miniature}>
+      {order !== undefined && <span className={styles.order}>{order}</span>}
       {showTimer && <p>{raisedHandDuration}</p>}
     </ReactionIndicator>
   );

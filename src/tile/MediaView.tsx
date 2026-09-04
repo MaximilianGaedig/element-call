@@ -60,6 +60,11 @@ interface Props extends ComponentProps<typeof animated.div> {
   focusable: boolean;
   primaryButton?: ReactNode;
   raisedHandTime?: Date;
+  /**
+   * Where this raised hand comes in the queue of raised hands, if there are
+   * several.
+   */
+  raisedHandOrder?: number;
   currentReaction?: ReactionOption;
   raisedHandOnClick?: () => void;
   waitingForMedia?: boolean;
@@ -100,6 +105,7 @@ export const MediaView: FC<Props> = ({
   primaryButton,
   status,
   raisedHandTime,
+  raisedHandOrder,
   currentReaction,
   raisedHandOnClick,
   waitingForMedia,
@@ -204,6 +210,7 @@ export const MediaView: FC<Props> = ({
         <div className={styles.reactions}>
           <RaisedHandIndicator
             raisedHandTime={raisedHandTime}
+            order={raisedHandOrder}
             miniature={avatarSize < 96}
             showTimer={handRaiseTimerVisible}
             onClick={raisedHandOnClick}

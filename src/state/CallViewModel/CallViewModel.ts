@@ -685,6 +685,14 @@ export function createCallViewModel$(
         })(),
         mxcAvatarUrl$: matrixMemberMetadataStore.avatarUrl$(userId),
         handRaised$: computed(() => handsRaised$.value[mediaId]?.time ?? null),
+        handRaisedOrder$: computed(() => {
+          const hands = handsRaised$.value;
+          const mine = hands[mediaId];
+          if (mine === undefined) return null;
+          const all = Object.values(hands);
+          if (all.length < 2) return null;
+          return all.filter((h) => h.time < mine.time).length + 1;
+        }),
         reaction$: computed(() => reactions$.value[mediaId] ?? undefined),
       }),
   );

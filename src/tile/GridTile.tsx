@@ -141,6 +141,7 @@ const UserMediaTileInner: FC<UserMediaTileProps & { menu: ReactNode }> = ({
 
   const rtcBackendIdentity = vm.rtcBackendIdentity;
   const handRaised = useBehavior(vm.handRaised$);
+  const handRaisedOrder = useBehavior(vm.handRaisedOrder$);
   const reaction = useBehavior(vm.reaction$);
 
   const AudioIcon = playbackMuted
@@ -212,6 +213,7 @@ const UserMediaTileInner: FC<UserMediaTileProps & { menu: ReactNode }> = ({
         )
       }
       raisedHandTime={handRaised ?? undefined}
+      raisedHandOrder={handRaisedOrder ?? undefined}
       currentReaction={reaction ?? undefined}
       raisedHandOnClick={raisedHandOnClick}
       waitingForMedia={waitingForMedia}

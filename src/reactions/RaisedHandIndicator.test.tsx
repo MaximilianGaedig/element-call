@@ -26,6 +26,13 @@ describe("RaisedHandIndicator", () => {
     const { container } = render(<RaisedHandIndicator />);
     expect(container.firstChild).toBeNull();
   });
+  test("shows where the hand comes in the queue", () => {
+    const { container } = render(
+      <RaisedHandIndicator raisedHandTime={new Date()} order={2} />,
+    );
+    expect(container.textContent).toContain("2");
+  });
+
   test("renders an indicator when a hand has been raised", () => {
     const dateTime = new Date();
     const { container } = render(
