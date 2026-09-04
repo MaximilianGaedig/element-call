@@ -175,11 +175,12 @@ export function isBlocked(
  */
 export function isBlockedInRoom(
   state: RoomState,
+  slotId: string,
   userId: string,
   deviceId: string,
 ): boolean {
   const content = state
-    .getStateEvents(FloorControlEventType, "")
+    .getStateEvents(FloorControlEventType, slotId)
     ?.getContent() as FloorControlContent | undefined;
   return content !== undefined && isBlocked(content, userId, deviceId);
 }

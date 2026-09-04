@@ -7,6 +7,8 @@ Please see LICENSE in the repository root for full details.
 
 import { type RoomState } from "matrix-js-sdk";
 import { useRoomState } from "./useRoomState";
+import { computeSlotId } from "matrix-js-sdk/lib/matrixrtc/utils";
+
 import { isBlockedInRoom } from "../state/FloorControl.ts";
 import { type LeaveReason } from "../state/CallViewModel/CallViewModel.ts";
 import {
@@ -467,8 +469,13 @@ export const GroupCallView: FC<Props> = ({
     room,
     useCallback(
       (state: RoomState) =>
-        isBlockedInRoom(state, client.getUserId()!, client.getDeviceId()!),
-      [client],
+        isBlockedInRoom(
+          state,
+          computeSlotId(rtcSession.slotDescription),
+          client.getUserId()!,
+          client.getDeviceId()!,
+        ),
+      [client, rtcSession],
     ),
   );
   const lobbyView = (
