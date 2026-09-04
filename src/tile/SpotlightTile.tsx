@@ -9,6 +9,7 @@ import {
   type ComponentProps,
   type CSSProperties,
   type FC,
+  type ReactNode,
   type Ref,
   type RefAttributes,
   useCallback,
@@ -26,6 +27,7 @@ import {
   VolumeOffSolidIcon,
   VolumeOnSolidIcon,
   UnpinIcon,
+  OverflowHorizontalIcon,
 } from "@vector-im/compound-design-tokens/assets/web/icons";
 import { animated } from "@react-spring/web";
 import { useTranslation } from "react-i18next";
@@ -83,6 +85,7 @@ interface SpotlightMemberMediaItemBaseProps extends SpotlightItemBaseProps {
 interface SpotlightUserMediaItemBaseProps extends SpotlightMemberMediaItemBaseProps {
   videoEnabled: boolean;
   soundWaves: boolean | undefined;
+  primaryButton: ReactNode;
 }
 
 interface SpotlightLocalUserMediaItemProps extends SpotlightUserMediaItemBaseProps {
@@ -131,11 +134,51 @@ const SpotlightUserMediaItem: FC<SpotlightUserMediaItemProps> = ({
   const pinned = useBehavior(vm.pinned$);
   const moderation = useBehavior(vm.moderation$);
 
+  // Pinned users live here rather than in the grid, so they get the same menu
+  // as a grid tile (from its options button and by right-click), plus a way
+  // to unpin them (unless it was a moderator who pinned them, which the
+  // moderator controls cover)
+  const menu = (
+    <UserMediaMenuItems
+      vm={vm}
+      leading={
+        pinned && !moderation.pinned && onUnpin ? (
+          <MenuItem
+            Icon={UnpinIcon}
+            label={t("video_tile.unpin")}
+            onSelect={() => onUnpin(vm)}
+          />
+        ) : null
+      }
+    />
+  );
+  const [menuOpen, setMenuOpen] = useState(false);
+  const primaryButton = (
+    <Menu
+      open={menuOpen}
+      onOpenChange={setMenuOpen}
+      title={props.displayName}
+      trigger={
+        <button
+          aria-label={t("common.options")}
+          tabIndex={props.focusable ? undefined : -1}
+        >
+          <OverflowHorizontalIcon aria-hidden width={20} height={20} />
+        </button>
+      }
+      side="left"
+      align="start"
+    >
+      {menu}
+    </Menu>
+  );
+
   const baseProps: SpotlightUserMediaItemBaseProps &
     RefAttributes<HTMLDivElement> = {
     setVideoAspectRatio: vm.setVideoAspectRatio,
     videoEnabled,
     soundWaves: props.background === "transparent" ? speaking : undefined,
+    primaryButton,
     targetWidth,
     targetHeight,
     ...props,
@@ -147,27 +190,13 @@ const SpotlightUserMediaItem: FC<SpotlightUserMediaItemProps> = ({
     <SpotlightRemoteUserMediaItem vm={vm} {...baseProps} />
   );
 
-  // Pinned users live here rather than in the grid, so they need the same
-  // context menu as a grid tile, plus a way to unpin them (unless it was a
-  // moderator who pinned them, which the moderator controls cover)
   return (
     <ContextMenu
       title={props.displayName}
       trigger={item}
       hasAccessibleAlternative
     >
-      <UserMediaMenuItems
-        vm={vm}
-        leading={
-          pinned && !moderation.pinned && onUnpin ? (
-            <MenuItem
-              Icon={UnpinIcon}
-              label={t("video_tile.unpin")}
-              onSelect={() => onUnpin(vm)}
-            />
-          ) : null
-        }
-      />
+      {menu}
     </ContextMenu>
   );
 };
