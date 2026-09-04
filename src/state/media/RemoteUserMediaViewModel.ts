@@ -54,10 +54,10 @@ export function createRemoteUserMedia(
         // and scale by any volume a moderator has set
         const { audioMuted, volume: moderatedVolume } =
           inputs.moderation$.value;
+        // Clients need not honour more than a doubling
+        const scale = Math.min(2, moderatedVolume ?? 1);
         return (volume: number) =>
-          participant?.setVolume(
-            audioMuted ? 0 : volume * (moderatedVolume ?? 1),
-          );
+          participant?.setVolume(audioMuted ? 0 : volume * scale);
       }),
     }),
     local: false,

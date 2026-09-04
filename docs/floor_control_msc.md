@@ -36,7 +36,7 @@ the same room.
       },
       "@bob:example.org:DEVICEID": {
         "video_muted": true,
-        "volume": 0.5
+        "volume": 32768
       }
     }
   }
@@ -50,8 +50,11 @@ the same room.
 - Each device entry and `defaults` may contain:
   - `audio_muted` (boolean): the device's microphone must not be heard.
   - `video_muted` (boolean): the device's camera must not be seen.
-  - `volume` (number, 0 to 1): a multiplier to apply to the device's audio when
-    rendering it, if it is not muted.
+  - `volume` (integer): a multiplier to apply to the device's audio when
+    rendering it, if it is not muted, in units of 1/65536: 0 is silent and
+    65536 leaves the volume unchanged. Values above 65536 amplify; clients
+    need not honour more than 131072 (twice). An integer because Matrix
+    events cannot carry floats.
 - A device's effective controls are its own entry, falling back to `defaults`
   for any field the entry does not set. This applies to everyone in the room,
   moderators included: anyone who can send this event can control anyone,

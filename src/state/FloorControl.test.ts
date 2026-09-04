@@ -47,7 +47,7 @@ describe("createFloorControl", () => {
   it("applies explicit controls over defaults, to everyone", () => {
     const { room } = setup(
       {
-        defaults: { audio_muted: true, volume: 0.5 },
+        defaults: { audio_muted: true, volume: 32768 },
         devices: { "@bob:e:B": { audio_muted: false, video_muted: true } },
       },
       ["@mod:e"],

@@ -21,11 +21,21 @@ import { type Scope } from "./Scope.ts";
 
 export const FloorControlEventType = "org.matrix.rtc.floor_control";
 
+/**
+ * Matrix events can't carry floats, so volumes are integers with this many
+ * units to a multiplier of 1.
+ */
+export const volumeUnit = 65536;
+
 /** What floor control asks of one device, or of all devices by default. */
 export interface DeviceControlContent {
   audio_muted?: boolean;
   video_muted?: boolean;
-  /** A multiplier from 0 to 1 to apply to the device's audio. */
+  /**
+   * A multiplier to apply to the device's audio, in units of volumeUnit:
+   * 0 is silent, 65536 is unchanged. Higher is louder, but clients need not
+   * honour more than twice that.
+   */
   volume?: number;
 }
 
@@ -70,6 +80,9 @@ export interface FloorControl {
 
 export const mediaId = (userId: string, deviceId: string): string =>
   `${userId}:${deviceId}`;
+
+const toMultiplier = (volume: number | undefined): number | undefined =>
+  volume === undefined ? undefined : volume / volumeUnit;
 
 const stateEvents = [
   RoomEvent.CurrentStateUpdated,
@@ -141,7 +154,7 @@ export function createFloorControl(
         return {
           audioMuted: device?.audio_muted ?? defaults?.audio_muted ?? false,
           videoMuted: device?.video_muted ?? defaults?.video_muted ?? false,
-          volume: device?.volume ?? defaults?.volume,
+          volume: toMultiplier(device?.volume ?? defaults?.volume),
         };
       }),
     moderator$: (id) =>
@@ -152,7 +165,8 @@ export function createFloorControl(
                 setDevice(id, { audio_muted: muted }),
               setVideoMuted: async (muted) =>
                 setDevice(id, { video_muted: muted }),
-              setVolume: async (volume) => setDevice(id, { volume }),
+              setVolume: async (volume) =>
+                setDevice(id, { volume: Math.round(volume * volumeUnit) }),
             }
           : null,
       ),

@@ -454,7 +454,7 @@ const RemoteUserMediaTile: FC<RemoteUserMediaTileProps> = ({
                 onValueChange={setDraftModeratedVolume}
                 onValueCommit={onCommitModeratedVolume}
                 min={0}
-                max={1}
+                max={2}
                 step={0.01}
               />
             </MenuItem>
