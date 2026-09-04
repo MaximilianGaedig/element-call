@@ -1145,6 +1145,11 @@ export function createCallViewModel$(
     y: Infinity,
   });
   /**
+   * The width of the rail of grid tiles beside the spotlight in the landscape
+   * spotlight layout, which the user can drag to resize.
+   */
+  const spotlightRailWidth$ = state(180);
+  /**
    * The position of the small picture-in-picture tile, if present, when in landscape.
    */
   const landscapePipPosition$ = state<FloatingPosition>({
@@ -1197,11 +1202,14 @@ export function createCallViewModel$(
       case "spotlight-portrait":
         [layout, tiles] = gridLikeLayout(
           media,
-          spotlightPosition$,
-          visibleTiles,
-          setVisibleTiles,
-          moveTile,
-          move,
+          {
+            spotlightPosition$,
+            railWidth$: spotlightRailWidth$,
+            visibleTiles,
+            setVisibleTiles,
+            moveTile,
+            move,
+          },
           prevTiles,
         );
         overflowing = tiles.gridTiles.length > visibleTiles;

@@ -30,17 +30,29 @@ export type GridLikeLayoutType =
   | "spotlight-landscape"
   | "spotlight-portrait";
 
+export interface GridLikeLayoutInputs {
+  spotlightPosition$: State<FloatingPosition>;
+  railWidth$: State<number>;
+  visibleTiles: number;
+  setVisibleTiles: (value: number) => void;
+  moveTile: MoveTile;
+  move: GridMove | null;
+}
+
 /**
  * Produces a grid-like layout (any layout with a grid and possibly a spotlight)
  * with the given media.
  */
 export function gridLikeLayout(
   media: LayoutMedia & { type: GridLikeLayoutType },
-  spotlightPosition$: State<FloatingPosition>,
-  visibleTiles: number,
-  setVisibleTiles: (value: number) => void,
-  moveTile: MoveTile,
-  move: GridMove | null,
+  {
+    spotlightPosition$,
+    railWidth$,
+    visibleTiles,
+    setVisibleTiles,
+    moveTile,
+    move,
+  }: GridLikeLayoutInputs,
   prevTiles: TileStore,
 ): [Layout & { type: GridLikeLayoutType }, TileStore] {
   // Spotlit users don't also appear in the grid (except for the local user).
@@ -80,6 +92,7 @@ export function gridLikeLayout(
       spotlight: tiles.spotlightTile,
       grid: tiles.gridTiles,
       spotlightPosition$,
+      railWidth$,
       setVisibleTiles,
       moveTile,
     } as Layout & { type: GridLikeLayoutType },

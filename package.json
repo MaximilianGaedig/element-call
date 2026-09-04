@@ -108,6 +108,7 @@
     "postcss-preset-env": "^10.0.0",
     "posthog-js": "1.408.2",
     "qrcode": "^1.5.4",
+    "re-resizable": "6.11.2",
     "react": "19",
     "react-dom": "19",
     "react-i18next": "^16.0.0 <16.7.0",

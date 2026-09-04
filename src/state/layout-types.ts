@@ -103,6 +103,8 @@ export interface SpotlightLandscapeLayout {
   grid: GridTileViewModel[];
   setVisibleTiles: (value: number) => void;
   moveTile: MoveTile;
+  /** The width in pixels of the rail of grid tiles beside the spotlight. */
+  railWidth$: State<number>;
 }
 
 export interface SpotlightPortraitLayout {

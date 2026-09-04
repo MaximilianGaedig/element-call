@@ -10,8 +10,7 @@ Please see LICENSE in the repository root for full details.
   display: grid;
   --gap: 20px;
   gap: var(--gap);
-  --grid-slot-width: 180px;
-  grid-template-columns: 1fr var(--grid-slot-width);
+  grid-template-columns: 1fr var(--rail-width);
   grid-template-rows: minmax(1fr, auto);
   padding-inline: var(--gap);
 }
@@ -31,12 +30,48 @@ unconditionally select the container so we can use cq units */
   }
 }
 
+.rail {
+  block-size: 100%;
+}
+
 .grid {
   display: flex;
   flex-wrap: wrap;
   gap: var(--gap);
   justify-content: center;
   align-content: center;
+  block-size: 100%;
+}
+
+/* The bar for dragging the split between the spotlight and the rail. It covers
+the gap between them, and shows itself when hovered. The layout layer normally
+ignores pointer events so that the tiles above it can be interacted with, so
+they must be switched back on here. */
+.handle {
+  pointer-events: auto;
+  z-index: 2;
+  inline-size: var(--gap) !important;
+  inset-inline-start: calc(-1 * var(--gap)) !important;
+}
+
+.handle::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 50%;
+  margin-block: auto;
+  translate: -50%;
+  inline-size: 4px;
+  block-size: 64px;
+  border-radius: 4px;
+  background: var(--cpd-color-icon-secondary);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.handle:hover::before,
+.handle:active::before {
+  opacity: 1;
 }
 
 .grid > .slot {
