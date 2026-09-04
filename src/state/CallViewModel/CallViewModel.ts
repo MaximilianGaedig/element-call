@@ -351,6 +351,8 @@ export interface CallViewModel {
 
   settingsOpen$: Behavior<boolean>;
   setSettingsOpen$: Behavior<(open: boolean) => void>;
+  moderatorSettingsOpen$: Behavior<boolean>;
+  setModeratorSettingsOpen$: Behavior<(open: boolean) => void>;
 
   // audio routing
   /**
@@ -1157,6 +1159,10 @@ export function createCallViewModel$(
 
   const showModals$ = computed(() => windowMode$.value !== "pip");
 
+  const moderatorSettingsOpen$ = state(false);
+  const setModeratorSettingsOpen$ = constant((open: boolean) => {
+    moderatorSettingsOpen$.value = open;
+  });
   const settingsOpen$ = state(false);
   const setSettingsOpen$ = constant((open: boolean) => {
     settingsOpen$.value = open;
@@ -1495,6 +1501,8 @@ export function createCallViewModel$(
     showModals$,
     settingsOpen$: settingsOpen$,
     setSettingsOpen$: setSettingsOpen$,
+    moderatorSettingsOpen$,
+    setModeratorSettingsOpen$,
     edgeToEdge$,
     overflowing$,
     earpieceMode$: earpieceMode$,

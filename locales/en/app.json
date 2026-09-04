@@ -235,6 +235,12 @@
     "feedback_tab_thank_you": "Thanks, we received your feedback!",
     "feedback_tab_title": "Feedback",
     "framerate_label": "Framerate",
+    "moderator": {
+      "defaults_description": "Moderators are exempt. Individual devices can be unmuted from their tile's menu.",
+      "mute_audio_by_default": "Mute everyone's microphone by default",
+      "mute_video_by_default": "Turn off everyone's camera by default"
+    },
+    "moderator_settings": "Moderator settings",
     "noise_suppression_label": "Noise suppression",
     "opt_in_description": "<0></0><1></1>You may withdraw consent by unchecking this box. If you are currently in a call, this setting will take effect at the end of the call.",
     "preferences_tab": {
@@ -249,7 +255,8 @@
       "show_hand_raised_timer_label": "Show hand raise duration"
     },
     "resolution_label": "Resolution",
-    "screen_share_header": "Screen sharing"
+    "screen_share_header": "Screen sharing",
+    "user_settings": "User settings"
   },
   "star_rating_input_label_one": "{{count}} star",
   "star_rating_input_label_other": "{{count}} stars",

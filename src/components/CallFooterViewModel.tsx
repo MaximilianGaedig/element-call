@@ -147,6 +147,14 @@ export function createCallFooterViewModel(
         ? (): void => setSettingsOpen(true)
         : undefined;
     }),
+    openModeratorSettings$: computed(() => {
+      const setOpen = callModel.setModeratorSettingsOpen$.value;
+      return callModel.floorControl.canModerate$.value &&
+        callModel.showModals$.value &&
+        showControls
+        ? (): void => setOpen(true)
+        : undefined;
+    }),
 
     showLogo$: computed(() => showLogo && !isPip$.value),
     layoutSwitchVm$: callModel.layoutSwitchVm$,
@@ -200,6 +208,7 @@ export function createLobbyFooterViewModel(
       showModals: true,
       buttonSize: "lg",
       openSettings,
+      openModeratorSettings: undefined,
       hangup,
       debugTileLayout: false,
       showFooter: true,

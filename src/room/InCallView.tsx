@@ -30,6 +30,8 @@ import { widget } from "../widget";
 import styles from "./InCallView.module.css";
 import { GridTile } from "../tile/GridTile";
 import { SettingsModal, defaultSettingsTab } from "../settings/SettingsModal";
+import { ModeratorSettingsModal } from "../settings/ModeratorSettingsModal";
+import { SettingsMenu } from "../settings/SettingsMenu";
 import { useRageshakeRequestModal } from "../settings/submit-rageshake";
 import { RageshakeRequestModal } from "./RageshakeRequestModal";
 import { useWakeLock } from "../useWakeLock";
@@ -279,6 +281,9 @@ export const InCallView: FC<InCallViewProps> = ({
   const showModals = useBehavior(vm.showModals$);
   const settingsOpen = useBehavior(vm.settingsOpen$);
   const setSettingsOpen = useBehavior(vm.setSettingsOpen$);
+  const moderatorSettingsOpen = useBehavior(vm.moderatorSettingsOpen$);
+  const setModeratorSettingsOpen = useBehavior(vm.setModeratorSettingsOpen$);
+  const canModerate = useBehavior(vm.floorControl.canModerate$);
   const earpieceMode = useBehavior(vm.earpieceMode$);
   const audioOutputSwitcher = useBehavior(vm.audioOutputSwitcher$);
 
@@ -594,10 +599,13 @@ export const InCallView: FC<InCallViewProps> = ({
   );
 
   useAppBarSecondaryButton(
-    <SettingsIconButton
+    <SettingsMenu
       key="settings"
-      onClick={() => setSettingsOpen(true)}
-      data-testid="settings-app-bar"
+      trigger={<SettingsIconButton data-testid="settings-app-bar" />}
+      openSettings={() => setSettingsOpen(true)}
+      openModeratorSettings={
+        canModerate ? () => setModeratorSettingsOpen(true) : undefined
+      }
     />,
   );
 
@@ -641,6 +649,11 @@ export const InCallView: FC<InCallViewProps> = ({
       {showModals && (
         <>
           <RageshakeRequestModal {...rageshakeRequestModalProps} />
+          <ModeratorSettingsModal
+            open={moderatorSettingsOpen}
+            onDismiss={(): void => setModeratorSettingsOpen(false)}
+            floorControl={vm.floorControl}
+          />
           <SettingsModal
             client={client}
             roomId={matrixRoom.roomId}

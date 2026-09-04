@@ -23,6 +23,7 @@ import {
   type ReactionData,
 } from "../button";
 import styles from "./CallFooter.module.css";
+import { SettingsMenu } from "../settings/SettingsMenu";
 import {
   MediaMuteAndSwitchButton,
   type MenuOptions,
@@ -61,6 +62,8 @@ export interface FooterActions {
   toggleScreenSharing: (() => void) | undefined;
   /** Also controls if the settings button is visible */
   openSettings: (() => void) | undefined;
+  /** Set for moderators, who get a choice of settings from the button */
+  openModeratorSettings: (() => void) | undefined;
   /** Also controls if the hangup button is visible */
   hangup: (() => void) | undefined;
 }
@@ -129,6 +132,7 @@ export const CallFooter: FC<FooterProps> = ({
   const showModals = useBehavior(vm.showModals$);
   const layoutSwitchVm = useBehavior(vm.layoutSwitchVm$);
   const openSettings = useBehavior(vm.openSettings$);
+  const openModeratorSettings = useBehavior(vm.openModeratorSettings$);
   const audioEnabled = useBehavior(vm.audioEnabled$);
   const audioBusy = useBehavior(vm.audioBusy$);
   const audioMutedByModerator = useBehavior(vm.audioMutedByModerator$);
@@ -164,11 +168,16 @@ export const CallFooter: FC<FooterProps> = ({
     // screens. On larger screens the SettingsIconButton with
     // showForScreenWidth="wide" in the settingsLogoContainer is used instead.
     buttons.push(
-      <SettingsButton
+      <SettingsMenu
         key="settings"
-        showForScreenWidth="narrow"
-        onClick={openSettings}
-        data-testid="settings-bottom-center"
+        trigger={
+          <SettingsButton
+            showForScreenWidth="narrow"
+            data-testid="settings-bottom-center"
+          />
+        }
+        openSettings={openSettings}
+        openModeratorSettings={openModeratorSettings}
       />,
     );
   }
@@ -313,12 +322,16 @@ export const CallFooter: FC<FooterProps> = ({
     >
       <div className={styles.settingsLogoContainer}>
         {openSettings !== undefined && (
-          <SettingsIconButton
-            key="settings"
-            kind="secondary"
-            showForScreenWidth="wide"
-            onClick={openSettings}
-            data-testid="settings-bottom-left"
+          <SettingsMenu
+            trigger={
+              <SettingsIconButton
+                kind="secondary"
+                showForScreenWidth="wide"
+                data-testid="settings-bottom-left"
+              />
+            }
+            openSettings={openSettings}
+            openModeratorSettings={openModeratorSettings}
           />
         )}
         {children}
