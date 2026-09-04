@@ -36,13 +36,6 @@ jobs:
         run: pnpm playwright install --with-deps
       - name: Vitest
         run: "pnpm run test:coverage"
-      - name: Upload to codecov
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-        with:
-          flags: unittests
-          fail_ci_if_error: true
   playwright:
     name: Run end-to-end tests
     timeout-minutes: 60
