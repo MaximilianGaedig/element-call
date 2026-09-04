@@ -6,7 +6,11 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { type Moderation, type ModeratorControls } from "../FloorControl.ts";
+import {
+  type MemberActions,
+  type Moderation,
+  type ModeratorControls,
+} from "../FloorControl.ts";
 import { ParticipantEvent, Track } from "livekit-client";
 
 import { type ReactionOption } from "../../reactions";
@@ -51,6 +55,8 @@ export interface BaseUserMediaViewModel extends BaseMemberMediaViewModel {
   moderation$: Behavior<Moderation>;
   /** Floor control actions on this device, if the local user is a moderator. */
   moderator$: Behavior<ModeratorControls | null>;
+  /** Kicking or banning this user, if the local user has the power to. */
+  memberActions$: Behavior<MemberActions | null>;
   audioStreamStats$: Behavior<RtpStreamStats | undefined>;
   videoStreamStats$: Behavior<RtpStreamStats | undefined>;
   /**
@@ -69,6 +75,7 @@ export interface BaseUserMediaInputs extends Omit<
   reaction$: Behavior<ReactionOption | null>;
   moderation$: Behavior<Moderation>;
   moderator$: Behavior<ModeratorControls | null>;
+  memberActions$: Behavior<MemberActions | null>;
   statsType: "inbound-rtp" | "outbound-rtp";
 }
 
@@ -81,6 +88,7 @@ export function createBaseUserMedia(
     reaction$,
     moderation$,
     moderator$,
+    memberActions$,
     statsType,
     ...inputs
   }: BaseUserMediaInputs,
@@ -139,6 +147,7 @@ export function createBaseUserMedia(
     reaction$,
     moderation$,
     moderator$,
+    memberActions$,
     audioStreamStats$: streamStats$(Track.Source.Microphone),
     videoStreamStats$: streamStats$(Track.Source.Camera),
     setVideoAspectRatio: (ratio) => (videoAspectRatio$.value = ratio),

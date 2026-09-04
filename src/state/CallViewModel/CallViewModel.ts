@@ -719,6 +719,7 @@ export function createCallViewModel$(
           participant.type === "local"
             ? constant(null)
             : floorControl.moderator$(mediaId),
+        memberActions$: floorControl.memberActions$(userId),
         handRaised$: computed(() => handsRaised$.value[mediaId]?.time ?? null),
         handRaisedOrder$: computed(() => {
           const hands = handsRaised$.value;

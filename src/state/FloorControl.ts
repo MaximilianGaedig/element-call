@@ -6,12 +6,14 @@ Please see LICENSE in the repository root for full details.
 */
 
 import {
+  EventType,
   type Room as MatrixRoom,
   RoomEvent,
   type RoomState,
   RoomStateEvent,
   type StateEvents,
 } from "matrix-js-sdk";
+import { KnownMembership } from "matrix-js-sdk/lib/types";
 
 import { type Behavior, computed, fromEvents } from "./Behavior.ts";
 import { type Scope } from "./Scope.ts";
@@ -66,6 +68,12 @@ export interface ModeratorControls {
   setVolume: (volume: number) => Promise<void>;
 }
 
+/** Actions a moderator can take on a user's room membership. */
+export interface MemberActions {
+  kick: () => Promise<void>;
+  ban: () => Promise<void>;
+}
+
 export interface FloorControl {
   content$: Behavior<FloorControlContent>;
   /** Whether the local user may change floor control. */
@@ -74,6 +82,12 @@ export interface FloorControl {
   moderation$: (mediaId: string, userId: string) => Behavior<Moderation>;
   /** Controls for the given device, if the local user may moderate. */
   moderator$: (mediaId: string) => Behavior<ModeratorControls | null>;
+  /**
+   * Kicking and banning the given user, if the local user has the power to.
+   * These set the membership state event directly rather than going through
+   * the kick and ban APIs, so that they work through the widget API too.
+   */
+  memberActions$: (userId: string) => Behavior<MemberActions | null>;
   setDevice: (mediaId: string, patch: DeviceControlContent) => Promise<void>;
   setDefaults: (patch: DeviceControlContent) => Promise<void>;
 }
@@ -114,6 +128,25 @@ export function createFloorControl(
       state.maySendStateEvent(FloorControlEventType, userId),
   );
   const canModerate$ = computed(() => mayModerate$.value(localUserId));
+  // Whether the local user outranks the given user and may kick or ban
+  const mayRemove$ = read((state) => {
+    const localLevel = state.getMember(localUserId)?.powerLevel ?? 0;
+    return (userId: string, action: "kick" | "ban"): boolean =>
+      userId !== localUserId &&
+      state.hasSufficientPowerLevelFor(action, localLevel) &&
+      (state.getMember(userId)?.powerLevel ?? 0) < localLevel;
+  });
+  const setMembership = async (
+    userId: string,
+    membership: KnownMembership,
+  ): Promise<void> => {
+    await room.client.sendStateEvent(
+      room.roomId,
+      EventType.RoomMember,
+      { membership },
+      userId,
+    );
+  };
 
   const send = async (content: FloorControlContent): Promise<void> => {
     // The SDK types state events by the spec's known types; ours is a custom
@@ -170,6 +203,22 @@ export function createFloorControl(
             }
           : null,
       ),
+    memberActions$: (userId) =>
+      computed(() => {
+        const mayRemove = mayRemove$.value;
+        const kick = mayRemove(userId, "kick");
+        const ban = mayRemove(userId, "ban");
+        return kick || ban
+          ? {
+              kick: async () => {
+                if (kick) await setMembership(userId, KnownMembership.Leave);
+              },
+              ban: async () => {
+                if (ban) await setMembership(userId, KnownMembership.Ban);
+              },
+            }
+          : null;
+      }),
     setDevice,
     setDefaults,
   };

@@ -363,6 +363,8 @@ export function mockMatrixRoom(room: Partial<MatrixRoom>): MatrixRoom {
     currentState: {
       getStateEvents: () => null,
       maySendStateEvent: () => false,
+      getMember: () => null,
+      hasSufficientPowerLevelFor: () => false,
     },
     ...room,
   } as Partial<MatrixRoom> as MatrixRoom;
@@ -435,6 +437,7 @@ export function mockLocalMedia(
     reaction$: constant(null),
     moderation$: constant(unmoderated),
     moderator$: constant(null),
+    memberActions$: constant(null),
   });
 }
 
@@ -481,6 +484,7 @@ export function mockRemoteMedia(
     reaction$: constant(null),
     moderation$: constant(unmoderated),
     moderator$: constant(null),
+    memberActions$: constant(null),
   });
 }
 

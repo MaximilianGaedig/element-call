@@ -18,6 +18,7 @@ import { mockEmitter, testScope } from "../utils/test.ts";
 function setup(
   content: FloorControlContent | undefined,
   moderators: string[],
+  powerLevels: Record<string, number> = {},
 ): { room: Room; sendStateEvent: ReturnType<typeof vi.fn> } {
   let current = content;
   const sendStateEvent = vi.fn();
@@ -36,6 +37,9 @@ function setup(
           : null,
       maySendStateEvent: (_type: string, userId: string) =>
         moderators.includes(userId),
+      getMember: (userId: string) => ({ powerLevel: powerLevels[userId] ?? 0 }),
+      hasSufficientPowerLevelFor: (_action: string, level: number) =>
+        level >= 50,
     },
   } as unknown as Room;
   return { room, sendStateEvent };
@@ -92,6 +96,32 @@ describe("createFloorControl", () => {
       videoMuted: true,
       volume: undefined,
     });
+  });
+
+  it("lets a user outranking another kick or ban them", async () => {
+    const { room, sendStateEvent } = setup(undefined, [], {
+      "@mod:e": 50,
+      "@peer:e": 50,
+    });
+    const fc = createFloorControl(testScope(), room, "@mod:e", slot);
+    expect(fc.memberActions$("@peer:e").value).toBe(null);
+    expect(fc.memberActions$("@mod:e").value).toBe(null);
+    const actions = fc.memberActions$("@alice:e").value;
+    expect(actions).not.toBe(null);
+    await actions!.kick();
+    expect(sendStateEvent).toHaveBeenCalledWith(
+      "!room",
+      "m.room.member",
+      { membership: "leave" },
+      "@alice:e",
+    );
+    await actions!.ban();
+    expect(sendStateEvent).toHaveBeenCalledWith(
+      "!room",
+      "m.room.member",
+      { membership: "ban" },
+      "@alice:e",
+    );
   });
 
   it("gives non-moderators no controls", () => {

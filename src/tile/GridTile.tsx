@@ -30,6 +30,8 @@ import {
   VolumeOffSolidIcon,
   SwitchCameraSolidIcon,
   VideoCallOffIcon,
+  LeaveIcon,
+  BlockIcon,
 } from "@vector-im/compound-design-tokens/assets/web/icons";
 import {
   ContextMenu,
@@ -374,6 +376,7 @@ const RemoteUserMediaTile: FC<RemoteUserMediaTileProps> = ({
   const focusUrl = useBehavior(vm.focusUrl$);
   const moderation = useBehavior(vm.moderation$);
   const moderator = useBehavior(vm.moderator$);
+  const memberActions = useBehavior(vm.memberActions$);
   // The volume for everyone as it's being dragged, before it's sent
   const [draftModeratedVolume, setDraftModeratedVolume] = useState<
     number | null
@@ -426,40 +429,63 @@ const RemoteUserMediaTile: FC<RemoteUserMediaTileProps> = ({
         </>
       }
       menuEnd={
-        moderator && (
-          <>
-            <ToggleMenuItem
-              Icon={MicOffIcon}
-              label={t("video_tile.mute_audio_for_everyone")}
-              checked={moderation.audioMuted}
-              onSelect={(e) => {
-                e.preventDefault();
-                void moderator.setAudioMuted(!moderation.audioMuted);
-              }}
-            />
-            <ToggleMenuItem
-              Icon={VideoCallOffIcon}
-              label={t("video_tile.mute_video_for_everyone")}
-              checked={moderation.videoMuted}
-              onSelect={(e) => {
-                e.preventDefault();
-                void moderator.setVideoMuted(!moderation.videoMuted);
-              }}
-            />
-            <MenuItem as="div" Icon={VolumeOnIcon} label={null} onSelect={null}>
-              <Slider
-                className={styles.volumeSlider}
-                label={t("video_tile.volume_for_everyone")}
-                value={draftModeratedVolume ?? moderation.volume ?? 1}
-                onValueChange={setDraftModeratedVolume}
-                onValueCommit={onCommitModeratedVolume}
-                min={0}
-                max={2}
-                step={0.01}
+        <>
+          {moderator && (
+            <>
+              <ToggleMenuItem
+                Icon={MicOffIcon}
+                label={t("video_tile.mute_audio_for_everyone")}
+                checked={moderation.audioMuted}
+                onSelect={(e) => {
+                  e.preventDefault();
+                  void moderator.setAudioMuted(!moderation.audioMuted);
+                }}
               />
-            </MenuItem>
-          </>
-        )
+              <ToggleMenuItem
+                Icon={VideoCallOffIcon}
+                label={t("video_tile.mute_video_for_everyone")}
+                checked={moderation.videoMuted}
+                onSelect={(e) => {
+                  e.preventDefault();
+                  void moderator.setVideoMuted(!moderation.videoMuted);
+                }}
+              />
+              <MenuItem
+                as="div"
+                Icon={VolumeOnIcon}
+                label={null}
+                onSelect={null}
+              >
+                <Slider
+                  className={styles.volumeSlider}
+                  label={t("video_tile.volume_for_everyone")}
+                  value={draftModeratedVolume ?? moderation.volume ?? 1}
+                  onValueChange={setDraftModeratedVolume}
+                  onValueCommit={onCommitModeratedVolume}
+                  min={0}
+                  max={2}
+                  step={0.01}
+                />
+              </MenuItem>
+            </>
+          )}
+          {memberActions && (
+            <>
+              <MenuItem
+                Icon={LeaveIcon}
+                label={t("video_tile.kick")}
+                kind="critical"
+                onSelect={() => void memberActions.kick()}
+              />
+              <MenuItem
+                Icon={BlockIcon}
+                label={t("video_tile.ban")}
+                kind="critical"
+                onSelect={() => void memberActions.ban()}
+              />
+            </>
+          )}
+        </>
       }
       focusUrl={focusUrl}
       {...props}
