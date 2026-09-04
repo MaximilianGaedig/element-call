@@ -52,6 +52,47 @@ export interface GridArrangement {
   columns: number;
 }
 
+/**
+ * Works out how many columns a dense CSS grid actually fills when the given
+ * tiles are placed into it in order, enlarged ones spanning 2×2 cells. The
+ * grid centres its tracks, not its content, so a grid sized to more columns
+ * than get used would sit off-centre; this lets the layout size it right.
+ *
+ * This mirrors the browser's dense auto-placement: each tile goes in the
+ * first free spot, scanning row by row, that it fits in.
+ */
+export function usedColumns(
+  enlarged: readonly boolean[],
+  columns: number,
+): number {
+  const span = Math.min(2, columns);
+  const rows: boolean[][] = [];
+  const free = (r: number, c: number): boolean => !rows[r]?.[c];
+  let used = 0;
+  for (const big of enlarged) {
+    const [w, h] = big ? [span, 2] : [1, 1];
+    let r = 0;
+    let c = 0;
+    // Find the first spot where every cell the tile needs is free
+    for (;;) {
+      let fits = c + w <= columns;
+      for (let i = 0; fits && i < h; i++)
+        for (let j = 0; fits && j < w; j++) fits = free(r + i, c + j);
+      if (fits) break;
+      if (++c + w > columns) {
+        c = 0;
+        r++;
+      }
+    }
+    for (let i = 0; i < h; i++) {
+      rows[r + i] ??= [];
+      for (let j = 0; j < w; j++) rows[r + i][c + j] = true;
+    }
+    used = Math.max(used, c + w);
+  }
+  return Math.max(1, used);
+}
+
 const tileMaxAspectRatio = 17 / 9;
 const tileMinAspectRatio = 4 / 3;
 

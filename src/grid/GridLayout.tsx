@@ -21,7 +21,8 @@ import {
 } from "../state/TileViewModel.ts";
 import { computed } from "../state/Behavior.ts";
 import styles from "./GridLayout.module.css";
-import { type CallLayout, arrangeTiles } from "./CallLayout";
+import { type CallLayout, arrangeTiles, usedColumns } from "./CallLayout";
+import { shallowEquals as shallowArrayEquals } from "../utils/array.ts";
 import {
   type DragCallback,
   type LayoutProps,
@@ -104,15 +105,17 @@ export const makeGridLayout: CallLayout<GridLayoutModel> = ({
     useVisibleTiles(model.setVisibleTiles);
     const onDragTile = useReorderTiles(model);
     const { width, height: minHeight } = useBehavior(minBounds$);
-    const enlargedCount = useBehavior(
+    const enlarged = useBehavior(
       useMemo(
         () =>
           computed(
-            () => model.grid.filter((tile) => tile.enlarged$.value).length,
+            () => model.grid.map((tile) => tile.enlarged$.value),
+            shallowArrayEquals,
           ),
         [model.grid],
       ),
     );
+    const enlargedCount = enlarged.filter(Boolean).length;
     // An enlarged tile spans 2×2 cells, so it takes 3 extra cells' worth of
     // space
     const cellCount = model.grid.length + 3 * enlargedCount;
@@ -135,7 +138,9 @@ export const makeGridLayout: CallLayout<GridLayoutModel> = ({
             "--gap": `${gap}px`,
             "--width": `${Math.floor(tileWidth)}px`,
             "--height": `${Math.floor(tileHeight)}px`,
-            "--columns": columns,
+            // Only as many columns as get filled, so the grid stays centred
+            // when an enlarged tile wraps onto a row of its own
+            "--columns": usedColumns(enlarged, columns),
             "--span": Math.min(2, columns),
           } as GridCSSProperties
         }
