@@ -33,16 +33,12 @@ start edge to 1 at the end edge of the space it can move in. */
   );
   inset-inline-start: calc(
     var(--inset-inline-start) + var(--floating-x) *
-      (
-        100% - var(--inset-inline-start) - var(--inset-inline-end) -
-          var(--floating-inline-size)
-      )
+      (100% - var(--inset-inline-start) - var(--inset-inline-end) -
+        var(--floating-inline-size))
   );
   inset-block-start: calc(
     var(--inset-block-start) + var(--floating-y) *
-      (
-        100% - var(--inset-block-start) - var(--inset-block-end) -
-          var(--floating-block-size)
-      )
+      (100% - var(--inset-block-start) - var(--inset-block-end) -
+        var(--floating-block-size))
   );
 }
