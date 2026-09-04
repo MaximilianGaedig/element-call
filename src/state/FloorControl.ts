@@ -82,7 +82,6 @@ export function createFloorControl(
         | FloorControlContent
         | undefined) ?? {},
   );
-  // Moderators aren't subject to the defaults, only to explicit controls
   const mayModerate$ = read(
     (state) => (userId: string) =>
       state.maySendStateEvent(FloorControlEventType, userId),
@@ -119,16 +118,14 @@ export function createFloorControl(
   return {
     content$,
     canModerate$,
-    moderation$: (id, userId) =>
+    // Floor control applies to everyone in the room, moderators included
+    moderation$: (id, _userId) =>
       computed(() => {
         const { defaults, devices } = content$.value;
         const device = devices?.[id];
-        const exempt = mayModerate$.value(userId);
         return {
-          audioMuted:
-            device?.audio_muted ?? (!exempt && defaults?.audio_muted) ?? false,
-          videoMuted:
-            device?.video_muted ?? (!exempt && defaults?.video_muted) ?? false,
+          audioMuted: device?.audio_muted ?? defaults?.audio_muted ?? false,
+          videoMuted: device?.video_muted ?? defaults?.video_muted ?? false,
         };
       }),
     moderator$: (id) =>

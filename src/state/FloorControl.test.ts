@@ -42,7 +42,7 @@ function setup(
 }
 
 describe("createFloorControl", () => {
-  it("applies explicit controls over defaults, and exempts moderators from defaults", () => {
+  it("applies explicit controls over defaults, to everyone", () => {
     const { room } = setup(
       {
         defaults: { audio_muted: true },
@@ -60,8 +60,9 @@ describe("createFloorControl", () => {
       audioMuted: false,
       videoMuted: true,
     });
+    // Moderators are subject to the defaults like anyone else
     expect(fc.moderation$("@mod:e:M", "@mod:e").value).toEqual({
-      audioMuted: false,
+      audioMuted: true,
       videoMuted: false,
     });
   });

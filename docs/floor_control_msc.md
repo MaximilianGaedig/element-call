@@ -46,9 +46,9 @@ key, describes what moderators ask of devices in the room's RTC sessions:
   - `volume` (number, 0 to 1): a multiplier to apply to the device's audio when
     rendering it, if it is not muted.
 - A device's effective controls are its own entry, falling back to `defaults`
-  for any field the entry does not set. Users who could themselves send this
-  event (that is, moderators) are not subject to `defaults`, only to explicit
-  entries, so that a room muted by default still has audible moderators.
+  for any field the entry does not set. This applies to everyone in the room,
+  moderators included: anyone who can send this event can control anyone,
+  regardless of power level, and is controlled by it in turn.
 - All fields are optional; a missing event means nothing is controlled.
 
 The event is sent by anyone with sufficient power level to send state events of
