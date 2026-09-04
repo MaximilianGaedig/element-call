@@ -18,3 +18,12 @@ Please see LICENSE in the repository root for full details.
     transform: rotate(360deg);
   }
 }
+
+/* Lets a tooltip on a wrapper see the pointer even when the button is disabled */
+.disabledWrapper {
+  display: inline-flex;
+}
+
+.disabledWrapper > :disabled {
+  pointer-events: none;
+}

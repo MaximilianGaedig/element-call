@@ -164,6 +164,10 @@
   "login_title": "Login",
   "microphone_off": "Microphone off",
   "microphone_on": "Microphone on",
+  "moderation": {
+    "audio_muted_by_moderator": "A moderator has muted your microphone",
+    "video_muted_by_moderator": "A moderator has turned off your camera"
+  },
   "mute_microphone_button_label": "Mute microphone",
   "participant_count_one": "{{count, number}}",
   "participant_count_other": "{{count, number}}",
@@ -269,9 +273,12 @@
     "camera_starting": "Video loading...",
     "collapse": "Collapse",
     "expand": "Expand",
+    "mute_audio_for_everyone": "Mute microphone for everyone",
     "mute_for_me": "Mute for me",
+    "mute_video_for_everyone": "Turn off camera for everyone",
     "muted_for_me": "Muted for me",
     "screen_share_volume": "Screen share volume",
+    "video_muted_by_moderator": "Your video has been muted",
     "volume": "Volume",
     "waiting_for_media": "Waiting for media..."
   }

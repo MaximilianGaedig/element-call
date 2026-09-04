@@ -113,6 +113,8 @@ export const Default: Story = {
     setLayout: fn(),
     audioEnabled: true,
     audioBusy: false,
+    audioMutedByModerator: false,
+    videoMutedByModerator: false,
     videoEnabled: true,
     videoBusy: false,
     openSettings: fn(),
@@ -170,6 +172,8 @@ export const AudioBusy: Story = {
     ...Default.args,
     audioEnabled: true,
     audioBusy: true,
+    audioMutedByModerator: false,
+    videoMutedByModerator: false,
     videoEnabled: true,
   },
 };

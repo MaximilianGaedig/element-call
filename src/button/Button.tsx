@@ -5,7 +5,7 @@ Copyright 2026 Element Creations Ltd.
 SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
-import { type ComponentPropsWithoutRef, type FC } from "react";
+import { type ComponentPropsWithoutRef, type FC, type ReactNode } from "react";
 import classNames from "classnames";
 import { useTranslation } from "react-i18next";
 import {
@@ -31,13 +31,38 @@ import styles from "./Button.module.css";
 import callFooterStyles from "../components/CallFooter.module.css";
 import { platform } from "../Platform";
 
+/**
+ * A tooltip around a button that may be disabled. Disabled buttons don't
+ * receive pointer events, so when there's a reason for the disabling to
+ * explain, the tooltip listens on a wrapper instead.
+ */
+const DisableableTooltip: FC<{
+  label: string;
+  disabledReason: string | undefined;
+  children: ReactNode;
+}> = ({ label, disabledReason, children }) =>
+  disabledReason === undefined ? (
+    <Tooltip label={label}>{children}</Tooltip>
+  ) : (
+    <Tooltip label={disabledReason}>
+      <span className={styles.disabledWrapper}>{children}</span>
+    </Tooltip>
+  );
+
 interface MicButtonProps extends ComponentPropsWithoutRef<"button"> {
   enabled: boolean;
   busy?: boolean;
   size?: "md" | "lg";
+  /** Why the button is disabled, if it is; shown in its tooltip */
+  disabledReason?: string;
 }
 
-export const MicButton: FC<MicButtonProps> = ({ enabled, busy, ...props }) => {
+export const MicButton: FC<MicButtonProps> = ({
+  enabled,
+  busy,
+  disabledReason,
+  ...props
+}) => {
   const { t } = useTranslation();
   const Icon = busy ? SpinnerIcon : enabled ? MicOnSolidIcon : MicOffSolidIcon;
   const label = enabled
@@ -45,7 +70,7 @@ export const MicButton: FC<MicButtonProps> = ({ enabled, busy, ...props }) => {
     : t("unmute_microphone_button_label");
 
   return (
-    <Tooltip label={label}>
+    <DisableableTooltip label={label} disabledReason={disabledReason}>
       <CpdButton
         iconOnly
         Icon={Icon}
@@ -59,7 +84,7 @@ export const MicButton: FC<MicButtonProps> = ({ enabled, busy, ...props }) => {
         })}
         disabled={props.disabled || busy}
       />
-    </Tooltip>
+    </DisableableTooltip>
   );
 };
 
@@ -67,11 +92,14 @@ interface VideoButtonProps extends ComponentPropsWithoutRef<"button"> {
   enabled: boolean;
   busy?: boolean;
   size?: "md" | "lg";
+  /** Why the button is disabled, if it is; shown in its tooltip */
+  disabledReason?: string;
 }
 
 export const VideoButton: FC<VideoButtonProps> = ({
   enabled,
   busy,
+  disabledReason,
   ...props
 }) => {
   const { t } = useTranslation();
@@ -85,7 +113,7 @@ export const VideoButton: FC<VideoButtonProps> = ({
     : t("start_video_button_label");
 
   return (
-    <Tooltip label={label}>
+    <DisableableTooltip label={label} disabledReason={disabledReason}>
       <CpdButton
         iconOnly
         Icon={Icon}
@@ -99,7 +127,7 @@ export const VideoButton: FC<VideoButtonProps> = ({
         })}
         disabled={props.disabled || busy}
       />
-    </Tooltip>
+    </DisableableTooltip>
   );
 };
 

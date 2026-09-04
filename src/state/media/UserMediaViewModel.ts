@@ -6,6 +6,7 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
+import { type Moderation, type ModeratorControls } from "../FloorControl.ts";
 import { ParticipantEvent, Track } from "livekit-client";
 
 import { type ReactionOption } from "../../reactions";
@@ -46,6 +47,10 @@ export interface BaseUserMediaViewModel extends BaseMemberMediaViewModel {
    */
   handRaisedOrder$: Behavior<number | null>;
   reaction$: Behavior<ReactionOption | null>;
+  /** What moderators have asked of this device through floor control. */
+  moderation$: Behavior<Moderation>;
+  /** Floor control actions on this device, if the local user is a moderator. */
+  moderator$: Behavior<ModeratorControls | null>;
   audioStreamStats$: Behavior<RtpStreamStats | undefined>;
   videoStreamStats$: Behavior<RtpStreamStats | undefined>;
   /**
@@ -62,6 +67,8 @@ export interface BaseUserMediaInputs extends Omit<
   handRaised$: Behavior<Date | null>;
   handRaisedOrder$: Behavior<number | null>;
   reaction$: Behavior<ReactionOption | null>;
+  moderation$: Behavior<Moderation>;
+  moderator$: Behavior<ModeratorControls | null>;
   statsType: "inbound-rtp" | "outbound-rtp";
 }
 
@@ -72,6 +79,8 @@ export function createBaseUserMedia(
     handRaised$,
     handRaisedOrder$,
     reaction$,
+    moderation$,
+    moderator$,
     statsType,
     ...inputs
   }: BaseUserMediaInputs,
@@ -96,12 +105,16 @@ export function createBaseUserMedia(
       showConnectionStats.value$,
     );
 
+  const memberMedia = createMemberMedia(scope, {
+    ...inputs,
+    audioSource: Track.Source.Microphone,
+    videoSource: Track.Source.Camera,
+  });
+  const audioEnabled$ = trackEnabled$(Track.Source.Microphone);
+  const videoEnabled$ = trackEnabled$(Track.Source.Camera);
+
   return {
-    ...createMemberMedia(scope, {
-      ...inputs,
-      audioSource: Track.Source.Microphone,
-      videoSource: Track.Source.Camera,
-    }),
+    ...memberMedia,
     type: "user",
     speaking$: fromEvents(
       scope,
@@ -109,8 +122,17 @@ export function createBaseUserMedia(
       [ParticipantEvent.IsSpeakingChanged],
       (p) => p?.isSpeaking ?? false,
     ),
-    audioEnabled$: trackEnabled$(Track.Source.Microphone),
-    videoEnabled$: trackEnabled$(Track.Source.Camera),
+    // Media a moderator has muted is treated as muted whether or not the
+    // device has caught up and stopped publishing it yet
+    audioEnabled$: computed(
+      () => !moderation$.value.audioMuted && audioEnabled$.value,
+    ),
+    videoEnabled$: computed(
+      () => !moderation$.value.videoMuted && videoEnabled$.value,
+    ),
+    video$: computed(() =>
+      moderation$.value.videoMuted ? undefined : memberMedia.video$.value,
+    ),
     videoOrientation$: computed(() =>
       videoAspectRatio$.value > 1 ? "landscape" : "portrait",
     ),
@@ -118,6 +140,8 @@ export function createBaseUserMedia(
     handRaised$,
     handRaisedOrder$,
     reaction$,
+    moderation$,
+    moderator$,
     audioStreamStats$: streamStats$(Track.Source.Microphone),
     videoStreamStats$: streamStats$(Track.Source.Camera),
     setVideoAspectRatio: (ratio) => (videoAspectRatio$.value = ratio),

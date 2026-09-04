@@ -34,8 +34,23 @@ export class MuteState<Label, Selected> {
     this.handler = defaultHandler;
   }
 
+  private readonly _moderatorMuted$ = state(false);
+  /**
+   * Whether a moderator has muted this device through floor control. While
+   * true the device is muted and the user can't unmute it.
+   */
+  public readonly moderatorMuted$: Behavior<boolean> = this._moderatorMuted$;
+  public setModeratorMuted(muted: boolean): void {
+    this._moderatorMuted$.value = muted;
+  }
+  // Once a moderator mute is lifted, stay muted until the user unmutes
+  private wasModeratorMuted = false;
+
   private readonly canControlDevices$ = computed(
-    () => !this.forceMute$.value && this.device.available$.value.size > 0,
+    () =>
+      !this.forceMute$.value &&
+      !this._moderatorMuted$.value &&
+      this.device.available$.value.size > 0,
   );
 
   private readonly _enabled$ = state(false);
@@ -107,9 +122,12 @@ export class MuteState<Label, Selected> {
       );
       if (canControlDevices) {
         // Assume the default value only once devices are actually connected
-        this.desired = enabledByDefault;
-        this._enabled$.value = enabledByDefault;
+        const enabled = enabledByDefault && !this.wasModeratorMuted;
+        this.wasModeratorMuted = false;
+        this.desired = enabled;
+        this._enabled$.value = enabled;
       } else {
+        if (this._moderatorMuted$.peek()) this.wasModeratorMuted = true;
         // Sync the mute state with the handler to ensure nothing is published
         this.handler(false).catch((err) => {
           logger.error("MuteState-disable: handler error", err);

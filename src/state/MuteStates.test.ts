@@ -268,3 +268,36 @@ describe("MuteStates", () => {
     expect(lastVideoEnabled).toBe(true);
   });
 });
+
+describe("moderator mute", () => {
+  test("mutes the device, disables the controls, and stays muted once lifted", () => {
+    const testScope = new Scope();
+    const mediaDevices = mockMediaDevices({
+      audioInput: {
+        available$: constant(
+          new Map<string, DeviceLabel>([
+            ["0000", { type: "name", name: "Mic" }],
+          ]),
+        ),
+        selected$: constant({ id: "0000", groupId: "0000" }),
+        select: () => {},
+      },
+    });
+    const muteStates = new MuteStates(testScope, mediaDevices, {
+      audioEnabled: true,
+      videoEnabled: true,
+    });
+    expect(muteStates.audio.enabled$.value).toBe(true);
+    expect(muteStates.audio.toggle$.value).not.toBe(null);
+
+    muteStates.audio.setModeratorMuted(true);
+    expect(muteStates.audio.moderatorMuted$.value).toBe(true);
+    expect(muteStates.audio.enabled$.value).toBe(false);
+    expect(muteStates.audio.toggle$.value).toBe(null);
+
+    muteStates.audio.setModeratorMuted(false);
+    expect(muteStates.audio.enabled$.value).toBe(false);
+    expect(muteStates.audio.toggle$.value).not.toBe(null);
+    testScope.end();
+  });
+});

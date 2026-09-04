@@ -23,6 +23,7 @@ import { getUrlParams } from "./UrlParams";
 import { Config } from "./config/Config";
 import { seedSettingsFromConfig } from "./settings/settings";
 import { ElementCallReactionEventType } from "./reactions";
+import { FloorControlEventType } from "./state/FloorControl.ts";
 
 // Subset of the actions in element-web
 export enum ElementWidgetActions {
@@ -134,7 +135,7 @@ export const initializeWidget = (
         EventType.RTCMembership,
       ];
 
-      const sendState = [
+      const sendState: { eventType: string; stateKey?: string }[] = [
         userId, // Legacy call membership events
         `_${userId}_${deviceId}_${rtcApplication}`, // Session membership events
         `${userId}_${deviceId}_${rtcApplication}`, // The above with no leading underscore, for room versions whose auth rules allow it
@@ -142,12 +143,15 @@ export const initializeWidget = (
         eventType: EventType.GroupCallMemberPrefix,
         stateKey,
       }));
+      // Moderators mute other devices through floor control
+      sendState.push({ eventType: FloorControlEventType, stateKey: "" });
       const receiveState = [
         { eventType: EventType.RoomCreate },
         { eventType: EventType.RoomName },
         { eventType: EventType.RoomMember },
         { eventType: EventType.RoomEncryption },
         { eventType: EventType.GroupCallMemberPrefix },
+        { eventType: FloorControlEventType },
       ];
 
       const sendRecvToDevice = [

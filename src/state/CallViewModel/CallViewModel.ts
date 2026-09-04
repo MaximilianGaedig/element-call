@@ -31,6 +31,11 @@ import { isFirefox, platform } from "../../Platform";
 import { callActive$, pipEnabled$ } from "../../controls";
 import { TileStore } from "../TileStore";
 import { type GridMove, gridLikeLayout } from "../GridLikeLayout";
+import {
+  createFloorControl,
+  type FloorControl,
+  mediaId,
+} from "../FloorControl.ts";
 import { spotlightExpandedLayout } from "../SpotlightExpandedLayout";
 import { oneOnOneDesktopLayout } from "../OneOnOneDesktopLayout";
 import { oneOnOneMobileLayout } from "../OneOnOneMobileLayout";
@@ -304,6 +309,10 @@ export interface CallViewModel {
    */
   tileStoreGeneration$: Behavior<number>;
   /**
+   * Moderation of devices in the call through room state.
+   */
+  floorControl: FloorControl;
+  /**
    * Gives a tile more prominence, or takes it back, at the user's request
    * (double-clicking it). In the grid layout this doubles the tile's size; in
    * the spotlight layouts it pins the user to the spotlight.
@@ -427,6 +436,20 @@ export function createCallViewModel$(
   // ------------------------------------------------------------------------
   // memberships$
   const memberships$ = createMemberships$(scope, matrixRTCSession);
+
+  // ------------------------------------------------------------------------
+  // floorControl: moderators muting devices through room state
+  const floorControl = createFloorControl(scope, matrixRoom, userId);
+  // Our own device honours what moderators ask of it
+  const localModeration$ = floorControl.moderation$(
+    mediaId(userId, deviceId),
+    userId,
+  );
+  scope.effect(() => {
+    const { audioMuted, videoMuted } = localModeration$.value;
+    muteStates.audio.setModeratorMuted(audioMuted);
+    muteStates.video.setModeratorMuted(videoMuted);
+  });
 
   // ------------------------------------------------------------------------
   // matrixLivekitMembers$ AND localMembership
@@ -684,6 +707,12 @@ export function createCallViewModel$(
           return computed(() => name$.value ?? userId);
         })(),
         mxcAvatarUrl$: matrixMemberMetadataStore.avatarUrl$(userId),
+        moderation$: floorControl.moderation$(mediaId, userId),
+        // Moderating yourself is what the mute buttons are for
+        moderator$:
+          participant.type === "local"
+            ? constant(null)
+            : floorControl.moderator$(mediaId),
         handRaised$: computed(() => handsRaised$.value[mediaId]?.time ?? null),
         handRaisedOrder$: computed(() => {
           const hands = handsRaised$.value;
@@ -1448,6 +1477,7 @@ export function createCallViewModel$(
       return members;
     }),
     tileStoreGeneration$: tileStoreGeneration$,
+    floorControl,
     emphasiseTile,
     showSpotlightIndicators$: showSpotlightIndicators$,
     spotlightTiled$,

@@ -227,7 +227,17 @@ unconditionally select the container so we can use cqmin units */
   grid-area: reactions;
   place-self: start end;
   display: flex;
+  align-items: center;
   gap: var(--cpd-space-1x);
+}
+
+.warning {
+  padding: var(--cpd-space-1x) var(--cpd-space-3x);
+  border-radius: var(--cpd-radius-pill-effect);
+  background: var(--cpd-color-bg-critical-primary);
+  color: var(--cpd-color-text-on-solid-primary);
+  font: var(--cpd-font-body-sm-medium);
+  user-select: none;
 }
 
 .nameTag > svg,

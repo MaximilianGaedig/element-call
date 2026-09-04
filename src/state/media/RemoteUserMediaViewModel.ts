@@ -48,9 +48,12 @@ export function createRemoteUserMedia(
     ...baseUserMedia,
     ...createVolumeControls(scope, {
       pretendToBeDisconnected$,
-      sink$: computed(
-        () => (volume: number) => inputs.participant$.value?.setVolume(volume),
-      ),
+      sink$: computed(() => {
+        const participant = inputs.participant$.value;
+        // Silence devices a moderator has muted, whatever the user's volume
+        const muted = inputs.moderation$.value.audioMuted;
+        return (volume: number) => participant?.setVolume(muted ? 0 : volume);
+      }),
     }),
     local: false,
     speaking$: computed(() =>

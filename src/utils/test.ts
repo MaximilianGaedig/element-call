@@ -4,6 +4,7 @@ Copyright 2023, 2024 New Vector Ltd.
 SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
+import { unmoderated } from "../state/FloorControl.ts";
 import {
   expect,
   type MockedObject,
@@ -356,7 +357,15 @@ export function mockMatrixRoomMember(
 }
 
 export function mockMatrixRoom(room: Partial<MatrixRoom>): MatrixRoom {
-  return { ...mockEmitter(), ...room } as Partial<MatrixRoom> as MatrixRoom;
+  return {
+    ...mockEmitter(),
+    // Enough room state for floor control to find nothing
+    currentState: {
+      getStateEvents: () => null,
+      maySendStateEvent: () => false,
+    },
+    ...room,
+  } as Partial<MatrixRoom> as MatrixRoom;
 }
 
 export function mockLivekitRoom(
@@ -424,6 +433,8 @@ export function mockLocalMedia(
     handRaised$: constant(null),
     handRaisedOrder$: constant(null),
     reaction$: constant(null),
+    moderation$: constant(unmoderated),
+    moderator$: constant(null),
   });
 }
 
@@ -468,6 +479,8 @@ export function mockRemoteMedia(
     handRaised$: constant(null),
     handRaisedOrder$: constant(null),
     reaction$: constant(null),
+    moderation$: constant(unmoderated),
+    moderator$: constant(null),
   });
 }
 

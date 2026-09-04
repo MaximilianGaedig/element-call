@@ -65,6 +65,8 @@ interface Props extends ComponentProps<typeof animated.div> {
    * several.
    */
   raisedHandOrder?: number;
+  /** A warning to show prominently on the tile, e.g. that a moderator muted it. */
+  warning?: string;
   currentReaction?: ReactionOption;
   raisedHandOnClick?: () => void;
   waitingForMedia?: boolean;
@@ -106,6 +108,7 @@ export const MediaView: FC<Props> = ({
   status,
   raisedHandTime,
   raisedHandOrder,
+  warning,
   currentReaction,
   raisedHandOnClick,
   waitingForMedia,
@@ -208,6 +211,7 @@ export const MediaView: FC<Props> = ({
       </div>
       <div className={styles.fg}>
         <div className={styles.reactions}>
+          {warning && <div className={styles.warning}>{warning}</div>}
           <RaisedHandIndicator
             raisedHandTime={raisedHandTime}
             order={raisedHandOrder}

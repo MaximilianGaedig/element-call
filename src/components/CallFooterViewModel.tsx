@@ -31,17 +31,21 @@ function buildMuteBehaviors(
   ViewModel<FooterSnapshot>,
   | "audioEnabled$"
   | "audioBusy$"
+  | "audioMutedByModerator$"
   | "toggleAudio$"
   | "videoEnabled$"
   | "videoBusy$"
+  | "videoMutedByModerator$"
   | "toggleVideo$"
 > {
   return {
     audioEnabled$: muteStates.audio.enabled$,
     audioBusy$: muteStates.audio.syncing$,
+    audioMutedByModerator$: muteStates.audio.moderatorMuted$,
     toggleAudio$: computed(() => muteStates.audio.toggle$.value ?? undefined),
     videoEnabled$: muteStates.video.enabled$,
     videoBusy$: muteStates.video.syncing$,
+    videoMutedByModerator$: muteStates.video.moderatorMuted$,
     toggleVideo$: computed(() => muteStates.video.toggle$.value ?? undefined),
   };
 }
@@ -206,6 +210,8 @@ export function createLobbyFooterViewModel(
       toggleScreenSharing: undefined,
       audioEnabled: undefined,
       audioBusy: false,
+      audioMutedByModerator: false,
+      videoMutedByModerator: false,
       videoEnabled: undefined,
       videoBusy: false,
       layoutSwitchVm: null,

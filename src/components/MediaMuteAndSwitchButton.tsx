@@ -40,6 +40,8 @@ export interface MediaMuteAndSwitchButtonProps {
   enabled?: boolean;
   /** Callback if the mute button is clicked */
   onMuteClick?: () => void;
+  /** Why the mute button is disabled, if it is; shown in its tooltip */
+  muteDisabledReason?: string;
   /** True while mute/unmute operation is syncing. */
   busy?: boolean;
   iconsAndLabels: "video" | "audio";
@@ -63,6 +65,7 @@ export const MediaMuteAndSwitchButton: FC<MediaMuteAndSwitchButtonProps> = ({
   enabled,
   busy,
   onMuteClick,
+  muteDisabledReason,
   iconsAndLabels,
   options,
   selectedOption,
@@ -94,6 +97,7 @@ export const MediaMuteAndSwitchButton: FC<MediaMuteAndSwitchButtonProps> = ({
             e.stopPropagation();
           }}
           disabled={isBusy || onMuteClick === undefined}
+          disabledReason={muteDisabledReason}
           data-testid="incall_videomute"
         />
       );
@@ -118,6 +122,7 @@ export const MediaMuteAndSwitchButton: FC<MediaMuteAndSwitchButtonProps> = ({
             e.stopPropagation();
           }}
           disabled={isBusy || onMuteClick === undefined}
+          disabledReason={muteDisabledReason}
           data-testid="incall_mute"
         />
       );

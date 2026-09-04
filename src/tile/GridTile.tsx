@@ -29,6 +29,7 @@ import {
   UserProfileIcon,
   VolumeOffSolidIcon,
   SwitchCameraSolidIcon,
+  VideoCallOffIcon,
 } from "@vector-im/compound-design-tokens/assets/web/icons";
 import {
   ContextMenu,
@@ -63,6 +64,8 @@ interface TileProps {
   mxcAvatarUrl: string | undefined;
   showNameTags: boolean;
   focusable: boolean;
+  /** A warning to show prominently on the tile. */
+  warning?: string;
 }
 
 interface RingingMediaTileProps extends TileProps {
@@ -283,6 +286,7 @@ const LocalUserMediaTile: FC<LocalUserMediaTileProps> = ({
   const alwaysShow = useBehavior(vm.alwaysShow$);
   const switchCamera = useBehavior(vm.switchCamera$);
   const focusUrl = useBehavior(vm.focusUrl$);
+  const moderation = useBehavior(vm.moderation$);
 
   const latestAlwaysShow = useLatest(alwaysShow);
   const onSelectAlwaysShow = useCallback(
@@ -338,6 +342,11 @@ const LocalUserMediaTile: FC<LocalUserMediaTileProps> = ({
       menuEnd={menuEnd}
       focusable={focusable}
       focusUrl={focusUrl}
+      warning={
+        moderation.videoMuted
+          ? t("video_tile.video_muted_by_moderator")
+          : undefined
+      }
       {...props}
     />
   );
@@ -360,6 +369,8 @@ const RemoteUserMediaTile: FC<RemoteUserMediaTileProps> = ({
   const playbackMuted = useBehavior(vm.playbackMuted$);
   const playbackVolume = useBehavior(vm.playbackVolume$);
   const focusUrl = useBehavior(vm.focusUrl$);
+  const moderation = useBehavior(vm.moderation$);
+  const moderator = useBehavior(vm.moderator$);
 
   const onSelectMute = useCallback(
     (e: Event) => {
@@ -400,6 +411,30 @@ const RemoteUserMediaTile: FC<RemoteUserMediaTileProps> = ({
             />
           </MenuItem>
         </>
+      }
+      menuEnd={
+        moderator && (
+          <>
+            <ToggleMenuItem
+              Icon={MicOffIcon}
+              label={t("video_tile.mute_audio_for_everyone")}
+              checked={moderation.audioMuted}
+              onSelect={(e) => {
+                e.preventDefault();
+                void moderator.setAudioMuted(!moderation.audioMuted);
+              }}
+            />
+            <ToggleMenuItem
+              Icon={VideoCallOffIcon}
+              label={t("video_tile.mute_video_for_everyone")}
+              checked={moderation.videoMuted}
+              onSelect={(e) => {
+                e.preventDefault();
+                void moderator.setVideoMuted(!moderation.videoMuted);
+              }}
+            />
+          </>
+        )
       }
       focusUrl={focusUrl}
       {...props}

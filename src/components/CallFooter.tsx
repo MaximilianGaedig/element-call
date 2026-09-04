@@ -5,6 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
+import { useTranslation } from "react-i18next";
 import { type FC, type JSX, type Ref, useMemo } from "react";
 import classNames from "classnames";
 
@@ -67,8 +68,12 @@ export interface FooterActions {
 export interface FooterState {
   audioEnabled: boolean;
   audioBusy: boolean;
+  /** Whether a moderator has muted our microphone, disabling the button */
+  audioMutedByModerator: boolean;
   videoEnabled: boolean;
   videoBusy: boolean;
+  /** Whether a moderator has turned off our camera, disabling the button */
+  videoMutedByModerator: boolean;
   videoBlurEnabled: boolean;
   showFooter: boolean;
 
@@ -119,6 +124,7 @@ export const CallFooter: FC<FooterProps> = ({
   children,
   vm,
 }) => {
+  const { t } = useTranslation();
   const asOverlay = useBehavior(vm.asOverlay$);
   const showFooter = useBehavior(vm.showFooter$);
   const hideControls = useBehavior(vm.hideControls$);
@@ -127,8 +133,16 @@ export const CallFooter: FC<FooterProps> = ({
   const openSettings = useBehavior(vm.openSettings$);
   const audioEnabled = useBehavior(vm.audioEnabled$);
   const audioBusy = useBehavior(vm.audioBusy$);
+  const audioMutedByModerator = useBehavior(vm.audioMutedByModerator$);
   const videoEnabled = useBehavior(vm.videoEnabled$);
   const videoBusy = useBehavior(vm.videoBusy$);
+  const videoMutedByModerator = useBehavior(vm.videoMutedByModerator$);
+  const audioDisabledReason = audioMutedByModerator
+    ? t("moderation.audio_muted_by_moderator")
+    : undefined;
+  const videoDisabledReason = videoMutedByModerator
+    ? t("moderation.video_muted_by_moderator")
+    : undefined;
   const toggleAudio = useBehavior(vm.toggleAudio$);
   const toggleVideo = useBehavior(vm.toggleVideo$);
   const sharingScreen = useBehavior(vm.sharingScreen$);
@@ -174,6 +188,7 @@ export const CallFooter: FC<FooterProps> = ({
         enabled={audioEnabled ?? false}
         busy={audioBusy ?? false}
         onMuteClick={toggleAudio}
+        muteDisabledReason={audioDisabledReason}
         data-testid="incall_mute"
         options={audioOptions}
         selectedOption={selectedAudio}
@@ -189,6 +204,7 @@ export const CallFooter: FC<FooterProps> = ({
         busy={audioBusy ?? false}
         onClick={toggleAudio}
         disabled={(audioBusy ?? false) || toggleAudio === undefined}
+        disabledReason={audioDisabledReason}
         data-testid="incall_mute"
       />,
     );
@@ -203,6 +219,7 @@ export const CallFooter: FC<FooterProps> = ({
         enabled={videoEnabled ?? false}
         busy={videoBusy ?? false}
         onMuteClick={toggleVideo}
+        muteDisabledReason={videoDisabledReason}
         options={videoOptions}
         selectedOption={selectedVideo}
         onSelect={selectVideoButtonOption}
@@ -219,6 +236,7 @@ export const CallFooter: FC<FooterProps> = ({
         busy={videoBusy ?? false}
         onClick={toggleVideo}
         disabled={(videoBusy ?? false) || toggleVideo === undefined}
+        disabledReason={videoDisabledReason}
         data-testid="incall_videomute"
       />,
     );
