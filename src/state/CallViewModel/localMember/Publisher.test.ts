@@ -191,6 +191,7 @@ describe("Publisher", () => {
       mockMediaDevices({}),
       muteStates,
       constant({ supported: false, processor: undefined }),
+      constant(1),
       logger,
     );
   });
@@ -308,6 +309,7 @@ describe("Publisher", () => {
         mockMediaDevices({}),
         muteStates,
         constant({ supported: false, processor: undefined }),
+        constant(1),
         logger,
       );
     });
@@ -363,6 +365,7 @@ describe("Bug fix", () => {
       mockMediaDevices({}),
       muteStates,
       constant({ supported: false, processor: undefined }),
+      constant(1),
       logger,
     );
     audioEnabled$.value = true;

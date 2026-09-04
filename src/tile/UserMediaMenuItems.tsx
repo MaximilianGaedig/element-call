@@ -12,6 +12,7 @@ import {
   BlockIcon,
   LeaveIcon,
   MicOffIcon,
+  MicOnIcon,
   PinIcon,
   UnpinIcon,
   UserProfileIcon,
@@ -68,6 +69,7 @@ const LocalItems: FC<{
 }> = ({ vm, onOpenProfile }) => {
   const { t } = useTranslation();
   const alwaysShow = useBehavior(vm.alwaysShow$);
+  const micGain = useBehavior(vm.micGain$);
   const latestAlwaysShow = useLatest(alwaysShow);
   const onSelectAlwaysShow = useCallback(
     (e: Event) => {
@@ -85,6 +87,18 @@ const LocalItems: FC<{
         checked={alwaysShow}
         onSelect={onSelectAlwaysShow}
       />
+      {/* How loud we are to others; nothing to do with floor control */}
+      <MenuItem as="div" Icon={MicOnIcon} label={null} onSelect={null}>
+        <Slider
+          className={styles.volumeSlider}
+          label={t("video_tile.microphone_volume")}
+          value={micGain}
+          onValueChange={vm.setMicGain}
+          min={0}
+          max={2}
+          step={0.01}
+        />
+      </MenuItem>
       {onOpenProfile && (
         <MenuItem
           Icon={UserProfileIcon}

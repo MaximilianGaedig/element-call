@@ -14,6 +14,8 @@ import {
   Track,
 } from "livekit-client";
 import { type Logger } from "matrix-js-sdk/lib/logger";
+import { LocalAudioTrack } from "livekit-client";
+import { GainProcessor } from "../../../livekit/GainProcessor.ts";
 
 import { type Behavior, computed, constant } from "../../Behavior.ts";
 import type {
@@ -52,6 +54,7 @@ export class Publisher {
    * @param devices - The media devices to use for audio and video input.
    * @param muteStates - The mute states for audio and video.
    * @param trackerProcessorState$ - The processor state for the video track processor (e.g. background blur).
+   * @param micGain$ - A multiplier to apply to the microphone before publishing it.
    * @param logger - The logger to use for logging :D.
    */
   public constructor(
@@ -59,6 +62,7 @@ export class Publisher {
     devices: MediaDevices,
     private readonly muteStates: MuteStates,
     trackerProcessorState$: Behavior<ProcessorState>,
+    micGain$: Behavior<number>,
     private logger: Logger,
   ) {
     const { controlledAudioDevices } = getUrlParams();
@@ -70,6 +74,7 @@ export class Publisher {
 
     // Setup track processor syncing (blur)
     this.observeTrackProcessors(this.scope, room, trackerProcessorState$);
+    this.observeMicGain(this.scope, room, micGain$);
     // Observe media device changes and update LiveKit active devices accordingly
     this.observeMediaDevices(this.scope, devices, controlledAudioDevices);
 
@@ -441,5 +446,48 @@ export class Publisher {
       return track instanceof LocalVideoTrack ? track : null;
     });
     trackProcessorSync(scope, track$, trackerProcessorState$);
+  }
+
+  private audioContext: AudioContext | null = null;
+  private gainProcessor: GainProcessor | null = null;
+
+  /**
+   * Scales the microphone by the requested gain. The processor is only
+   * attached once the gain first departs from 1, so that people who never
+   * touch it don't pay for the extra audio processing.
+   */
+  private observeMicGain(
+    scope: Scope,
+    room: LivekitRoom,
+    micGain$: Behavior<number>,
+  ): void {
+    const mic$ = trackReference$(
+      scope,
+      constant(room.localParticipant),
+      Track.Source.Microphone,
+    );
+    const track$ = computed(() => {
+      const track = mic$.value?.publication.track;
+      return track instanceof LocalAudioTrack ? track : null;
+    });
+    scope.effect(() => {
+      const track = track$.value;
+      const gain = micGain$.value;
+      if (track === null) return;
+      if (this.gainProcessor === null) {
+        if (gain === 1) return;
+        this.gainProcessor = new GainProcessor(gain);
+      } else {
+        this.gainProcessor.setGain(gain);
+      }
+      if (track.getProcessor() !== this.gainProcessor) {
+        this.audioContext ??= new AudioContext();
+        track.setAudioContext(this.audioContext);
+        track.setProcessor(this.gainProcessor).catch((e) => {
+          this.logger.error("Failed to apply microphone gain", e);
+        });
+      }
+    });
+    scope.onEnd(() => void this.audioContext?.close());
   }
 }

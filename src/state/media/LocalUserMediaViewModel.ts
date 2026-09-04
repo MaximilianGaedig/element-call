@@ -14,7 +14,7 @@ import {
 } from "livekit-client";
 import { logger } from "matrix-js-sdk/lib/logger";
 
-import { type Behavior, computed, state } from "../Behavior";
+import { type Behavior, computed, state, type State } from "../Behavior";
 import {
   type BaseUserMediaInputs,
   type BaseUserMediaViewModel,
@@ -38,6 +38,9 @@ export interface LocalUserMediaViewModel extends BaseUserMediaViewModel {
   alwaysShow$: Behavior<boolean>;
   setAlwaysShow: (value: boolean) => void;
   switchCamera$: Behavior<(() => void) | null>;
+  /** How loud we are: a multiplier applied to our microphone, 1 being normal. */
+  micGain$: Behavior<number>;
+  setMicGain: (value: number) => void;
 }
 
 export interface LocalUserMediaInputs extends Omit<
@@ -46,11 +49,12 @@ export interface LocalUserMediaInputs extends Omit<
 > {
   participant$: Behavior<LocalParticipant | null>;
   mediaDevices: MediaDevices;
+  micGain$: State<number>;
 }
 
 export function createLocalUserMedia(
   scope: Scope,
-  { mediaDevices, ...inputs }: LocalUserMediaInputs,
+  { mediaDevices, micGain$, ...inputs }: LocalUserMediaInputs,
 ): LocalUserMediaViewModel {
   const baseUserMedia = createBaseUserMedia(scope, {
     ...inputs,
@@ -94,6 +98,10 @@ export function createLocalUserMedia(
   return {
     ...baseUserMedia,
     local: true,
+    micGain$,
+    setMicGain: (value) => {
+      micGain$.value = value;
+    },
     // Mirror only front-facing cameras (those that face the user)
     mirror$: computed(() => videoTrack$.value?.facingMode === "user"),
     alwaysShow$: alwaysShowSelf.value$,

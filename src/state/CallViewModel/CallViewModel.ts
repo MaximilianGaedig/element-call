@@ -452,6 +452,12 @@ export function createCallViewModel$(
   //  - callLifecycle via createCallNotificationLifecycle$
   //  - matrixMemberMetadataStore via createMatrixMemberMetadata$
 
+  /**
+   * How loud we are: a multiplier applied to our microphone before it's
+   * published. Purely local; nothing to do with floor control.
+   */
+  const micGain$ = state(1);
+
   // ------------------------------------------------------------------------
   // floorControl: moderators muting devices through room state
   const floorControl = createFloorControl(
@@ -582,6 +588,7 @@ export function createCallViewModel$(
         mediaDevices,
         muteStates,
         trackProcessorState$,
+        micGain$,
         logger.getChild(
           "[Publisher " + connection.transport.livekit_service_url + "]",
         ),
@@ -739,6 +746,7 @@ export function createCallViewModel$(
       const moderation$ = floorControl.moderation$(mediaId, userId);
       return createWrappedUserMedia(scope, {
         id: `${mediaId}:${dup}`,
+        micGain$,
         userId,
         rtcBackendIdentity: rtcId,
         participant,

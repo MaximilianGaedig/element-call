@@ -430,6 +430,7 @@ export function mockLocalMedia(
     livekitRoom$: constant(mockLivekitRoom({ localParticipant })),
     focusUrl$: constant("https://rtc-example.org"),
     mediaDevices,
+    micGain$: state(1),
     displayName$: constant(member.rawDisplayName ?? "nodisplayname"),
     mxcAvatarUrl$: constant(member.getMxcAvatarUrl()),
     handRaised$: constant(null),
