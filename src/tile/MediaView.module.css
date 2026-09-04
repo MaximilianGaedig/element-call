@@ -263,6 +263,12 @@ unconditionally select the container so we can use cqmin units */
   color: var(--cpd-color-yellow-900);
 }
 
+/* When the badge follows another icon (the mute icon), space it from that
+icon as the name is spaced from it */
+.nameTag > svg + .moderatorIcon {
+  margin-inline-start: var(--cpd-space-2x);
+}
+
 .fg .buttons > button {
   appearance: none;
   border: none;
