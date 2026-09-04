@@ -202,7 +202,7 @@ export class TileStoreBuilder {
       // We actually *don't* want spotlight speakers to appear in both the
       // spotlight and the grid, so they're filtered out here
       if (
-        !(media.type === "user" && media.local) &&
+        !(media.type === "user" && media.local && !media.pinned$.value) &&
         this.spotlight.media.includes(media)
       )
         return;

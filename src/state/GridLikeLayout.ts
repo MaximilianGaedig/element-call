@@ -55,14 +55,16 @@ export function gridLikeLayout(
   }: GridLikeLayoutInputs,
   prevTiles: TileStore,
 ): [Layout & { type: GridLikeLayoutType }, TileStore] {
-  // Spotlit users don't also appear in the grid (except for the local user).
+  // Spotlit users don't also appear in the grid (except for the local user
+  // when merely spotlit as the fallback speaker, so that they keep a tile).
   // The first of them (the speaker, or the first pinned user when there are
   // pins) swaps places in the grid with whoever was first before, so that a
   // change of spotlight doesn't shift the grid; the rest simply leave the
   // grid while they're spotlit.
   const spotlitUsers = (spotlight: MediaViewModel[]): UserMediaViewModel[] =>
     spotlight.filter(
-      (vm): vm is UserMediaViewModel => vm.type === "user" && !vm.local,
+      (vm): vm is UserMediaViewModel =>
+        vm.type === "user" && (!vm.local || vm.pinned$.value),
     );
   const spotlit = spotlitUsers(media.spotlight ?? []);
   const prevSpotlit = spotlitUsers(prevTiles.spotlightMedia);
