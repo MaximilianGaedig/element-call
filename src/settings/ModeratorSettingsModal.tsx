@@ -79,13 +79,12 @@ const RemovableList: FC<RemovableListProps> = ({
             return (
               <li key={id} className={styles.item}>
                 <Text as="span" size="sm">
-                  {name}{" "}
+                  {name}
                   <span className={styles.device}>
-                    (
+                    {userId} ·{" "}
                     {deviceId === "*"
                       ? t("settings.moderator.all_devices")
                       : deviceId}
-                    )
                   </span>
                 </Text>
                 <Button

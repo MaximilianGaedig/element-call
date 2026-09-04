@@ -25,3 +25,8 @@ Please see LICENSE in the repository root for full details.
 .empty {
   color: var(--cpd-color-text-secondary);
 }
+
+.device {
+  display: block;
+  font-size: var(--cpd-font-size-body-xs);
+}
