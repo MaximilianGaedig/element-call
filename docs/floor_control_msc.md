@@ -57,9 +57,9 @@ the same room.
     need not honour more than 131072 (twice). An integer because Matrix
     events cannot carry floats.
 - A device's effective controls are its own entry, falling back to `defaults`
-  for any field the entry does not set. Users who could themselves send this
-  event (that is, moderators) are not subject to `defaults`, only to explicit
-  entries, so that a room muted by default still has audible moderators.
+  for any field the entry does not set. This applies to everyone in the room,
+  moderators included: anyone who can send this event can control anyone,
+  regardless of power level, and is controlled by it in turn.
 - `auditorium_visibility` (number, top level): auditorium mode. Only users
   whose power level is at least this are shown as tiles in the call; everyone
   else is still in the call but not displayed. Unset means everyone is shown.
