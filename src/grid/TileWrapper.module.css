@@ -8,6 +8,10 @@ Please see LICENSE in the repository root for full details.
 .tile.draggable {
   cursor: grab;
   --draggable-shadow: var(--big-drop-shadow);
+  /* A press on the tile starts a drag, not a text selection that would then
+  grow across the page as it's dragged */
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .tile.draggable:active {
