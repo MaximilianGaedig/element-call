@@ -68,17 +68,22 @@ const stateEvents = [
   RoomStateEvent.Events,
 ];
 
+/**
+ * @param slotId The MatrixRTC slot (`{application}#{id}`) the call runs in;
+ *   floor control is per slot, keyed by it.
+ */
 export function createFloorControl(
   scope: Scope,
   room: MatrixRoom,
   localUserId: string,
+  slotId: string,
 ): FloorControl {
   const read = <T>(f: (state: RoomState) => T): Behavior<T> =>
     fromEvents(scope, room, stateEvents, (room) => f(room!.currentState));
 
   const content$ = read(
     (state) =>
-      (state.getStateEvents(FloorControlEventType, "")?.getContent() as
+      (state.getStateEvents(FloorControlEventType, slotId)?.getContent() as
         | FloorControlContent
         | undefined) ?? {},
   );
@@ -93,7 +98,7 @@ export function createFloorControl(
       room.roomId,
       FloorControlEventType as keyof StateEvents,
       content as StateEvents[keyof StateEvents],
-      "",
+      slotId,
     );
   };
 

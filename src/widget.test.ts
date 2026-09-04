@@ -79,7 +79,7 @@ describe("widget", () => {
         eventType: "org.matrix.msc3401.call.member",
         stateKey: `myYser_AAAAA_ANYRTCAPP`,
       }, // The above with no leading underscore, for room versions whose auth rules allow it
-      { eventType: "org.matrix.rtc.floor_control", stateKey: "" },
+      { eventType: "org.matrix.rtc.floor_control" },
     ];
     const receiveState = [
       { eventType: EventType.RoomCreate },

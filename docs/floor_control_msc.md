@@ -13,13 +13,18 @@ client would have to invent its own.
 
 ## Proposal
 
-A new room state event, `org.matrix.rtc.floor_control`, with an empty state
-key, describes what moderators ask of devices in the room's RTC sessions:
+A new room state event, `org.matrix.rtc.floor_control`, describes what
+moderators ask of devices in one of the room's MatrixRTC slots
+([MSC4143](https://github.com/matrix-org/matrix-spec-proposals/pull/4143)).
+Its state key is the slot ID (the `m.rtc.slot` event's state key, for example
+`m.call#ROOM`), so each slot in a room is moderated independently: quieting
+someone in a call slot says nothing about a whiteboard or breakout slot in
+the same room.
 
 ```json
 {
   "type": "org.matrix.rtc.floor_control",
-  "state_key": "",
+  "state_key": "m.call#ROOM",
   "content": {
     "defaults": {
       "audio_muted": true,
@@ -38,8 +43,10 @@ key, describes what moderators ask of devices in the room's RTC sessions:
 }
 ```
 
-- `devices` is keyed by the device's media identifier, `<user ID>:<device ID>`,
-  matching the identity used by the RTC membership state events.
+- `devices` is keyed by `<user ID>:<device ID>`, the user and device that
+  sent the `m.rtc.member` event. Devices rather than member IDs are the
+  target because a member ID is random for every join, whereas a control
+  such as a block must survive the device leaving and rejoining.
 - Each device entry and `defaults` may contain:
   - `audio_muted` (boolean): the device's microphone must not be heard.
   - `video_muted` (boolean): the device's camera must not be seen.
@@ -53,7 +60,9 @@ key, describes what moderators ask of devices in the room's RTC sessions:
 
 The event is sent by anyone with sufficient power level to send state events of
 this type, which is the room's default state event power level unless a room
-sets it otherwise in `m.room.power_levels`.
+sets it otherwise in `m.room.power_levels`. Clients read and write the event
+under the slot ID of the session they are in, and ignore events for other
+slots.
 
 ## Client behaviour
 

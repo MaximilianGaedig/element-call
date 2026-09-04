@@ -558,6 +558,7 @@ export class MockRTCSession extends TypedEventEmitter<
     super();
   }
 
+  public readonly slotDescription = { application: "m.call", id: "ROOM" };
   public joined = true;
   public isJoined(): boolean {
     return this.joined;

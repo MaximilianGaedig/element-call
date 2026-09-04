@@ -22,6 +22,7 @@ import {
 } from "matrix-js-sdk/lib/matrixrtc";
 import { type IWidgetApiRequest } from "matrix-widget-api";
 import { type CallMembershipIdentityParts } from "matrix-js-sdk/lib/matrixrtc/EncryptionManager";
+import { computeSlotId } from "matrix-js-sdk/lib/matrixrtc/utils";
 import { v4 as uuidv4 } from "uuid";
 
 import { duplicateTiles, showReactions } from "../../settings/settings";
@@ -439,7 +440,12 @@ export function createCallViewModel$(
 
   // ------------------------------------------------------------------------
   // floorControl: moderators muting devices through room state
-  const floorControl = createFloorControl(scope, matrixRoom, userId);
+  const floorControl = createFloorControl(
+    scope,
+    matrixRoom,
+    userId,
+    computeSlotId(matrixRTCSession.slotDescription),
+  );
   // Our own device honours a moderator's audio mute by not publishing. A
   // video mute is only applied by viewers, who hide the video; our camera
   // stays as it is and the local tile warns that nobody can see it.

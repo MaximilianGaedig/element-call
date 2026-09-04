@@ -143,8 +143,8 @@ export const initializeWidget = (
         eventType: EventType.GroupCallMemberPrefix,
         stateKey,
       }));
-      // Moderators mute other devices through floor control
-      sendState.push({ eventType: FloorControlEventType, stateKey: "" });
+      // Moderators mute other devices through floor control, keyed by slot
+      sendState.push({ eventType: FloorControlEventType });
       const receiveState = [
         { eventType: EventType.RoomCreate },
         { eventType: EventType.RoomName },

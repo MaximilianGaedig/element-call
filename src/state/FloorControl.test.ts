@@ -30,8 +30,8 @@ function setup(
     roomId: "!room",
     client: { sendStateEvent },
     currentState: {
-      getStateEvents: (type: string) =>
-        type === FloorControlEventType && current !== undefined
+      getStateEvents: (type: string, key: string) =>
+        type === FloorControlEventType && key === slot && current !== undefined
           ? ({ getContent: () => current } as unknown as MatrixEvent)
           : null,
       maySendStateEvent: (_type: string, userId: string) =>
@@ -40,6 +40,8 @@ function setup(
   } as unknown as Room;
   return { room, sendStateEvent };
 }
+
+const slot = "m.call#ROOM";
 
 describe("createFloorControl", () => {
   it("applies explicit controls over defaults, to everyone", () => {
@@ -50,7 +52,7 @@ describe("createFloorControl", () => {
       },
       ["@mod:e"],
     );
-    const fc = createFloorControl(testScope(), room, "@mod:e");
+    const fc = createFloorControl(testScope(), room, "@mod:e", slot);
     expect(fc.canModerate$.value).toBe(true);
     expect(fc.moderation$("@alice:e:A", "@alice:e").value).toEqual({
       audioMuted: true,
@@ -72,14 +74,14 @@ describe("createFloorControl", () => {
       { devices: { "@bob:e:B": { video_muted: true } } },
       ["@mod:e"],
     );
-    const fc = createFloorControl(testScope(), room, "@mod:e");
+    const fc = createFloorControl(testScope(), room, "@mod:e", slot);
     const bob$ = fc.moderation$("@bob:e:B", "@bob:e");
     await fc.moderator$("@bob:e:B").value!.setAudioMuted(true);
     expect(sendStateEvent).toHaveBeenCalledWith(
       "!room",
       FloorControlEventType,
       { devices: { "@bob:e:B": { video_muted: true, audio_muted: true } } },
-      "",
+      slot,
     );
     room.emit(RoomStateEvent.Update, null!);
     expect(bob$.value).toEqual({ audioMuted: true, videoMuted: true });
@@ -87,7 +89,7 @@ describe("createFloorControl", () => {
 
   it("gives non-moderators no controls", () => {
     const { room } = setup(undefined, []);
-    const fc = createFloorControl(testScope(), room, "@alice:e");
+    const fc = createFloorControl(testScope(), room, "@alice:e", slot);
     expect(fc.canModerate$.value).toBe(false);
     expect(fc.moderator$("@bob:e:B").value).toBe(null);
   });
