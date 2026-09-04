@@ -81,16 +81,9 @@ widgetTest("Sharing screen in group call", async ({ addUser, browserName }) => {
     ).toHaveCount(1);
   }
 
-  // Alice should be in grid mode as she is local sharing
-  {
-    const frame = alice.page
-      .locator('iframe[title="Element Call"]')
-      .contentFrame();
-    await expect(frame.getByRole("radio", { name: "Grid" })).toBeChecked();
-  }
-
-  // Others should have switched to spotlight
-  for (const user of [bob, carol]) {
+  // Everyone, including Alice who is sharing, should have switched to
+  // spotlight
+  for (const user of [alice, bob, carol]) {
     const frame = user.page
       .locator('iframe[title="Element Call"]')
       .contentFrame();
