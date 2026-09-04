@@ -65,8 +65,9 @@ export interface Moderation {
   /** Whether a moderator has pinned the device to the spotlight for everyone. */
   pinned: boolean;
   /**
-   * Whether a moderator has set anything for this device in particular, as
-   * opposed to it just following the defaults.
+   * Whether a moderator has set this device to anything other than what it
+   * would get by default. Entries that return to the defaults are removed
+   * from the event, so this is just whether the device has an entry.
    */
   explicit: boolean;
 }
@@ -101,14 +102,26 @@ export interface FloorControl {
   /** What floor control asks of the given device. */
   moderation$: (mediaId: string, userId: string) => Behavior<Moderation>;
   /** Controls for the given device, if the local user may moderate. */
-  moderator$: (mediaId: string) => Behavior<ModeratorControls | null>;
+  moderator$: (
+    mediaId: string,
+    userId: string,
+  ) => Behavior<ModeratorControls | null>;
   /**
    * Kicking and banning the given user, if the local user has the power to.
    * These set the membership state event directly rather than going through
    * the kick and ban APIs, so that they work through the widget API too.
    */
   memberActions$: (userId: string) => Behavior<MemberActions | null>;
-  setDevice: (mediaId: string, patch: DeviceControlContent) => Promise<void>;
+  /**
+   * Changes a device's controls. Settings that match what the device would
+   * get anyway are left out, and an entry with nothing left in it is
+   * removed, so an entry only exists for a device set to something specific.
+   */
+  setDevice: (
+    mediaId: string,
+    userId: string,
+    patch: DeviceControlContent,
+  ) => Promise<void>;
   setDefaults: (patch: DeviceControlContent) => Promise<void>;
   setAuditoriumVisibility: (level: number | undefined) => Promise<void>;
   /** The room's default power level for users, for labelling levels. */
@@ -190,18 +203,32 @@ export function createFloorControl(
     );
   };
 
+  // What a device gets with no entry of its own
+  const baseline: DeviceControlContent = {
+    audio_muted: false,
+    video_muted: false,
+    pinned: false,
+  };
   const setDevice = async (
     id: string,
+    userId: string,
     patch: DeviceControlContent,
   ): Promise<void> => {
     const content = content$.peek();
-    await send({
-      ...content,
-      devices: {
-        ...content.devices,
-        [id]: { ...content.devices?.[id], ...patch },
-      },
-    });
+    const byDefault: DeviceControlContent = {
+      ...baseline,
+      ...(mayModerate$.peek()(userId) ? {} : content.defaults),
+    };
+    const merged: DeviceControlContent = { ...content.devices?.[id], ...patch };
+    for (const key of Object.keys(merged) as (keyof DeviceControlContent)[])
+      if (merged[key] === undefined || merged[key] === byDefault[key])
+        delete merged[key];
+    const devices = { ...content.devices };
+    if (Object.keys(merged).length === 0) delete devices[id];
+    else devices[id] = merged;
+    const next: FloorControlContent = { ...content, devices };
+    if (Object.keys(devices).length === 0) delete next.devices;
+    await send(next);
   };
   const setDefaults = async (patch: DeviceControlContent): Promise<void> => {
     const content = content$.peek();
@@ -235,20 +262,22 @@ export function createFloorControl(
             visibility !== undefined &&
             (powerLevel$.value(userId) ?? usersDefault$.value) < visibility,
           pinned: device?.pinned ?? false,
-          explicit: device !== undefined && Object.keys(device).length > 0,
+          explicit: device !== undefined,
         };
       }),
-    moderator$: (id) =>
+    moderator$: (id, userId) =>
       computed(() =>
         canModerate$.value
           ? {
               setAudioMuted: async (muted) =>
-                setDevice(id, { audio_muted: muted }),
+                setDevice(id, userId, { audio_muted: muted }),
               setVideoMuted: async (muted) =>
-                setDevice(id, { video_muted: muted }),
+                setDevice(id, userId, { video_muted: muted }),
               setVolume: async (volume) =>
-                setDevice(id, { volume: Math.round(volume * volumeUnit) }),
-              setPinned: async (pinned) => setDevice(id, { pinned }),
+                setDevice(id, userId, {
+                  volume: Math.round(volume * volumeUnit),
+                }),
+              setPinned: async (pinned) => setDevice(id, userId, { pinned }),
             }
           : null,
       ),

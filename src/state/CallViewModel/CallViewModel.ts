@@ -744,7 +744,7 @@ export function createCallViewModel$(
         moderator$:
           participant.type === "local"
             ? constant(null)
-            : floorControl.moderator$(mediaId),
+            : floorControl.moderator$(mediaId, userId),
         memberActions$: floorControl.memberActions$(userId),
         // Pinned locally, or for everyone by a moderator
         pinned$: computed(

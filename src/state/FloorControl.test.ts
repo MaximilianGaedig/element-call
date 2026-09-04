@@ -92,7 +92,7 @@ describe("createFloorControl", () => {
     );
     const fc = createFloorControl(testScope(), room, "@mod:e", slot);
     const bob$ = fc.moderation$("@bob:e:B", "@bob:e");
-    await fc.moderator$("@bob:e:B").value!.setAudioMuted(true);
+    await fc.moderator$("@bob:e:B", "@bob:e").value!.setAudioMuted(true);
     expect(sendStateEvent).toHaveBeenCalledWith(
       "!room",
       FloorControlEventType,
@@ -139,7 +139,7 @@ describe("createFloorControl", () => {
   it("lets moderators pin a device for everyone", async () => {
     const { room, sendStateEvent } = setup(undefined, ["@mod:e"]);
     const fc = createFloorControl(testScope(), room, "@mod:e", slot);
-    await fc.moderator$("@bob:e:B").value!.setPinned(true);
+    await fc.moderator$("@bob:e:B", "@bob:e").value!.setPinned(true);
     expect(sendStateEvent).toHaveBeenCalledWith(
       "!room",
       FloorControlEventType,
@@ -148,6 +148,59 @@ describe("createFloorControl", () => {
     );
     room.emit(RoomStateEvent.Update, null!);
     expect(fc.moderation$("@bob:e:B", "@bob:e").value.pinned).toBe(true);
+  });
+
+  it("drops a device's entry once it's back to the defaults", async () => {
+    const { room, sendStateEvent } = setup(
+      {
+        defaults: { audio_muted: true },
+        devices: { "@bob:e:B": { audio_muted: false, video_muted: true } },
+      },
+      ["@mod:e"],
+    );
+    const fc = createFloorControl(testScope(), room, "@mod:e", slot);
+    const bob = fc.moderator$("@bob:e:B", "@bob:e").value!;
+    // Unmuting video leaves only the audio override, which differs from the
+    // default so it stays
+    await bob.setVideoMuted(false);
+    expect(sendStateEvent).toHaveBeenLastCalledWith(
+      "!room",
+      FloorControlEventType,
+      {
+        defaults: { audio_muted: true },
+        devices: { "@bob:e:B": { audio_muted: false } },
+      },
+      slot,
+    );
+    room.emit(RoomStateEvent.Update, null!);
+    // Muting audio again matches the default, so the entry goes entirely
+    await bob.setAudioMuted(true);
+    expect(sendStateEvent).toHaveBeenLastCalledWith(
+      "!room",
+      FloorControlEventType,
+      { defaults: { audio_muted: true } },
+      slot,
+    );
+    room.emit(RoomStateEvent.Update, null!);
+    expect(fc.moderation$("@bob:e:B", "@bob:e").value.explicit).toBe(false);
+  });
+
+  it("keeps a moderator's own entry, since defaults don't apply to them", async () => {
+    const { room, sendStateEvent } = setup(
+      { defaults: { audio_muted: true } },
+      ["@mod:e", "@peer:e"],
+    );
+    const fc = createFloorControl(testScope(), room, "@mod:e", slot);
+    await fc.moderator$("@peer:e:P", "@peer:e").value!.setAudioMuted(true);
+    expect(sendStateEvent).toHaveBeenLastCalledWith(
+      "!room",
+      FloorControlEventType,
+      {
+        defaults: { audio_muted: true },
+        devices: { "@peer:e:P": { audio_muted: true } },
+      },
+      slot,
+    );
   });
 
   it("hides users below the auditorium power level", async () => {
@@ -173,6 +226,6 @@ describe("createFloorControl", () => {
     const { room } = setup(undefined, []);
     const fc = createFloorControl(testScope(), room, "@alice:e", slot);
     expect(fc.canModerate$.value).toBe(false);
-    expect(fc.moderator$("@bob:e:B").value).toBe(null);
+    expect(fc.moderator$("@bob:e:B", "@bob:e").value).toBe(null);
   });
 });
