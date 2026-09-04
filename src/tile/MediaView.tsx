@@ -18,7 +18,10 @@ import { useTranslation } from "react-i18next";
 import classNames from "classnames";
 import { VideoTrack } from "@livekit/components-react";
 import { Text, Tooltip } from "@vector-im/compound-web";
-import { ErrorSolidIcon } from "@vector-im/compound-design-tokens/assets/web/icons";
+import {
+  AdminIcon,
+  ErrorSolidIcon,
+} from "@vector-im/compound-design-tokens/assets/web/icons";
 
 import styles from "./MediaView.module.css";
 import { Avatar } from "../Avatar";
@@ -55,6 +58,8 @@ interface Props extends ComponentProps<typeof animated.div> {
   nameTagLeadingIcon?: ReactNode;
   /** Whether to mark the name tag as pinned. */
   pinned?: boolean;
+  /** Whether to mark the user as a moderator. */
+  moderator?: boolean;
   displayName: string;
   mxcAvatarUrl: string | undefined;
   avatarStyle?: "solid" | "translucent";
@@ -102,6 +107,7 @@ export const MediaView: FC<Props> = ({
   showNameTags,
   nameTagLeadingIcon,
   pinned = false,
+  moderator = false,
   displayName,
   mxcAvatarUrl,
   avatarStyle = "solid",
@@ -146,6 +152,23 @@ export const MediaView: FC<Props> = ({
     setVideoAspectRatio(
       ev.currentTarget.videoWidth / ev.currentTarget.videoHeight,
     );
+
+  const moderatorBadge = moderator && (
+    <Tooltip
+      label={t("power_level.moderator")}
+      placement="bottom"
+      isTriggerInteractive={false}
+      nonInteractiveTriggerTabIndex={focusable ? undefined : -1}
+    >
+      <AdminIcon
+        width={20}
+        height={20}
+        className={styles.moderatorIcon}
+        role="img"
+        aria-label={t("power_level.moderator")}
+      />
+    </Tooltip>
+  );
 
   const warnings = unencryptedWarning && (
     <Tooltip
@@ -250,6 +273,7 @@ export const MediaView: FC<Props> = ({
         {showNameTags && targetWidth >= 100 ? (
           <div className={styles.nameTag}>
             {nameTagLeadingIcon}
+            {moderatorBadge}
             <Text
               as="span"
               size="sm"

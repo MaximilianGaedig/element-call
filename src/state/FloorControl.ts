@@ -118,6 +118,8 @@ export interface FloorControl {
   content$: Behavior<FloorControlContent>;
   /** Whether the local user may change floor control. */
   canModerate$: Behavior<boolean>;
+  /** Whether the given user may change floor control. */
+  isModerator$: (userId: string) => Behavior<boolean>;
   /** What floor control asks of the given device. */
   moderation$: (mediaId: string, userId: string) => Behavior<Moderation>;
   /** Controls for the given device, if the local user may moderate. */
@@ -320,6 +322,7 @@ export function createFloorControl(
   return {
     content$,
     canModerate$,
+    isModerator$: (userId) => computed(() => mayModerate$.value(userId)),
     moderation$: (id, userId) =>
       computed(() => {
         const {

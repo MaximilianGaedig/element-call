@@ -279,4 +279,11 @@ describe("createFloorControl", () => {
     expect(fc.canModerate$.value).toBe(false);
     expect(fc.moderator$("@bob:e:B", "@bob:e").value).toBe(null);
   });
+
+  it("says which users are moderators", () => {
+    const { room } = setup(undefined, ["@mod:e"]);
+    const fc = createFloorControl(testScope(), room, "@alice:e", slot);
+    expect(fc.isModerator$("@mod:e").value).toBe(true);
+    expect(fc.isModerator$("@alice:e").value).toBe(false);
+  });
 });

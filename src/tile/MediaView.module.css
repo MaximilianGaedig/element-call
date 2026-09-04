@@ -258,6 +258,11 @@ unconditionally select the container so we can use cqmin units */
   color: var(--cpd-color-icon-critical-primary);
 }
 
+.moderatorIcon {
+  display: block;
+  color: var(--cpd-color-yellow-900);
+}
+
 .fg .buttons > button {
   appearance: none;
   border: none;

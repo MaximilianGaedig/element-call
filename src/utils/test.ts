@@ -439,6 +439,7 @@ export function mockLocalMedia(
     moderation$: constant(unmoderated),
     moderator$: constant(null),
     memberActions$: constant(null),
+    isModerator$: constant(false),
     pinned$: constant(false),
   });
 }
@@ -487,6 +488,7 @@ export function mockRemoteMedia(
     moderation$: constant(unmoderated),
     moderator$: constant(null),
     memberActions$: constant(null),
+    isModerator$: constant(false),
     pinned$: constant(false),
   });
 }

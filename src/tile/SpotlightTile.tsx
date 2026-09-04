@@ -100,6 +100,7 @@ interface SpotlightUserMediaItemBaseProps extends SpotlightMemberMediaItemBasePr
   videoEnabled: boolean;
   soundWaves: boolean | undefined;
   pinned: boolean;
+  moderator: boolean;
   primaryButton: ReactNode;
 }
 
@@ -149,6 +150,7 @@ const SpotlightUserMediaItem: FC<SpotlightUserMediaItemProps> = ({
   const videoEnabled = useBehavior(vm.videoEnabled$);
   const speaking = useBehavior(vm.speaking$);
   const pinned = useBehavior(vm.pinned$);
+  const isModerator = useBehavior(vm.isModerator$);
   const moderation = useBehavior(vm.moderation$);
   const unpinnable = pinned && !moderation.pinned && onUnpin !== undefined;
   // Moderators are shown which tiles they've applied floor control to
@@ -208,6 +210,7 @@ const SpotlightUserMediaItem: FC<SpotlightUserMediaItemProps> = ({
     videoEnabled,
     soundWaves: props.background === "transparent" ? speaking : undefined,
     pinned,
+    moderator: isModerator,
     primaryButton,
     targetWidth,
     targetHeight,
