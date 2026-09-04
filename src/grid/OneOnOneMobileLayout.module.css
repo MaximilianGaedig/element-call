@@ -15,46 +15,29 @@ Please see LICENSE in the repository root for full details.
 }
 
 .pip {
-  position: absolute;
-  inset: var(--cpd-space-4x);
+  --floating-inset: var(--cpd-space-4x);
 }
 
 /* Give the PiP a landscape aspect ratio */
 .pip[data-size="sm"] {
-  inline-size: 132px;
-  block-size: 88px;
+  --floating-inline-size: 132px;
+  --floating-block-size: 88px;
 }
 
 .pip[data-size="lg"] {
-  inline-size: 210px;
-  block-size: 140px;
+  --floating-inline-size: 210px;
+  --floating-block-size: 140px;
 }
 
 @media (max-width: 600px) {
   /* Give the PiP a portrait aspect ratio */
   .pip[data-size="sm"] {
-    inline-size: 88px;
-    block-size: 132px;
+    --floating-inline-size: 88px;
+    --floating-block-size: 132px;
   }
 
   .pip[data-size="lg"] {
-    inline-size: 140px;
-    block-size: 210px;
+    --floating-inline-size: 140px;
+    --floating-block-size: 210px;
   }
-}
-
-.pip[data-block-alignment="start"] {
-  inset-block-end: unset;
-}
-
-.pip[data-block-alignment="end"] {
-  inset-block-start: unset;
-}
-
-.pip[data-inline-alignment="start"] {
-  inset-inline-end: unset;
-}
-
-.pip[data-inline-alignment="end"] {
-  inset-inline-start: unset;
 }

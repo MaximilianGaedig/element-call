@@ -11,12 +11,14 @@ import {
   useCallback,
   useMemo,
 } from "react";
+import classNames from "classnames";
 
 import { type GridLayout as GridLayoutModel } from "../state/layout-types.ts";
 import styles from "./GridLayout.module.css";
 import { type CallLayout, arrangeTiles } from "./CallLayout";
 import { type DragCallback, useUpdateLayout, useVisibleTiles } from "./Grid";
 import { useBehavior } from "../useBehavior";
+import { droppedPosition, floatingClass, floatingStyle } from "./floating.ts";
 
 interface GridCSSProperties extends CSSProperties {
   "--gap": string;
@@ -37,27 +39,22 @@ export const makeGridLayout: CallLayout<GridLayoutModel> = ({
   // lives
   fixed: function GridLayoutFixed({ ref, model, Slot }): ReactNode {
     useUpdateLayout();
-    const alignment = useBehavior(model.spotlightAlignment$);
+    const position = useBehavior(model.spotlightPosition$);
 
     const onDragSpotlight: DragCallback = useCallback(
-      ({ xRatio, yRatio }) =>
-        (model.spotlightAlignment$.value = {
-          block: yRatio < 0.5 ? "start" : "end",
-          inline: xRatio < 0.5 ? "start" : "end",
-        }),
-      [model.spotlightAlignment$],
+      (drag) => (model.spotlightPosition$.value = droppedPosition(drag)),
+      [model.spotlightPosition$],
     );
 
     return (
       <div ref={ref} className={styles.fixed}>
         {model.spotlight && (
           <Slot
-            className={styles.slot}
+            className={classNames(styles.slot, floatingClass)}
+            style={floatingStyle(position)}
             id="spotlight"
             model={model.spotlight}
             onDrag={onDragSpotlight}
-            data-block-alignment={alignment.block}
-            data-inline-alignment={alignment.inline}
           />
         )}
       </div>

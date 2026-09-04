@@ -74,16 +74,20 @@ export type LayoutMedia =
   | OneOnOneMobileLayoutMedia
   | PipLayoutMedia;
 
-export interface Alignment {
-  inline: "start" | "end";
-  block: "start" | "end";
+/**
+ * Where a tile floating over the layout sits, as fractions of the space it can
+ * move in: 0 is the start edge, 1 is the end edge.
+ */
+export interface FloatingPosition {
+  x: number;
+  y: number;
 }
 
 export interface GridLayout {
   type: "grid";
   spotlight?: SpotlightTileViewModel;
   grid: GridTileViewModel[];
-  spotlightAlignment$: State<Alignment>;
+  spotlightPosition$: State<FloatingPosition>;
   setVisibleTiles: (value: number) => void;
 }
 
@@ -105,14 +109,14 @@ export interface SpotlightExpandedLayout {
   type: "spotlight-expanded";
   spotlight: SpotlightTileViewModel;
   pip?: GridTileViewModel;
-  pipAlignment$: State<Alignment>;
+  pipPosition$: State<FloatingPosition>;
 }
 
 export interface OneOnOneDesktopLayout {
   type: "one-on-one-desktop";
   spotlight: GridTileViewModel;
   pip: GridTileViewModel;
-  pipAlignment$: State<Alignment>;
+  pipPosition$: State<FloatingPosition>;
 }
 
 export interface OneOnOneMobileLayout {
@@ -120,7 +124,7 @@ export interface OneOnOneMobileLayout {
   spotlight: SpotlightTileViewModel;
   pip?: GridTileViewModel;
   pipSize$: Behavior<"sm" | "lg">;
-  pipAlignment$: State<Alignment>;
+  pipPosition$: State<FloatingPosition>;
 }
 
 export interface PipLayout {

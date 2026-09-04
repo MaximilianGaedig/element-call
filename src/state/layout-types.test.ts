@@ -7,7 +7,7 @@ Please see LICENSE in the repository root for full details.
 
 import { test, expect } from "vitest";
 import {
-  type Alignment,
+  type FloatingPosition,
   layoutShallowEquals,
   type Layout,
 } from "./layout-types";
@@ -19,15 +19,12 @@ import { state } from "./Behavior";
 
 const spotlightTile = {} as unknown as SpotlightTileViewModel;
 const gridTile = {} as unknown as GridTileViewModel;
-const pipAlignment$ = state<Alignment>({
-  inline: "end",
-  block: "end",
-});
+const pipPosition$ = state<FloatingPosition>({ x: 1, y: 1 });
 
 const spotlightExpanded: Layout = {
   type: "spotlight-expanded",
   spotlight: spotlightTile,
-  pipAlignment$,
+  pipPosition$,
 };
 
 const spotlightPortrait: Layout = {

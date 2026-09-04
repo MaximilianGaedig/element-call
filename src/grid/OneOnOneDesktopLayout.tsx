@@ -14,6 +14,7 @@ import { type CallLayout, arrangeTiles } from "./CallLayout";
 import styles from "./OneOnOneDesktopLayout.module.css";
 import { type DragCallback, useUpdateLayout } from "./Grid";
 import { useBehavior } from "../useBehavior";
+import { droppedPosition, floatingClass, floatingStyle } from "./floating.ts";
 
 /**
  * An implementation of the "one-on-one" layout for desktop platforms, in which
@@ -37,19 +38,15 @@ export const makeOneOnOneDesktopLayout: CallLayout<
   }): ReactNode {
     useUpdateLayout();
     const { width, height } = useBehavior(minBounds$);
-    const pipAlignment = useBehavior(model.pipAlignment$);
+    const pipPosition = useBehavior(model.pipPosition$);
     const { tileWidth, tileHeight } = useMemo(
       () => arrangeTiles(width, height, 1),
       [width, height],
     );
 
     const onDragLocalTile: DragCallback = useCallback(
-      ({ xRatio, yRatio }) =>
-        (model.pipAlignment$.value = {
-          block: yRatio < 0.5 ? "start" : "end",
-          inline: xRatio < 0.5 ? "start" : "end",
-        }),
-      [model.pipAlignment$],
+      (drag) => (model.pipPosition$.value = droppedPosition(drag)),
+      [model.pipPosition$],
     );
 
     return (
@@ -61,12 +58,11 @@ export const makeOneOnOneDesktopLayout: CallLayout<
           style={{ width: tileWidth, height: tileHeight }}
         >
           <Slot
-            className={classNames(styles.slot, styles.local)}
+            className={classNames(styles.local, floatingClass)}
+            style={floatingStyle(pipPosition)}
             id={model.pip.id}
             model={model.pip}
             onDrag={onDragLocalTile}
-            data-block-alignment={pipAlignment.block}
-            data-inline-alignment={pipAlignment.inline}
           />
         </Slot>
       </div>

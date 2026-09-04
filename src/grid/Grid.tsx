@@ -56,7 +56,13 @@ interface Tile<Model> {
   onDrag: DragCallback | undefined;
 }
 
-type PlacedTile<Model> = Tile<Model> & Rect;
+interface PlacedTile<Model> extends Tile<Model>, Rect {
+  /**
+   * The box the tile is positioned within (its slot's offset parent), in grid
+   * space.
+   */
+  container: Rect;
+}
 
 interface TileSpring {
   opacity: number;
@@ -191,11 +197,13 @@ interface Drag {
    */
   y: number;
   /**
-   * The X coordinate of the dragged tile, as a scalar of the grid width.
+   * How far along its container the dragged tile is horizontally: 0 when
+   * flush with the start edge, 1 when flush with the end edge.
    */
   xRatio: number;
   /**
-   * The Y coordinate of the dragged tile, as a scalar of the grid height.
+   * How far along its container the dragged tile is vertically: 0 when flush
+   * with the top edge, 1 when flush with the bottom edge.
    */
   yRatio: number;
 }
@@ -340,13 +348,29 @@ export function Grid<
       ) as HTMLCollectionOf<HTMLElement>;
       for (const slot of slots) {
         const id = slot.getAttribute("data-id")!;
-        if (slot.offsetWidth > 0 && slot.offsetHeight > 0)
+        if (slot.offsetWidth > 0 && slot.offsetHeight > 0) {
+          const parent = slot.offsetParent;
+          const container =
+            parent instanceof HTMLElement && parent !== gridRoot
+              ? {
+                  ...offset(parent, gridRoot),
+                  width: parent.offsetWidth,
+                  height: parent.offsetHeight,
+                }
+              : {
+                  x: 0,
+                  y: 0,
+                  width: gridBounds.width,
+                  height: gridBounds.height,
+                };
           result.push({
             ...tiles.get(id)!,
             ...offset(slot, gridRoot),
             width: slot.offsetWidth,
             height: slot.offsetHeight,
+            container,
           });
+        }
       }
     }
 
@@ -464,13 +488,15 @@ export function Grid<
       )
       .catch(logger.error);
 
-    if (endOfGesture)
+    if (endOfGesture) {
+      const { container } = tile;
       callback({
         x: tileX,
         y: tileY,
-        xRatio: tileX / (gridBounds.width - tile.width),
-        yRatio: tileY / (gridBounds.height - tile.height),
+        xRatio: (tileX - container.x) / (container.width - tile.width),
+        yRatio: (tileY - container.y) / (container.height - tile.height),
       });
+    }
   };
 
   // Callback for useDrag. We could call useDrag here, but the default

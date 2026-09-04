@@ -7,7 +7,7 @@ Please see LICENSE in the repository root for full details.
 */
 
 import {
-  type Alignment,
+  type FloatingPosition,
   type OneOnOneMobileLayout,
   type OneOnOneMobileLayoutMedia,
 } from "./layout-types";
@@ -20,7 +20,7 @@ import { type Behavior, type State } from "./Behavior";
 export function oneOnOneMobileLayout(
   media: OneOnOneMobileLayoutMedia,
   pipSize$: Behavior<"sm" | "lg">,
-  pipAlignment$: State<Alignment>,
+  pipPosition$: State<FloatingPosition>,
   prevTiles: TileStore,
 ): [OneOnOneMobileLayout, TileStore] {
   const update = prevTiles.from();
@@ -34,7 +34,7 @@ export function oneOnOneMobileLayout(
       spotlight: tiles.spotlightTile!,
       pip: media.pip && tiles.gridTilesByMedia.get(media.pip),
       pipSize$,
-      pipAlignment$,
+      pipPosition$,
     },
     tiles,
   ];

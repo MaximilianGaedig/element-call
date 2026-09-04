@@ -14,6 +14,7 @@ import { type CallLayout } from "./CallLayout";
 import styles from "./OneOnOneMobileLayout.module.css";
 import { type DragCallback, useUpdateLayout } from "./Grid";
 import { useBehavior } from "../useBehavior";
+import { droppedPosition, floatingClass, floatingStyle } from "./floating.ts";
 
 /**
  * An implementation of the "one-on-one" layout for mobile platforms, in which
@@ -45,27 +46,22 @@ export const makeOneOnOneMobileLayout: CallLayout<
   }): ReactNode {
     useUpdateLayout();
     const pipSize = useBehavior(model.pipSize$);
-    const pipAlignment = useBehavior(model.pipAlignment$);
+    const pipPosition = useBehavior(model.pipPosition$);
     const onDragLocalTile: DragCallback = useCallback(
-      ({ xRatio, yRatio }) =>
-        (model.pipAlignment$.value = {
-          block: yRatio < 0.5 ? "start" : "end",
-          inline: xRatio < 0.5 ? "start" : "end",
-        }),
-      [model.pipAlignment$],
+      (drag) => (model.pipPosition$.value = droppedPosition(drag)),
+      [model.pipPosition$],
     );
 
     return (
       <div ref={ref} className={styles.layer}>
         {model.pip && (
           <Slot
-            className={classNames(styles.pip)}
+            className={classNames(styles.pip, floatingClass)}
+            style={floatingStyle(pipPosition)}
             id={model.pip.id}
             model={model.pip}
             onDrag={onDragLocalTile}
             data-size={pipSize}
-            data-block-alignment={pipAlignment.block}
-            data-inline-alignment={pipAlignment.inline}
           />
         )}
       </div>

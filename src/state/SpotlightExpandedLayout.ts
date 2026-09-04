@@ -6,7 +6,7 @@ Please see LICENSE in the repository root for full details.
 */
 
 import {
-  type Alignment,
+  type FloatingPosition,
   type SpotlightExpandedLayout,
   type SpotlightExpandedLayoutMedia,
 } from "./layout-types";
@@ -18,7 +18,7 @@ import { type State } from "./Behavior";
  */
 export function spotlightExpandedLayout(
   media: SpotlightExpandedLayoutMedia,
-  pipAlignment$: State<Alignment>,
+  pipPosition$: State<FloatingPosition>,
   prevTiles: TileStore,
 ): [SpotlightExpandedLayout, TileStore] {
   const update = prevTiles.from();
@@ -31,7 +31,7 @@ export function spotlightExpandedLayout(
       type: media.type,
       spotlight: tiles.spotlightTile!,
       pip: tiles.gridTiles.at(0),
-      pipAlignment$,
+      pipPosition$,
     },
     tiles,
   ];

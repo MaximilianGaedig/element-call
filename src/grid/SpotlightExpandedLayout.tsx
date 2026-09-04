@@ -6,12 +6,14 @@ Please see LICENSE in the repository root for full details.
 */
 
 import { type ReactNode, useCallback } from "react";
+import classNames from "classnames";
 
 import { type SpotlightExpandedLayout as SpotlightExpandedLayoutModel } from "../state/layout-types.ts";
 import { type CallLayout } from "./CallLayout";
 import { type DragCallback, useUpdateLayout } from "./Grid";
 import styles from "./SpotlightExpandedLayout.module.css";
 import { useBehavior } from "../useBehavior";
+import { droppedPosition, floatingClass, floatingStyle } from "./floating.ts";
 
 /**
  * An implementation of the "expanded spotlight" layout, in which the spotlight
@@ -46,27 +48,22 @@ export const makeSpotlightExpandedLayout: CallLayout<
     Slot,
   }): ReactNode {
     useUpdateLayout();
-    const pipAlignment = useBehavior(model.pipAlignment$);
+    const pipPosition = useBehavior(model.pipPosition$);
 
     const onDragPip: DragCallback = useCallback(
-      ({ xRatio, yRatio }) =>
-        (model.pipAlignment$.value = {
-          block: yRatio < 0.5 ? "start" : "end",
-          inline: xRatio < 0.5 ? "start" : "end",
-        }),
-      [model.pipAlignment$],
+      (drag) => (model.pipPosition$.value = droppedPosition(drag)),
+      [model.pipPosition$],
     );
 
     return (
       <div ref={ref} className={styles.layer}>
         {model.pip && (
           <Slot
-            className={styles.pip}
+            className={classNames(styles.pip, floatingClass)}
+            style={floatingStyle(pipPosition)}
             id={model.pip.id}
             model={model.pip}
             onDrag={onDragPip}
-            data-block-alignment={pipAlignment.block}
-            data-inline-alignment={pipAlignment.inline}
           />
         )}
       </div>

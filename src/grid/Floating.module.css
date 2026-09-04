@@ -1,0 +1,48 @@
+/*
+Copyright 2026 Element Creations Ltd.
+
+SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+Please see LICENSE in the repository root for full details.
+*/
+
+/* A tile floating over the layout, such as the local video PiP. Layouts set
+--floating-inline-size and --floating-block-size, and optionally --floating-inset
+(or the four --floating-inset-* sides) to keep it clear of the edges. The
+position comes from --floating-x and --floating-y, which run from 0 at the
+start edge to 1 at the end edge of the space it can move in. */
+
+.floating {
+  position: absolute;
+  inline-size: var(--floating-inline-size);
+  block-size: var(--floating-block-size);
+  --inset-inline-start: var(
+    --floating-inset-inline-start,
+    var(--floating-inset, 0px)
+  );
+  --inset-inline-end: var(
+    --floating-inset-inline-end,
+    var(--floating-inset, 0px)
+  );
+  --inset-block-start: var(
+    --floating-inset-block-start,
+    var(--floating-inset, 0px)
+  );
+  --inset-block-end: var(
+    --floating-inset-block-end,
+    var(--floating-inset, 0px)
+  );
+  inset-inline-start: calc(
+    var(--inset-inline-start) + var(--floating-x) *
+      (
+        100% - var(--inset-inline-start) - var(--inset-inline-end) -
+          var(--floating-inline-size)
+      )
+  );
+  inset-block-start: calc(
+    var(--inset-block-start) + var(--floating-y) *
+      (
+        100% - var(--inset-block-start) - var(--inset-block-end) -
+          var(--floating-block-size)
+      )
+  );
+}

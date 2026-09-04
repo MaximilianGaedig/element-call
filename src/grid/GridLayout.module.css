@@ -28,26 +28,13 @@ Please see LICENSE in the repository root for full details.
 }
 
 .fixed > .slot {
-  position: absolute;
-  inline-size: 404px;
-  block-size: 233px;
+  --floating-inline-size: 404px;
+  --floating-block-size: 233px;
   /* Ensure that spotlight tile lies within the safe area */
-  inset: 0 calc(env(safe-area-inset-right) + var(--cpd-space-3x)) 0
-    calc(env(safe-area-inset-left) + var(--cpd-space-3x));
-}
-
-.fixed > .slot[data-block-alignment="start"] {
-  inset-block-end: unset;
-}
-
-.fixed > .slot[data-block-alignment="end"] {
-  inset-block-start: unset;
-}
-
-.fixed > .slot[data-inline-alignment="start"] {
-  inset-inline-end: unset;
-}
-
-.fixed > .slot[data-inline-alignment="end"] {
-  inset-inline-start: unset;
+  --floating-inset-inline-end: calc(
+    env(safe-area-inset-right) + var(--cpd-space-3x)
+  );
+  --floating-inset-inline-start: calc(
+    env(safe-area-inset-left) + var(--cpd-space-3x)
+  );
 }

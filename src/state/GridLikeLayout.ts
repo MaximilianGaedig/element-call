@@ -6,7 +6,7 @@ Please see LICENSE in the repository root for full details.
 */
 
 import {
-  type Alignment,
+  type FloatingPosition,
   type Layout,
   type LayoutMedia,
 } from "./layout-types.ts";
@@ -25,7 +25,7 @@ export type GridLikeLayoutType =
  */
 export function gridLikeLayout(
   media: LayoutMedia & { type: GridLikeLayoutType },
-  spotlightAlignment$: State<Alignment>,
+  spotlightPosition$: State<FloatingPosition>,
   visibleTiles: number,
   setVisibleTiles: (value: number) => void,
   prevTiles: TileStore,
@@ -58,7 +58,7 @@ export function gridLikeLayout(
       type: media.type,
       spotlight: tiles.spotlightTile,
       grid: tiles.gridTiles,
-      spotlightAlignment$,
+      spotlightPosition$,
       setVisibleTiles,
     } as Layout & { type: GridLikeLayoutType },
     tiles,

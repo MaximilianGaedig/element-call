@@ -58,7 +58,7 @@ import { type ProcessorState } from "../../livekit/TrackProcessorContext";
 import { ElementWidgetActions, widget } from "../../widget";
 import {
   layoutShallowEquals,
-  type Alignment,
+  type FloatingPosition,
   type Layout,
   type LayoutMedia,
 } from "../layout-types.ts";
@@ -1069,30 +1069,21 @@ export function createCallViewModel$(
   });
 
   /**
-   * The alignment of the floating spotlight tile, if present.
+   * The position of the floating spotlight tile, if present.
    */
-  const spotlightAlignment$ = state<Alignment>({
-    inline: "end",
-    block: "end",
-  });
+  const spotlightPosition$ = state<FloatingPosition>({ x: 1, y: 1 });
   /**
    * The size of the small picture-in-picture tile, if present, when in portrait.
    */
   const portraitPipSize$ = computed(() => (showFooter$.value ? "lg" : "sm"));
   /**
-   * The alignment of the small picture-in-picture tile, if present, when in portrait.
+   * The position of the small picture-in-picture tile, if present, when in portrait.
    */
-  const portraitPipAlignment$ = state<Alignment>({
-    inline: "end",
-    block: "end",
-  });
+  const portraitPipPosition$ = state<FloatingPosition>({ x: 1, y: 1 });
   /**
-   * The alignment of the small picture-in-picture tile, if present, when in landscape.
+   * The position of the small picture-in-picture tile, if present, when in landscape.
    */
-  const landscapePipAlignment$ = state<Alignment>({
-    inline: "end",
-    block: "start",
-  });
+  const landscapePipPosition$ = state<FloatingPosition>({ x: 1, y: 0 });
 
   // There is a cyclical dependency here: the layout algorithms want to know
   // which tiles are on screen, but to know which tiles are on screen we have to
@@ -1120,7 +1111,7 @@ export function createCallViewModel$(
       case "spotlight-portrait":
         [layout, tiles] = gridLikeLayout(
           media,
-          spotlightAlignment$,
+          spotlightPosition$,
           visibleTiles,
           setVisibleTiles,
           prevTiles,
@@ -1130,14 +1121,14 @@ export function createCallViewModel$(
       case "spotlight-expanded":
         [layout, tiles] = spotlightExpandedLayout(
           media,
-          landscapePipAlignment$,
+          landscapePipPosition$,
           prevTiles,
         );
         break;
       case "one-on-one-desktop":
         [layout, tiles] = oneOnOneDesktopLayout(
           media,
-          landscapePipAlignment$,
+          landscapePipPosition$,
           prevTiles,
         );
         pip = layout.pip;
@@ -1146,7 +1137,7 @@ export function createCallViewModel$(
         [layout, tiles] = oneOnOneMobileLayout(
           media,
           portraitPipSize$,
-          portraitPipAlignment$,
+          portraitPipPosition$,
           prevTiles,
         );
         pip = layout.pip;

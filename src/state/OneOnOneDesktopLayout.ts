@@ -7,7 +7,7 @@ Please see LICENSE in the repository root for full details.
 */
 
 import {
-  type Alignment,
+  type FloatingPosition,
   type OneOnOneDesktopLayout,
   type OneOnOneDesktopLayoutMedia,
 } from "./layout-types";
@@ -19,7 +19,7 @@ import { type State } from "./Behavior";
  */
 export function oneOnOneDesktopLayout(
   media: OneOnOneDesktopLayoutMedia,
-  pipAlignment$: State<Alignment>,
+  pipPosition$: State<FloatingPosition>,
   prevTiles: TileStore,
 ): [OneOnOneDesktopLayout, TileStore] {
   const update = prevTiles.from();
@@ -32,7 +32,7 @@ export function oneOnOneDesktopLayout(
       type: media.type,
       spotlight: tiles.gridTilesByMedia.get(media.spotlight)!,
       pip: tiles.gridTilesByMedia.get(media.pip)!,
-      pipAlignment$,
+      pipPosition$,
     },
     tiles,
   ];
