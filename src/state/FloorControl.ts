@@ -269,17 +269,18 @@ export function createFloorControl(
       (state.getMember(userId)?.powerLevel ?? 0) < localLevel;
   });
   // Whether the local user may change whether the given user is a moderator:
-  // they must be able to change power levels and outrank the user, and to
-  // make someone a moderator they need at least that level themselves
+  // they must be able to change power levels and outrank the user (or be
+  // them: users may lower their own level), and to make someone a moderator
+  // they need at least that level themselves
   const maySetModerator$ = read((state) => {
     const localLevel = state.getMember(localUserId)?.powerLevel ?? 0;
     const { events, state_default: stateDefault } = powerLevels$.value;
     const required = events?.[FloorControlEventType] ?? stateDefault ?? 50;
     return (userId: string): boolean => {
+      const level = state.getMember(userId)?.powerLevel ?? 0;
       if (
-        userId === localUserId ||
         !state.maySendStateEvent(EventType.RoomPowerLevels, localUserId) ||
-        (state.getMember(userId)?.powerLevel ?? 0) >= localLevel
+        (userId === localUserId ? level > localLevel : level >= localLevel)
       )
         return false;
       const moderator = state.maySendStateEvent(FloorControlEventType, userId);

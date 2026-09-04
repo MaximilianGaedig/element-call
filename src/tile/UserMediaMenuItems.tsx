@@ -70,6 +70,8 @@ const LocalItems: FC<{
   const { t } = useTranslation();
   const alwaysShow = useBehavior(vm.alwaysShow$);
   const micGain = useBehavior(vm.micGain$);
+  const memberActions = useBehavior(vm.memberActions$);
+  const isModerator = useBehavior(vm.isModerator$);
   const latestAlwaysShow = useLatest(alwaysShow);
   const onSelectAlwaysShow = useCallback(
     (e: Event) => {
@@ -104,6 +106,20 @@ const LocalItems: FC<{
           Icon={UserProfileIcon}
           label={t("common.profile")}
           onSelect={onOpenProfile}
+        />
+      )}
+      {/* Moderators may drop their own privileges, which they may not be able
+      to take back, so that's confirmed first */}
+      {memberActions?.setModerator && (
+        <ToggleMenuItem
+          Icon={AdminIcon}
+          label={t("power_level.moderator")}
+          checked={isModerator}
+          onSelect={(e) => {
+            e.preventDefault();
+            if (!isModerator || confirm(t("video_tile.drop_moderator_confirm")))
+              void memberActions.setModerator!(!isModerator);
+          }}
         />
       )}
     </>

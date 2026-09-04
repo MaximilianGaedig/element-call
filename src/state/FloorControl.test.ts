@@ -295,8 +295,14 @@ describe("createFloorControl", () => {
       "@mod:e": 50,
     });
     const admin = createFloorControl(testScope(), room, "@admin:e", slot);
-    // Not for yourself
-    expect(admin.memberActions$("@admin:e").value).toBe(null);
+    // Yourself, you may only unmake
+    await admin.memberActions$("@admin:e").value!.setModerator!(false);
+    expect(sendStateEvent).toHaveBeenLastCalledWith(
+      "!room",
+      "m.room.power_levels",
+      { users: { "@mod:e": 50 }, events: { [FloorControlEventType]: 50 } },
+      "",
+    );
     await admin.memberActions$("@alice:e").value!.setModerator!(true);
     expect(sendStateEvent).toHaveBeenLastCalledWith(
       "!room",

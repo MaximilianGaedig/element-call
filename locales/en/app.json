@@ -297,6 +297,7 @@
     "calling": "Calling…",
     "camera_starting": "Video loading...",
     "collapse": "Collapse",
+    "drop_moderator_confirm": "Stop being a moderator? You won't be able to make yourself a moderator again.",
     "enlarge": "Enlarge",
     "expand": "Expand",
     "hidden_by_moderator": "Your tile has been hidden",
