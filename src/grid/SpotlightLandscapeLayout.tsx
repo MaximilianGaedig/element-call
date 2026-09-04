@@ -34,10 +34,18 @@ const railGap = 20; // Must match --gap in the CSS
  * wrap in reading order, so widening the rail turns one column of a, b, c…
  * into rows of a, b, c / d, e, f / …
  */
-const layerStyle = (railWidth: number): LayerCSSProperties => {
+const layerStyle = (
+  railWidth: number,
+  tileCount: number,
+): LayerCSSProperties => {
+  // As many columns as fit, but never more than there are tiles to fill
+  // them: with too few tiles they just grow to fill the width instead
   const columns = Math.max(
     1,
-    Math.floor((railWidth + railGap) / (minRailWidth + railGap)),
+    Math.min(
+      tileCount,
+      Math.floor((railWidth + railGap) / (minRailWidth + railGap)),
+    ),
   );
   const tileWidth = Math.floor((railWidth - (columns - 1) * railGap) / columns);
   return {
@@ -74,7 +82,11 @@ export const makeSpotlightLandscapeLayout: CallLayout<
     // its element and inserts an overlay while dragging, which would upset
     // the measurement of any slots inside it.
     return (
-      <div ref={ref} className={styles.layer} style={layerStyle(railWidth)}>
+      <div
+        ref={ref}
+        className={styles.layer}
+        style={layerStyle(railWidth, model.grid.length)}
+      >
         <div className={styles.spotlight}>
           <Slot
             className={styles.slot}
@@ -118,7 +130,11 @@ export const makeSpotlightLandscapeLayout: CallLayout<
     const railWidth = useBehavior(model.railWidth$);
 
     return (
-      <div ref={ref} className={styles.layer} style={layerStyle(railWidth)}>
+      <div
+        ref={ref}
+        className={styles.layer}
+        style={layerStyle(railWidth, model.grid.length)}
+      >
         <SpotlightSlot media$={model.spotlight.media$} />
         <div className={styles.grid}>
           {model.grid.map((m) => (
