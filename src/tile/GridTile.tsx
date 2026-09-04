@@ -56,6 +56,7 @@ interface TileProps {
   ref?: Ref<HTMLDivElement>;
   className?: string;
   style?: ComponentProps<typeof animated.div>["style"];
+  onDoubleClick?: () => void;
   targetWidth: number;
   targetHeight: number;
   displayName: string;
@@ -419,6 +420,7 @@ interface GridTileProps {
   showRingingStatus: boolean;
   showOutline: boolean;
   focusable: boolean;
+  onDoubleClick?: () => void;
 }
 
 export const GridTile: FC<GridTileProps> = ({

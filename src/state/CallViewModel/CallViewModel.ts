@@ -303,6 +303,11 @@ export interface CallViewModel {
    * The current generation of the tile store, exposed for debugging purposes.
    */
   tileStoreGeneration$: Behavior<number>;
+  /**
+   * Gives a tile more prominence, or takes it back, at the user's request
+   * (double-clicking it). In the grid layout this doubles the tile's size.
+   */
+  emphasiseTile: (tile: GridTileViewModel) => void;
   showSpotlightIndicators$: Behavior<boolean>;
   showSpeakingIndicators$: Behavior<boolean>;
   showNameTags$: Behavior<boolean>;
@@ -1196,6 +1201,10 @@ export function createCallViewModel$(
     layoutInternals$.value = { layout, overflowing, tiles };
   });
 
+  const emphasiseTile = (tile: GridTileViewModel): void => {
+    if (layoutMedia$.peek().type === "grid") tile.toggleEnlarged();
+  };
+
   /**
    * The layout of tiles in the call interface.
    */
@@ -1374,6 +1383,7 @@ export function createCallViewModel$(
       return members;
     }),
     tileStoreGeneration$: tileStoreGeneration$,
+    emphasiseTile,
     showSpotlightIndicators$: showSpotlightIndicators$,
     showSpeakingIndicators$: showSpeakingIndicators$,
     showNameTags$,

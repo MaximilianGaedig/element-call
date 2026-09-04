@@ -467,6 +467,7 @@ export const InCallView: FC<InCallViewProps> = ({
             showRingingStatus={showRingingStatus}
             showOutline={showOutline}
             focusable={!contentObscured}
+            onDoubleClick={() => vm.emphasiseTile(model)}
           />
         ) : (
           <SpotlightTile

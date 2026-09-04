@@ -19,6 +19,12 @@ export class GridTileViewModel {
   public readonly id = createId();
   private readonly _showOutline$ = state(false);
   public readonly showOutline$: Behavior<boolean> = this._showOutline$;
+  private readonly _enlarged$ = state(false);
+  /**
+   * Whether the user has asked for this tile to take up twice the space in
+   * the grid.
+   */
+  public readonly enlarged$: Behavior<boolean> = this._enlarged$;
 
   public constructor(
     public readonly media$: Behavior<
@@ -28,6 +34,10 @@ export class GridTileViewModel {
 
   public setShowOutline(value: boolean): void {
     this._showOutline$.value = value;
+  }
+
+  public toggleEnlarged(): void {
+    this._enlarged$.value = !this._enlarged$.value;
   }
 }
 
