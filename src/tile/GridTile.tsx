@@ -69,6 +69,8 @@ interface TileProps {
   /** Whether the tile currently has that emphasis. */
   emphasised?: boolean;
   onEmphasise?: () => void;
+  /** Pins or unpins the tile from its menu, when that isn't what emphasis does. */
+  onTogglePin?: () => void;
 }
 
 interface RingingMediaTileProps extends TileProps {
@@ -83,6 +85,7 @@ const RingingMediaTile: FC<RingingMediaTileProps> = ({
   emphasis: _emphasis,
   emphasised: _emphasised,
   onEmphasise,
+  onTogglePin: _onTogglePin,
   ...props
 }) => {
   return (
@@ -140,6 +143,7 @@ const UserMediaTileInner: FC<UserMediaTileProps & { menu: ReactNode }> = ({
   emphasis: _emphasis,
   emphasised: _emphasised,
   onEmphasise,
+  onTogglePin: _onTogglePin,
   ...props
 }) => {
   const { toggleRaisedHand } = useReactionsSender();
@@ -259,7 +263,8 @@ const UserMediaTile: FC<
   UserMediaTileProps & { onOpenProfile?: (() => void) | null }
 > = ({ onOpenProfile = null, ...props }) => {
   const { t } = useTranslation();
-  const { emphasis, emphasised, onEmphasise } = props;
+  const { emphasis, emphasised, onEmphasise, onTogglePin } = props;
+  const pinned = useBehavior(props.vm.pinned$);
   // The same thing double-clicking the tile does, for the menu
   const emphasiseItem = useMemo(() => {
     if (!emphasis || !onEmphasise) return null;
@@ -280,15 +285,35 @@ const UserMediaTile: FC<
       : [ExpandIcon, t("video_tile.enlarge")];
     return <MenuItem Icon={Icon} label={label} onSelect={onEmphasise} />;
   }, [t, emphasis, emphasised, onEmphasise]);
+  const pinItem = useMemo(
+    () =>
+      onTogglePin && (
+        <ToggleMenuItem
+          Icon={PinIcon}
+          label={t("video_tile.pin")}
+          checked={pinned}
+          onSelect={(e) => {
+            e.preventDefault();
+            onTogglePin();
+          }}
+        />
+      ),
+    [t, onTogglePin, pinned],
+  );
   const menu = useMemo(
     () => (
       <UserMediaMenuItems
         vm={props.vm}
         onOpenProfile={onOpenProfile}
-        leading={emphasiseItem}
+        leading={
+          <>
+            {emphasiseItem}
+            {pinItem}
+          </>
+        }
       />
     ),
-    [props.vm, onOpenProfile, emphasiseItem],
+    [props.vm, onOpenProfile, emphasiseItem, pinItem],
   );
 
   // ContextMenu is expensive to render, so we avoid subscribing to any
@@ -408,6 +433,7 @@ const ScreenShareTile: FC<ScreenShareTileProps> = ({
   emphasis: _emphasis,
   emphasised: _emphasised,
   onEmphasise,
+  onTogglePin: _onTogglePin,
   ...props
 }) => {
   const video = useBehavior(vm.video$);
@@ -451,6 +477,7 @@ interface GridTileProps {
   /** What emphasising this tile (double-clicking it) does, if anything. */
   emphasis: TileEmphasis | null;
   onEmphasise: () => void;
+  onTogglePin?: () => void;
 }
 
 export const GridTile: FC<GridTileProps> = ({

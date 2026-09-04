@@ -26,7 +26,11 @@ import { type CallMembershipIdentityParts } from "matrix-js-sdk/lib/matrixrtc/En
 import { computeSlotId } from "matrix-js-sdk/lib/matrixrtc/utils";
 import { v4 as uuidv4 } from "uuid";
 
-import { duplicateTiles, showReactions } from "../../settings/settings";
+import {
+  duplicateTiles,
+  showReactions,
+  unifyGridAndSpotlight,
+} from "../../settings/settings";
 import { Config } from "../../config/Config";
 import { MatrixRTCMode } from "../../config/ConfigOptions";
 import { isFirefox, platform } from "../../Platform";
@@ -331,6 +335,11 @@ export interface CallViewModel {
    * What emphasiseTile would do in the current layout, if anything.
    */
   tileEmphasis$: Behavior<TileEmphasis | null>;
+  /**
+   * Whether grid tiles offer pinning from their menu (when the spotlight's
+   * rail works like the grid, pinning is only done from there).
+   */
+  tilePinnable$: Behavior<boolean>;
   /**
    * Pins a user to the spotlight, or unpins them.
    */
@@ -1398,7 +1407,8 @@ export function createCallViewModel$(
         break;
       case "spotlight-landscape":
       case "spotlight-portrait":
-        if (media.type === "user") togglePinned(media);
+        if (unifyGridAndSpotlight.value$.peek()) tile.toggleEnlarged();
+        else if (media.type === "user") togglePinned(media);
         break;
     }
   };
@@ -1591,10 +1601,17 @@ export function createCallViewModel$(
           return "enlarge";
         case "spotlight-landscape":
         case "spotlight-portrait":
-          return "pin";
+          return unifyGridAndSpotlight.value$.value ? "enlarge" : "pin";
         default:
           return null;
       }
+    }),
+    tilePinnable$: computed(() => {
+      const type = layoutMedia$.value.type;
+      return (
+        (type === "spotlight-landscape" || type === "spotlight-portrait") &&
+        unifyGridAndSpotlight.value$.value
+      );
     }),
     showSpotlightIndicators$: showSpotlightIndicators$,
     spotlightTiled$,

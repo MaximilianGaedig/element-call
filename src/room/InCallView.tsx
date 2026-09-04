@@ -457,6 +457,7 @@ export const InCallView: FC<InCallViewProps> = ({
             : constant(false),
         );
         const emphasis = useBehavior(vm.tileEmphasis$);
+        const pinnable = useBehavior(vm.tilePinnable$);
 
         return model instanceof GridTileViewModel ? (
           <GridTile
@@ -474,6 +475,14 @@ export const InCallView: FC<InCallViewProps> = ({
             focusable={!contentObscured}
             emphasis={emphasis}
             onEmphasise={() => vm.emphasiseTile(model)}
+            onTogglePin={
+              pinnable
+                ? () => {
+                    const media = model.media$.peek();
+                    if (media.type === "user") vm.togglePinned(media);
+                  }
+                : undefined
+            }
           />
         ) : (
           <SpotlightTile

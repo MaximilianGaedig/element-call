@@ -5,7 +5,13 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { type CSSProperties, type FC, type ReactNode, useRef } from "react";
+import {
+  type CSSProperties,
+  type FC,
+  type ReactNode,
+  useMemo,
+  useRef,
+} from "react";
 import classNames from "classnames";
 import { Resizable } from "re-resizable";
 
@@ -17,11 +23,17 @@ import { type MediaViewModel } from "../state/media/MediaViewModel.ts";
 import { type Behavior } from "../state/Behavior.ts";
 import { useBehavior } from "../useBehavior.ts";
 import { useReorderTiles } from "./reorder.ts";
+import { TileGrid, cellCount, useEnlargedTiles } from "./TileGrid";
+import { unifyGridAndSpotlight, useSetting } from "../settings/settings.ts";
 
 interface LayerCSSProperties extends CSSProperties {
   "--rail-width": string;
-  "--rail-tile-width": string;
-  "--rail-tile-height": string;
+}
+
+interface RailArrangement {
+  columns: number;
+  tileWidth: number;
+  tileHeight: number;
 }
 
 // The rail's fixed width before it became resizable, so nothing gets
@@ -34,11 +46,11 @@ const railGap = 20; // Must match --gap in the CSS
  * wrap in reading order, so widening the rail turns one column of a, b, c…
  * into rows of a, b, c / d, e, f / …
  */
-const layerStyle = (
+const arrangeRail = (
   railWidth: number,
   tileCount: number,
   railHeight: number,
-): LayerCSSProperties => {
+): RailArrangement => {
   // Tiles stay in one column, growing to fill the rail's width, for as long
   // as they all fit on the page. Only when they'd run off the bottom do they
   // split into more columns, and only as many as fit horizontally; if even
@@ -66,12 +78,12 @@ const layerStyle = (
       break;
     }
   const tileWidth = widthFor(columns);
-  return {
-    "--rail-width": `${railWidth}px`,
-    "--rail-tile-width": `${tileWidth}px`,
-    "--rail-tile-height": `${Math.floor((tileWidth * 3) / 4)}px`,
-  };
+  return { columns, tileWidth, tileHeight: Math.floor((tileWidth * 3) / 4) };
 };
+
+const layerStyle = (railWidth: number): LayerCSSProperties => ({
+  "--rail-width": `${railWidth}px`,
+});
 
 /**
  * An implementation of the "spotlight landscape" layout, in which the spotlight
@@ -90,7 +102,7 @@ export const makeSpotlightLandscapeLayout: CallLayout<
     Slot,
   }): ReactNode {
     useUpdateLayout();
-    const { width, height } = useBehavior(minBounds$);
+    const { width } = useBehavior(minBounds$);
     const railWidth = useBehavior(model.railWidth$);
     // The width when the drag began; each move reports its delta from there
     const startWidth = useRef(railWidth);
@@ -100,11 +112,7 @@ export const makeSpotlightLandscapeLayout: CallLayout<
     // its element and inserts an overlay while dragging, which would upset
     // the measurement of any slots inside it.
     return (
-      <div
-        ref={ref}
-        className={styles.layer}
-        style={layerStyle(railWidth, model.grid.length, height)}
-      >
+      <div ref={ref} className={styles.layer} style={layerStyle(railWidth)}>
         <div className={styles.spotlight}>
           <Slot
             className={styles.slot}
@@ -146,25 +154,29 @@ export const makeSpotlightLandscapeLayout: CallLayout<
     const { height } = useBehavior(minBounds$);
     const onDragTile = useReorderTiles(model);
     const railWidth = useBehavior(model.railWidth$);
+    // With the developer experiment on, the rail is the grid layout's grid:
+    // enlarged tiles take 2×2 cells and the rest flow around them
+    const [unified] = useSetting(unifyGridAndSpotlight);
+    const enlarged = useEnlargedTiles(model.grid, unified);
+    const cells = cellCount(model.grid.length, enlarged);
+    const { columns, tileWidth, tileHeight } = useMemo(
+      () => arrangeRail(railWidth, cells, height),
+      [railWidth, cells, height],
+    );
 
     return (
-      <div
-        ref={ref}
-        className={styles.layer}
-        style={layerStyle(railWidth, model.grid.length, height)}
-      >
+      <div ref={ref} className={styles.layer} style={layerStyle(railWidth)}>
         <SpotlightSlot media$={model.spotlight.media$} />
-        <div className={styles.grid}>
-          {model.grid.map((m) => (
-            <Slot
-              key={m.id}
-              className={styles.slot}
-              id={m.id}
-              model={m}
-              onDrag={onDragTile(m)}
-            />
-          ))}
-        </div>
+        <TileGrid
+          grid={model.grid}
+          enlarged={enlarged}
+          gap={railGap}
+          tileWidth={tileWidth}
+          tileHeight={tileHeight}
+          columns={columns}
+          Slot={Slot}
+          onDrag={onDragTile}
+        />
       </div>
     );
   },

@@ -1,0 +1,37 @@
+/*
+Copyright 2026 Element Creations Ltd.
+
+SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+Please see LICENSE in the repository root for full details.
+*/
+
+.grid {
+  block-size: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: center;
+  gap: var(--gap);
+}
+
+.grid > .slot {
+  width: var(--width);
+  height: var(--height);
+}
+
+.grid[data-cells] {
+  display: grid;
+  grid-template-columns: repeat(var(--columns), var(--width));
+  grid-auto-rows: var(--height);
+  grid-auto-flow: dense;
+}
+
+.grid[data-cells] > .slot {
+  width: auto;
+  height: auto;
+}
+
+.grid[data-cells] > .slot[data-enlarged] {
+  grid-column: span var(--span);
+  grid-row: span 2;
+}

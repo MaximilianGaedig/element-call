@@ -10,36 +10,6 @@ Please see LICENSE in the repository root for full details.
   block-size: 100%;
 }
 
-.scrolling {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-content: center;
-  gap: var(--gap);
-}
-
-.scrolling > .slot {
-  width: var(--width);
-  height: var(--height);
-}
-
-.scrolling[data-cells] {
-  display: grid;
-  grid-template-columns: repeat(var(--columns), var(--width));
-  grid-auto-rows: var(--height);
-  grid-auto-flow: dense;
-}
-
-.scrolling[data-cells] > .slot {
-  width: auto;
-  height: auto;
-}
-
-.scrolling[data-cells] > .slot[data-enlarged] {
-  grid-column: span var(--span);
-  grid-row: span 2;
-}
-
 .fixed {
   position: relative;
 }

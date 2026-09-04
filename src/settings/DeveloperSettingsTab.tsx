@@ -42,6 +42,7 @@ import {
   duplicateTiles as duplicateTilesSetting,
   debugTileLayout as debugTileLayoutSetting,
   showConnectionStats as showConnectionStatsSetting,
+  unifyGridAndSpotlight as unifyGridAndSpotlightSetting,
   muteAllAudio as muteAllAudioSetting,
   alwaysShowIphoneEarpiece as alwaysShowIphoneEarpieceSetting,
   matrixRTCMode as matrixRTCModeSetting,
@@ -155,6 +156,9 @@ export const DeveloperSettingsTab: FC<Props> = ({
   const matrixRTCModeForced = configMatrixRTCMode !== undefined;
   const effectiveMatrixRTCMode = configMatrixRTCMode ?? matrixRTCMode;
 
+  const [unifyGridAndSpotlight, setUnifyGridAndSpotlight] = useSetting(
+    unifyGridAndSpotlightSetting,
+  );
   const [showConnectionStats, setShowConnectionStats] = useSetting(
     showConnectionStatsSetting,
   );
@@ -429,6 +433,17 @@ export const DeveloperSettingsTab: FC<Props> = ({
           label={t("developer_mode.debug_tile_layout_label")}
           onChange={(event: ChangeEvent<HTMLInputElement>): void =>
             setDebugTileLayout(event.target.checked)
+          }
+        />
+      </FieldRow>
+      <FieldRow>
+        <InputField
+          id="unifyGridAndSpotlight"
+          type="checkbox"
+          checked={unifyGridAndSpotlight}
+          label={t("developer_mode.unify_grid_and_spotlight_label")}
+          onChange={(event: ChangeEvent<HTMLInputElement>): void =>
+            setUnifyGridAndSpotlight(event.target.checked)
           }
         />
       </FieldRow>

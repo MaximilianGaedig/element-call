@@ -34,15 +34,6 @@ unconditionally select the container so we can use cq units */
   block-size: 100%;
 }
 
-.grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--gap);
-  justify-content: center;
-  align-content: center;
-  block-size: 100%;
-}
-
 /* The bar for dragging the split between the spotlight and the rail. It covers
 the gap between them, and shows itself when hovered. It sits on the fixed
 layer, beneath the scrolling layer's tiles; both layers ignore pointer events
@@ -80,9 +71,4 @@ except where switched back on, as here, so hovering the gap reaches it. */
 .handle:hover::before,
 .handle:active::before {
   opacity: 1;
-}
-
-.grid > .slot {
-  inline-size: var(--rail-tile-width);
-  block-size: var(--rail-tile-height);
 }

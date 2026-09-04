@@ -101,7 +101,10 @@ interface DragState {
   over: string | undefined;
 }
 
-interface SlotProps<Model> extends Omit<ComponentProps<"div">, "onDrag"> {
+export interface SlotProps<Model> extends Omit<
+  ComponentProps<"div">,
+  "onDrag"
+> {
   id: string;
   model: Model;
   onDrag?: DragCallback;
