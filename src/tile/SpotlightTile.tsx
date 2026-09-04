@@ -133,6 +133,9 @@ const SpotlightUserMediaItem: FC<SpotlightUserMediaItemProps> = ({
   const speaking = useBehavior(vm.speaking$);
   const pinned = useBehavior(vm.pinned$);
   const moderation = useBehavior(vm.moderation$);
+  // Moderators are shown which tiles they've applied floor control to
+  const moderator = useBehavior(vm.moderator$);
+  const moderated = moderator !== null && moderation.explicit;
 
   // Pinned users live here rather than in the grid, so they get the same menu
   // as a grid tile (from its options button and by right-click), plus a way
@@ -162,6 +165,7 @@ const SpotlightUserMediaItem: FC<SpotlightUserMediaItemProps> = ({
         <button
           aria-label={t("common.options")}
           tabIndex={props.focusable ? undefined : -1}
+          data-moderated={moderated || undefined}
         >
           <OverflowHorizontalIcon aria-hidden width={20} height={20} />
         </button>
