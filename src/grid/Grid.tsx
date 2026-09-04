@@ -63,7 +63,16 @@ interface PlacedTile<Model> extends Tile<Model>, Rect {
    * space.
    */
   container: Rect;
+  /**
+   * Where the tile stacks: later slots in the layout go on top, so that a
+   * PiP slot nested inside a spotlight slot is seen. Tiles' DOM order is
+   * fixed, so stacking must be explicit.
+   */
+  zIndex: number;
 }
+
+/** The z-index of a tile while it's being dragged, above everything else. */
+const dragZIndex = 1000;
 
 interface TileSpring {
   opacity: number;
@@ -389,6 +398,7 @@ export function Grid<
             width: slot.offsetWidth,
             height: slot.offsetHeight,
             container,
+            zIndex: result.length + 1,
           });
         }
       }
@@ -430,10 +440,11 @@ export function Grid<
         y,
         width,
         height,
+        zIndex,
       }: PlacedTile<TileModel>): TileSpringUpdate => ({
         opacity: 0,
         scale: 0,
-        zIndex: 1,
+        zIndex,
         x,
         y,
         width,
@@ -447,6 +458,7 @@ export function Grid<
         y,
         width,
         height,
+        zIndex,
       }: PlacedTile<TileModel>): TileSpringUpdate | null =>
         id === dragState.current?.tileId
           ? null
@@ -455,7 +467,8 @@ export function Grid<
               y,
               width,
               height,
-              immediate,
+              zIndex,
+              immediate: immediate || ((key): boolean => key === "zIndex"),
             },
       leave: { opacity: 0, scale: 0, immediate },
       config: { mass: 0.7, tension: 252, friction: 25 },
@@ -492,7 +505,7 @@ export function Grid<
         endOfGesture
           ? {
               scale: 1,
-              zIndex: 1,
+              zIndex: tile.zIndex,
               x: tile.x,
               y: tile.y,
               width: tile.width,
@@ -504,7 +517,7 @@ export function Grid<
             }
           : {
               scale: 1.1,
-              zIndex: 2,
+              zIndex: dragZIndex,
               x: tileX,
               y: tileY,
               immediate:
