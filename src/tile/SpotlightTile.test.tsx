@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { test, expect, vi } from "vitest";
+import { test, expect, vi, beforeAll, afterAll } from "vitest";
 import { act, isInaccessible, render, screen } from "@testing-library/react";
 import { axe } from "vitest-axe";
 import userEvent from "@testing-library/user-event";
@@ -41,6 +41,19 @@ global.IntersectionObserver = class MockIntersectionObserver {
   public unobserve(): void {}
   public disconnect(): void {}
 } as unknown as typeof IntersectionObserver;
+
+// Tiled media are laid out by Grid, which measures its slots: give jsdom a
+// ResizeObserver and some size, or no tiles would ever be placed
+beforeAll(() => {
+  window.ResizeObserver = class ResizeObserver {
+    public observe(): void {}
+    public unobserve(): void {}
+    public disconnect(): void {}
+  };
+  vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(100);
+  vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(100);
+});
+afterAll(() => vi.restoreAllMocks());
 
 const aliceAndBob = (): [MediaViewModel, MediaViewModel] => {
   const vm1 = mockRemoteMedia(

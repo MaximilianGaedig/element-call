@@ -12,8 +12,11 @@ import {
   type ReactNode,
   type Ref,
   type RefAttributes,
+  createContext,
+  use,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -30,6 +33,13 @@ import {
   OverflowHorizontalIcon,
 } from "@vector-im/compound-design-tokens/assets/web/icons";
 import { animated } from "@react-spring/web";
+
+import {
+  Grid,
+  type LayoutProps,
+  type TileProps,
+  useUpdateLayout,
+} from "../grid/Grid";
 import { useTranslation } from "react-i18next";
 import classNames from "classnames";
 import { type TrackReferenceOrPlaceholder } from "@livekit/components-core";
@@ -62,6 +72,7 @@ import { UserMediaMenuItems } from "./UserMediaMenuItems";
 interface SpotlightItemBaseProps {
   ref?: Ref<HTMLDivElement>;
   className?: string;
+  style?: ComponentProps<typeof animated.div>["style"];
   "data-id": string;
   targetWidth: number;
   targetHeight: number;
@@ -133,6 +144,7 @@ const SpotlightUserMediaItem: FC<SpotlightUserMediaItemProps> = ({
   const speaking = useBehavior(vm.speaking$);
   const pinned = useBehavior(vm.pinned$);
   const moderation = useBehavior(vm.moderation$);
+  const unpinnable = pinned && !moderation.pinned && onUnpin !== undefined;
   // Moderators are shown which tiles they've applied floor control to
   const moderator = useBehavior(vm.moderator$);
   const moderated = moderator !== null && moderation.explicit;
@@ -145,7 +157,7 @@ const SpotlightUserMediaItem: FC<SpotlightUserMediaItemProps> = ({
     <UserMediaMenuItems
       vm={vm}
       leading={
-        pinned && !moderation.pinned && onUnpin ? (
+        unpinnable ? (
           <MenuItem
             Icon={UnpinIcon}
             label={t("video_tile.unpin")}
@@ -326,6 +338,7 @@ interface SpotlightItemProps {
   /** Whether this item shares the spotlight with others as a tile. */
   tiled: boolean;
   className?: string;
+  style?: ComponentProps<typeof animated.div>["style"];
   "aria-hidden"?: boolean;
   onUnpin: ((vm: UserMediaViewModel) => void) | undefined;
 }
@@ -333,6 +346,7 @@ interface SpotlightItemProps {
 const SpotlightItem: FC<SpotlightItemProps> = ({
   ref: theirRef,
   vm,
+  style,
   targetWidth,
   targetHeight,
   showNameTags,
@@ -371,6 +385,7 @@ const SpotlightItem: FC<SpotlightItemProps> = ({
     ref,
     "data-id": vm.id,
     className: classNames(className, styles.item, { [styles.snap]: snap }),
+    style,
     targetWidth,
     targetHeight,
     userId: vm.userId,
@@ -467,6 +482,87 @@ const ScreenShareVolumeButton: FC<ScreenShareVolumeButtonProps> = ({ vm }) => {
   );
 };
 
+/** What the tiled items share, beyond what each gets from its slot. */
+interface SpotlightItemsContext {
+  showNameTags: boolean;
+  showRingingStatus: boolean;
+  background: "solid" | "transparent";
+  focusable: boolean;
+  intersectionObserver$: Behavior<IntersectionObserver>;
+  className: string | undefined;
+  onUnpin: ((vm: UserMediaViewModel) => void) | undefined;
+}
+
+const SpotlightItemsContext = createContext<SpotlightItemsContext | null>(null);
+
+interface SpotlightItemsModel {
+  items: MediaViewModel[];
+  columns: number;
+  onMove: ((media: MediaViewModel, to: MediaViewModel) => void) | undefined;
+}
+
+// When the spotlight shows several media as tiles, they're laid out by the
+// same Grid as the call's tiles, so that they can be dragged and rearranged
+// with exactly the same behaviour: this is its layout of slots...
+const SpotlightItemsLayout: FC<
+  LayoutProps<SpotlightItemsModel, MediaViewModel, HTMLDivElement>
+> = ({ ref, model: { items, columns, onMove }, Slot }) => {
+  useUpdateLayout();
+  return (
+    <div
+      ref={ref}
+      className={styles.itemsLayout}
+      style={{ "--tiled-columns": columns } as CSSProperties}
+    >
+      {items.map((vm) => (
+        <Slot
+          key={vm.id}
+          id={vm.id}
+          model={vm}
+          className={styles.itemSlot}
+          onDrag={
+            onMove &&
+            (({ over }): void => {
+              const to = items.find((m) => m.id === over);
+              if (to !== undefined) onMove(vm, to);
+            })
+          }
+        />
+      ))}
+    </div>
+  );
+};
+
+// ...and this is the tile that fills each slot
+const SpotlightItemTile: FC<TileProps<MediaViewModel, HTMLDivElement>> = ({
+  ref,
+  className,
+  style,
+  targetWidth,
+  targetHeight,
+  model: vm,
+}) => {
+  const context = use(SpotlightItemsContext)!;
+  return (
+    <SpotlightItem
+      ref={ref}
+      vm={vm}
+      className={classNames(className, context.className)}
+      style={style}
+      targetWidth={targetWidth}
+      targetHeight={targetHeight}
+      showNameTags={context.showNameTags}
+      showRingingStatus={context.showRingingStatus}
+      background={context.background}
+      focusable={context.focusable}
+      intersectionObserver$={context.intersectionObserver$}
+      snap={false}
+      tiled
+      onUnpin={context.onUnpin}
+    />
+  );
+};
+
 interface Props {
   ref?: Ref<HTMLDivElement>;
   vm: SpotlightTileViewModel;
@@ -480,8 +576,13 @@ interface Props {
    * through them one at a time.
    */
   tiled?: boolean;
-  /** Unpins a user the local user pinned; enables Unpin in item menus. */
+  /**
+   * Pins or unpins a user: what double-clicking a user in the spotlight does,
+   * and (for users the local user pinned) the Unpin item in their menu.
+   */
   onUnpin?: (vm: UserMediaViewModel) => void;
+  /** Moves a tiled item to where another sits; enables dragging them. */
+  onMove?: (media: MediaViewModel, to: MediaViewModel) => void;
   showNameTags: boolean;
   showRingingStatus: boolean;
   focusable: boolean;
@@ -503,6 +604,7 @@ export const SpotlightTile: FC<Props> = ({
   showIndicators,
   tiled: tiledProp = false,
   onUnpin,
+  onMove,
   showNameTags,
   showRingingStatus,
   focusable = true,
@@ -529,7 +631,6 @@ export const SpotlightTile: FC<Props> = ({
   const visibleMedia = media.at(visibleIndex);
   const tiled = tiledProp && media.length > 1 && !expanded;
   const columns = Math.ceil(Math.sqrt(media.length));
-  const rows = Math.ceil(media.length / columns);
   const canGoBack = !tiled && visibleIndex > 0;
   const canGoToNext =
     !tiled && visibleIndex !== -1 && visibleIndex < media.length - 1;
@@ -599,6 +700,31 @@ export const SpotlightTile: FC<Props> = ({
 
   const ToggleExpandIcon = expanded ? CollapseIcon : ExpandIcon;
 
+  const itemsContext = useMemo<SpotlightItemsContext>(
+    () => ({
+      showNameTags,
+      showRingingStatus,
+      background,
+      focusable,
+      intersectionObserver$,
+      className: itemClassName,
+      onUnpin,
+    }),
+    [
+      showNameTags,
+      showRingingStatus,
+      background,
+      focusable,
+      intersectionObserver$,
+      itemClassName,
+      onUnpin,
+    ],
+  );
+  const itemsModel = useMemo<SpotlightItemsModel>(
+    () => ({ items: media, columns, onMove }),
+    [media, columns, onMove],
+  );
+
   return (
     <animated.div
       ref={ref}
@@ -619,34 +745,41 @@ export const SpotlightTile: FC<Props> = ({
           <ChevronLeftIcon aria-hidden width={24} height={24} />
         </button>
       )}
-      <div
-        className={styles.contents}
-        data-tiled={tiled || undefined}
-        style={{ "--tiled-columns": columns } as CSSProperties}
-      >
-        {media.map((vm) => (
-          <SpotlightItem
-            key={vm.id}
-            vm={vm}
-            targetWidth={tiled ? targetWidth / columns : targetWidth}
-            targetHeight={tiled ? targetHeight / rows : targetHeight}
-            showRingingStatus={showRingingStatus}
-            showNameTags={showNameTags}
-            background={background}
-            focusable={focusable}
-            intersectionObserver$={intersectionObserver$}
-            // This is how we get the container to scroll to the right media
-            // when the previous/next buttons are clicked: we temporarily
-            // remove all scroll snap points except for just the one media
-            // that we want to bring into view
-            snap={scrollToId === null || scrollToId === vm.id}
-            tiled={tiled}
-            className={itemClassName}
-            aria-hidden={!tiled && (scrollToId ?? visibleId) !== vm.id}
-            onUnpin={onUnpin}
+      {tiled ? (
+        <SpotlightItemsContext value={itemsContext}>
+          <Grid
+            className={classNames(styles.contents, styles.itemsGrid)}
+            model={itemsModel}
+            Layout={SpotlightItemsLayout}
+            Tile={SpotlightItemTile}
           />
-        ))}
-      </div>
+        </SpotlightItemsContext>
+      ) : (
+        <div className={styles.contents}>
+          {media.map((vm) => (
+            <SpotlightItem
+              key={vm.id}
+              vm={vm}
+              targetWidth={targetWidth}
+              targetHeight={targetHeight}
+              showRingingStatus={showRingingStatus}
+              showNameTags={showNameTags}
+              background={background}
+              focusable={focusable}
+              intersectionObserver$={intersectionObserver$}
+              // This is how we get the container to scroll to the right media
+              // when the previous/next buttons are clicked: we temporarily
+              // remove all scroll snap points except for just the one media
+              // that we want to bring into view
+              snap={scrollToId === null || scrollToId === vm.id}
+              tiled={false}
+              className={itemClassName}
+              aria-hidden={(scrollToId ?? visibleId) !== vm.id}
+              onUnpin={onUnpin}
+            />
+          ))}
+        </div>
+      )}
 
       <div className={styles.bottomRightButtons}>
         {visibleMedia?.type === "screen share" && !visibleMedia.local && (

@@ -1776,4 +1776,44 @@ describe("floor control", () => {
       );
     });
   });
+
+  test("pinned users can be rearranged within the spotlight", () => {
+    withTestScheduler(({ schedule, expectObservable }) => {
+      withCallViewModel(
+        {
+          remoteParticipants$: constant([aliceParticipant, bobParticipant]),
+          rtcMembers$: constant([localRtcMember, aliceRtcMember, bobRtcMember]),
+          floorControl: {
+            devices: { [aliceId]: { pinned: true }, [bobId]: { pinned: true } },
+          },
+        },
+        (vm) => {
+          const media = (id: string): MediaViewModel => {
+            const l = vm.layout$.value;
+            if (l.type !== "spotlight-landscape") throw new Error(l.type);
+            return l.spotlight.media$.value.find((m) => m.id === id)!;
+          };
+          schedule("s-m", {
+            s: () => vm.layoutSwitchVm$.value!.setLayout("spotlight"),
+            m: () =>
+              vm.moveSpotlightItem(media(`${bobId}:0`), media(`${aliceId}:0`)),
+          });
+          expectObservable(summarizeLayout$(vm.layout$), {
+            settled: true,
+          }).toBe("a-b", {
+            a: {
+              type: "spotlight-landscape",
+              spotlight: [`${aliceId}:0`, `${bobId}:0`],
+              grid: [`${localId}:0`],
+            },
+            b: {
+              type: "spotlight-landscape",
+              spotlight: [`${bobId}:0`, `${aliceId}:0`],
+              grid: [`${localId}:0`],
+            },
+          });
+        },
+      );
+    });
+  });
 });

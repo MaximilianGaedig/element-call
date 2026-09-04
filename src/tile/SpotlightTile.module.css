@@ -27,17 +27,29 @@ Please see LICENSE in the repository root for full details.
   border-radius: 0;
 }
 
-.contents[data-tiled] {
-  display: grid;
-  grid-template-columns: repeat(var(--tiled-columns), minmax(0, 1fr));
-  grid-auto-rows: minmax(0, 1fr);
-  gap: var(--cpd-space-2x);
+/* Several media shown as tiles: a Grid of slots, filled by animated tiles */
+.itemsGrid {
+  display: block;
   overflow: hidden;
   scroll-snap-type: none;
 }
 
-.contents[data-tiled] > .item {
+.itemsLayout {
+  block-size: 100%;
+  display: grid;
+  grid-template-columns: repeat(var(--tiled-columns), minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  gap: var(--cpd-space-2x);
+}
+
+.itemSlot {
   min-inline-size: 0;
+}
+
+.itemsGrid .item {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
   --media-view-border-radius: var(--cpd-space-4x);
 }
 

@@ -71,7 +71,7 @@ import {
   type Layout,
   type LayoutMedia,
 } from "../layout-types.ts";
-import { type OrderedMember } from "../gridOrder.ts";
+import { moveMember, type OrderedMember } from "../gridOrder.ts";
 import {
   chooseSpotlightSpeaker,
   computeLayoutMedia,
@@ -335,6 +335,8 @@ export interface CallViewModel {
    * Pins a user to the spotlight, or unpins them.
    */
   togglePinned: (media: UserMediaViewModel) => void;
+  /** Puts `media` where `to` currently sits in the spotlight, when tiled. */
+  moveSpotlightItem: (media: MediaViewModel, to: MediaViewModel) => void;
   showSpotlightIndicators$: Behavior<boolean>;
   /**
    * Whether a spotlight holding several media should show them all at once as
@@ -966,12 +968,35 @@ export function createCallViewModel$(
   );
 
   /**
+   * Media IDs in the order the user has dragged them into within the
+   * spotlight. Anything not listed keeps its natural place after them.
+   */
+  const spotlightOrder$ = state<readonly string[]>([]);
+
+  /**
    * The media to show in the spotlight.
    */
-  const spotlight$ = computed<MediaViewModel[]>(
-    () => spotlightAndPip$.value.spotlight,
-    shallowArrayEquals,
-  );
+  const spotlight$ = computed<MediaViewModel[]>(() => {
+    const order = spotlightOrder$.value;
+    const natural = spotlightAndPip$.value.spotlight;
+    const rank = (m: MediaViewModel, i: number): number => {
+      const r = order.indexOf(m.id);
+      return r === -1 ? order.length + i : r;
+    };
+    return natural
+      .map((m, i) => [m, rank(m, i)] as const)
+      .sort(([, a], [, b]) => a - b)
+      .map(([m]) => m);
+  }, shallowArrayEquals);
+
+  const moveSpotlightItem = (
+    media: MediaViewModel,
+    to: MediaViewModel,
+  ): void => {
+    spotlightOrder$.value = moveMember(spotlight$.peek(), media, to).map(
+      (m) => m.id,
+    );
+  };
 
   /**
    * The media to show in the picture-in-picture tile of the expanded spotlight
@@ -1558,6 +1583,7 @@ export function createCallViewModel$(
     floorControl,
     emphasiseTile,
     togglePinned,
+    moveSpotlightItem,
     tileEmphasis$: computed(() => {
       switch (layoutMedia$.value.type) {
         case "grid":
