@@ -117,6 +117,7 @@ const RemoteItems: FC<{ vm: RemoteUserMediaViewModel }> = ({ vm }) => {
   const moderation = useBehavior(vm.moderation$);
   const moderator = useBehavior(vm.moderator$);
   const memberActions = useBehavior(vm.memberActions$);
+  const isModerator = useBehavior(vm.isModerator$);
   // The volume for everyone as it's being dragged, before it's sent
   const [draftModeratedVolume, setDraftModeratedVolume] = useState<
     number | null
@@ -234,6 +235,17 @@ const RemoteItems: FC<{ vm: RemoteUserMediaViewModel }> = ({ vm }) => {
               void moderator.setPinned(!moderation.pinned);
             }}
           />
+          {memberActions?.setModerator && (
+            <ToggleMenuItem
+              Icon={AdminIcon}
+              label={t("power_level.moderator")}
+              checked={isModerator}
+              onSelect={(e) => {
+                e.preventDefault();
+                void memberActions.setModerator!(!isModerator);
+              }}
+            />
+          )}
           {/* Once hidden the tile is gone, so unhiding is in Moderator
           settings instead */}
           <MenuItem
@@ -248,13 +260,6 @@ const RemoteItems: FC<{ vm: RemoteUserMediaViewModel }> = ({ vm }) => {
             onSelect={() => void moderator.setBlocked(true)}
           />
         </>
-      )}
-      {memberActions?.makeModerator && (
-        <MenuItem
-          Icon={AdminIcon}
-          label={t("video_tile.make_moderator")}
-          onSelect={() => void memberActions.makeModerator!()}
-        />
       )}
       {memberActions?.kick && (
         <MenuItem

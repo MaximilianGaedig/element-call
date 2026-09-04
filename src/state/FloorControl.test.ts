@@ -289,17 +289,16 @@ describe("createFloorControl", () => {
     expect(fc.moderator$("@bob:e:B", "@bob:e").value).toBe(null);
   });
 
-  it("lets a user who can set power levels make others moderators", async () => {
+  it("lets a user who can set power levels make and unmake moderators", async () => {
     const { room, sendStateEvent } = setup(undefined, ["@admin:e", "@mod:e"], {
       "@admin:e": 100,
       "@mod:e": 50,
     });
     const admin = createFloorControl(testScope(), room, "@admin:e", slot);
-    // Not for those who already are, or for yourself
-    expect(admin.memberActions$("@mod:e").value?.makeModerator).toBe(null);
+    // Not for yourself
     expect(admin.memberActions$("@admin:e").value).toBe(null);
-    await admin.memberActions$("@alice:e").value!.makeModerator!();
-    expect(sendStateEvent).toHaveBeenCalledWith(
+    await admin.memberActions$("@alice:e").value!.setModerator!(true);
+    expect(sendStateEvent).toHaveBeenLastCalledWith(
       "!room",
       "m.room.power_levels",
       {
@@ -308,9 +307,16 @@ describe("createFloorControl", () => {
       },
       "",
     );
-    // A moderator who can't change power levels can't promote
+    await admin.memberActions$("@mod:e").value!.setModerator!(false);
+    expect(sendStateEvent).toHaveBeenLastCalledWith(
+      "!room",
+      "m.room.power_levels",
+      { users: { "@admin:e": 100 }, events: { [FloorControlEventType]: 50 } },
+      "",
+    );
+    // A moderator who can't change power levels can't do either
     const mod = createFloorControl(testScope(), room, "@mod:e", slot);
-    expect(mod.memberActions$("@alice:e").value?.makeModerator ?? null).toBe(
+    expect(mod.memberActions$("@alice:e").value?.setModerator ?? null).toBe(
       null,
     );
   });

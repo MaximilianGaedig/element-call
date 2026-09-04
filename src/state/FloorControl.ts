@@ -112,8 +112,13 @@ export interface ModeratorControls {
 export interface MemberActions {
   kick: (() => Promise<void>) | null;
   ban: (() => Promise<void>) | null;
-  /** Raises the user's power level to what floor control needs. */
-  makeModerator: (() => Promise<void>) | null;
+  /**
+   * Makes the user a moderator by raising their power level to what floor
+   * control needs, or takes that back by unsetting their power level. Set
+   * only when the local user may make the change from the user's current
+   * state.
+   */
+  setModerator: ((moderator: boolean) => Promise<void>) | null;
 }
 
 interface PowerLevelsContent {
@@ -263,28 +268,38 @@ export function createFloorControl(
       state.hasSufficientPowerLevelFor(action, localLevel) &&
       (state.getMember(userId)?.powerLevel ?? 0) < localLevel;
   });
-  // Whether the local user may raise the given user's power level to what
-  // floor control needs: they must be able to change power levels, have at
-  // least that level themselves, and outrank the user
-  const mayPromote$ = read((state) => {
+  // Whether the local user may change whether the given user is a moderator:
+  // they must be able to change power levels and outrank the user, and to
+  // make someone a moderator they need at least that level themselves
+  const maySetModerator$ = read((state) => {
     const localLevel = state.getMember(localUserId)?.powerLevel ?? 0;
     const { events, state_default: stateDefault } = powerLevels$.value;
     const required = events?.[FloorControlEventType] ?? stateDefault ?? 50;
-    return (userId: string): boolean =>
-      userId !== localUserId &&
-      state.maySendStateEvent(EventType.RoomPowerLevels, localUserId) &&
-      !state.maySendStateEvent(FloorControlEventType, userId) &&
-      localLevel >= required &&
-      (state.getMember(userId)?.powerLevel ?? 0) < localLevel;
+    return (userId: string): boolean => {
+      if (
+        userId === localUserId ||
+        !state.maySendStateEvent(EventType.RoomPowerLevels, localUserId) ||
+        (state.getMember(userId)?.powerLevel ?? 0) >= localLevel
+      )
+        return false;
+      const moderator = state.maySendStateEvent(FloorControlEventType, userId);
+      return moderator || localLevel >= required;
+    };
   });
-  const makeModerator = async (userId: string): Promise<void> => {
+  const setModerator = async (
+    userId: string,
+    moderator: boolean,
+  ): Promise<void> => {
     const content = powerLevels$.peek();
     const required =
       content.events?.[FloorControlEventType] ?? content.state_default ?? 50;
+    const users = { ...content.users };
+    if (moderator) users[userId] = required;
+    else delete users[userId];
     await room.client.sendStateEvent(
       room.roomId,
       EventType.RoomPowerLevels,
-      { ...content, users: { ...content.users, [userId]: required } },
+      { ...content, users },
       "",
     );
   };
@@ -403,8 +418,8 @@ export function createFloorControl(
         const mayRemove = mayRemove$.value;
         const kick = mayRemove(userId, "kick");
         const ban = mayRemove(userId, "ban");
-        const promote = mayPromote$.value(userId);
-        return kick || ban || promote
+        const moderator = maySetModerator$.value(userId);
+        return kick || ban || moderator
           ? {
               kick: kick
                 ? async () => setMembership(userId, KnownMembership.Leave)
@@ -412,7 +427,9 @@ export function createFloorControl(
               ban: ban
                 ? async () => setMembership(userId, KnownMembership.Ban)
                 : null,
-              makeModerator: promote ? async () => makeModerator(userId) : null,
+              setModerator: moderator
+                ? async (on) => setModerator(userId, on)
+                : null,
             }
           : null;
       }),
