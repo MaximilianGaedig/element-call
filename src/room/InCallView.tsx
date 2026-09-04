@@ -456,7 +456,7 @@ export const InCallView: FC<InCallViewProps> = ({
             ? model.showOutline$
             : constant(false),
         );
-        const emphasis = useBehavior(vm.tileEmphasis$);
+        const canEnlarge = useBehavior(vm.canEnlargeTiles$);
         const pinnable = useBehavior(vm.tilePinnable$);
 
         return model instanceof GridTileViewModel ? (
@@ -473,8 +473,8 @@ export const InCallView: FC<InCallViewProps> = ({
             showRingingStatus={showRingingStatus}
             showOutline={showOutline}
             focusable={!contentObscured}
-            emphasis={emphasis}
-            onEmphasise={() => vm.emphasiseTile(model)}
+            enlargeable={canEnlarge}
+            onToggleEnlarged={() => vm.toggleTileEnlarged(model)}
             onTogglePin={
               pinnable
                 ? () => {

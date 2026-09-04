@@ -137,16 +137,6 @@ export const muteAllAudio = new Setting<boolean>("mute-all-audio", false);
 
 export const alwaysShowSelf = new Setting<boolean>("always-show-self", true);
 
-/**
- * Developer experiment: the spotlight's rail behaves exactly like the grid,
- * so double-clicking enlarges, active speakers can be enlarged, and pinning is
- * only done from the tile's menu.
- */
-export const unifyGridAndSpotlight = new Setting<boolean>(
-  "unify-grid-and-spotlight",
-  false,
-);
-
 export const enlargeActiveSpeakers = new Setting<boolean>(
   "enlarge-active-speakers",
   false,

@@ -26,11 +26,7 @@ import { type CallMembershipIdentityParts } from "matrix-js-sdk/lib/matrixrtc/En
 import { computeSlotId } from "matrix-js-sdk/lib/matrixrtc/utils";
 import { v4 as uuidv4 } from "uuid";
 
-import {
-  duplicateTiles,
-  showReactions,
-  unifyGridAndSpotlight,
-} from "../../settings/settings";
+import { duplicateTiles, showReactions } from "../../settings/settings";
 import { Config } from "../../config/Config";
 import { MatrixRTCMode } from "../../config/ConfigOptions";
 import { isFirefox, platform } from "../../Platform";
@@ -186,9 +182,6 @@ export type WindowMode = "normal" | "narrow" | "flat" | "pip";
 /** Why we left the call. */
 export type LeaveReason = "user" | "blocked" | AutoLeaveReason;
 
-/** What giving a tile emphasis does in the current layout. */
-export type TileEmphasis = "enlarge" | "pin";
-
 interface LayoutInternals {
   layout: Layout;
   overflowing: boolean;
@@ -330,14 +323,13 @@ export interface CallViewModel {
    * (double-clicking it). In the grid layout this doubles the tile's size; in
    * the spotlight layouts it pins the user to the spotlight.
    */
-  emphasiseTile: (tile: GridTileViewModel) => void;
+  toggleTileEnlarged: (tile: GridTileViewModel) => void;
   /**
-   * What emphasiseTile would do in the current layout, if anything.
+   * Whether toggleTileEnlarged does anything in the current layout.
    */
-  tileEmphasis$: Behavior<TileEmphasis | null>;
+  canEnlargeTiles$: Behavior<boolean>;
   /**
-   * Whether grid tiles offer pinning from their menu (when the spotlight's
-   * rail works like the grid, pinning is only done from there).
+   * Whether grid tiles offer pinning from their menu.
    */
   tilePinnable$: Behavior<boolean>;
   /**
@@ -1399,18 +1391,16 @@ export function createCallViewModel$(
     layoutInternals$.value = { layout, overflowing, tiles };
   });
 
-  const emphasiseTile = (tile: GridTileViewModel): void => {
-    const media = tile.media$.peek();
-    switch (layoutMedia$.peek().type) {
-      case "grid":
-        tile.toggleEnlarged();
-        break;
-      case "spotlight-landscape":
-      case "spotlight-portrait":
-        if (unifyGridAndSpotlight.value$.peek()) tile.toggleEnlarged();
-        else if (media.type === "user") togglePinned(media);
-        break;
-    }
+  const gridLikeLayout$ = computed(() => {
+    const type = layoutMedia$.value.type;
+    return (
+      type === "grid" ||
+      type === "spotlight-landscape" ||
+      type === "spotlight-portrait"
+    );
+  });
+  const toggleTileEnlarged = (tile: GridTileViewModel): void => {
+    if (gridLikeLayout$.peek()) tile.toggleEnlarged();
   };
 
   /**
@@ -1592,26 +1582,13 @@ export function createCallViewModel$(
     }),
     tileStoreGeneration$: tileStoreGeneration$,
     floorControl,
-    emphasiseTile,
+    toggleTileEnlarged,
     togglePinned,
     moveSpotlightItem,
-    tileEmphasis$: computed(() => {
-      switch (layoutMedia$.value.type) {
-        case "grid":
-          return "enlarge";
-        case "spotlight-landscape":
-        case "spotlight-portrait":
-          return unifyGridAndSpotlight.value$.value ? "enlarge" : "pin";
-        default:
-          return null;
-      }
-    }),
+    canEnlargeTiles$: gridLikeLayout$,
     tilePinnable$: computed(() => {
       const type = layoutMedia$.value.type;
-      return (
-        (type === "spotlight-landscape" || type === "spotlight-portrait") &&
-        unifyGridAndSpotlight.value$.value
-      );
+      return type === "spotlight-landscape" || type === "spotlight-portrait";
     }),
     showSpotlightIndicators$: showSpotlightIndicators$,
     spotlightTiled$,

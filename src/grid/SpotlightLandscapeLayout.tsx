@@ -24,7 +24,6 @@ import { type Behavior } from "../state/Behavior.ts";
 import { useBehavior } from "../useBehavior.ts";
 import { useReorderTiles } from "./reorder.ts";
 import { TileGrid, cellCount, useEnlargedTiles } from "./TileGrid";
-import { unifyGridAndSpotlight, useSetting } from "../settings/settings.ts";
 
 interface LayerCSSProperties extends CSSProperties {
   "--rail-width": string;
@@ -154,10 +153,9 @@ export const makeSpotlightLandscapeLayout: CallLayout<
     const { height } = useBehavior(minBounds$);
     const onDragTile = useReorderTiles(model);
     const railWidth = useBehavior(model.railWidth$);
-    // With the developer experiment on, the rail is the grid layout's grid:
-    // enlarged tiles take 2×2 cells and the rest flow around them
-    const [unified] = useSetting(unifyGridAndSpotlight);
-    const enlarged = useEnlargedTiles(model.grid, unified);
+    // The rail is the grid layout's grid: enlarged tiles take 2×2 cells and
+    // the rest flow around them
+    const enlarged = useEnlargedTiles(model.grid);
     const cells = cellCount(model.grid.length, enlarged);
     const { columns, tileWidth, tileHeight } = useMemo(
       () => arrangeRail(railWidth, cells, height),

@@ -36,20 +36,16 @@ interface GridCSSProperties extends CSSProperties {
 /**
  * Tracks which of the given tiles are enlarged, as one array so that the
  * layout only re-renders when the set of enlarged tiles changes.
- * @param enabled When false, no tile counts as enlarged.
  */
-export function useEnlargedTiles(
-  grid: GridTileViewModel[],
-  enabled = true,
-): boolean[] {
+export function useEnlargedTiles(grid: GridTileViewModel[]): boolean[] {
   return useBehavior(
     useMemo(
       () =>
         computed(
-          () => (enabled ? grid.map((tile) => tile.enlarged$.value) : []),
+          () => grid.map((tile) => tile.enlarged$.value),
           shallowArrayEquals,
         ),
-      [grid, enabled],
+      [grid],
     ),
   );
 }
