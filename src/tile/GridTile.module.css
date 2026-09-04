@@ -115,3 +115,8 @@ borders don't support gradients */
   background: var(--cpd-color-bg-subtle-primary);
   border-color: var(--cpd-color-border-interactive-hovered);
 }
+
+.menuHeading {
+  padding: var(--cpd-space-2x) var(--cpd-space-4x);
+  color: var(--cpd-color-text-secondary);
+}

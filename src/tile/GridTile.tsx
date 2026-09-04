@@ -42,6 +42,7 @@ import {
   MenuItem,
   ToggleMenuItem,
   Menu,
+  Separator,
   Text,
 } from "@vector-im/compound-web";
 
@@ -465,6 +466,19 @@ const RemoteUserMediaTile: FC<RemoteUserMediaTileProps> = ({
       }
       menuEnd={
         <>
+          {(moderator || memberActions) && (
+            <>
+              <Separator />
+              <Text
+                as="div"
+                size="sm"
+                weight="semibold"
+                className={styles.menuHeading}
+              >
+                {t("video_tile.moderator_controls")}
+              </Text>
+            </>
+          )}
           {moderator && (
             <>
               <ToggleMenuItem
