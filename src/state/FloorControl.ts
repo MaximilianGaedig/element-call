@@ -45,6 +45,11 @@ export interface FloorControlContent {
   defaults?: DeviceControlContent;
   /** Keyed by media ID: `${userId}:${deviceId}`. */
   devices?: Record<string, DeviceControlContent>;
+  /**
+   * Auditorium mode: the power level a user needs for their tile to be shown
+   * at all. Unset means everyone is shown.
+   */
+  auditorium_visibility?: number;
 }
 
 /** What floor control asks of a device, with the defaults applied. */
@@ -53,12 +58,15 @@ export interface Moderation {
   videoMuted: boolean;
   /** A multiplier to apply to the device's audio, if a moderator set one. */
   volume: number | undefined;
+  /** Whether the device's tile is hidden by auditorium mode. */
+  hidden: boolean;
 }
 
 export const unmoderated: Moderation = {
   audioMuted: false,
   videoMuted: false,
   volume: undefined,
+  hidden: false,
 };
 
 /** Actions a moderator can take on a device. */
@@ -90,6 +98,9 @@ export interface FloorControl {
   memberActions$: (userId: string) => Behavior<MemberActions | null>;
   setDevice: (mediaId: string, patch: DeviceControlContent) => Promise<void>;
   setDefaults: (patch: DeviceControlContent) => Promise<void>;
+  setAuditoriumVisibility: (level: number | undefined) => Promise<void>;
+  /** The room's default power level for users, for labelling levels. */
+  usersDefault$: Behavior<number>;
 }
 
 export const mediaId = (userId: string, deviceId: string): string =>
@@ -128,6 +139,14 @@ export function createFloorControl(
       state.maySendStateEvent(FloorControlEventType, userId),
   );
   const canModerate$ = computed(() => mayModerate$.value(localUserId));
+  const usersDefault$ = read(
+    (state) =>
+      (state.getStateEvents(EventType.RoomPowerLevels, "")?.getContent()
+        .users_default as number | undefined) ?? 0,
+  );
+  const powerLevel$ = read(
+    (state) => (userId: string) => state.getMember(userId)?.powerLevel,
+  );
   // Whether the local user outranks the given user and may kick or ban
   const mayRemove$ = read((state) => {
     const localLevel = state.getMember(localUserId)?.powerLevel ?? 0;
@@ -176,18 +195,33 @@ export function createFloorControl(
     const content = content$.peek();
     await send({ ...content, defaults: { ...content.defaults, ...patch } });
   };
+  const setAuditoriumVisibility = async (
+    level: number | undefined,
+  ): Promise<void> => {
+    const content = { ...content$.peek() };
+    if (level === undefined) delete content.auditorium_visibility;
+    else content.auditorium_visibility = level;
+    await send(content);
+  };
 
   return {
     content$,
     canModerate$,
     moderation$: (id, userId) =>
       computed(() => {
-        const { defaults, devices } = content$.value;
+        const {
+          defaults,
+          devices,
+          auditorium_visibility: visibility,
+        } = content$.value;
         const device = devices?.[id];
         return {
           audioMuted: device?.audio_muted ?? defaults?.audio_muted ?? false,
           videoMuted: device?.video_muted ?? defaults?.video_muted ?? false,
           volume: toMultiplier(device?.volume ?? defaults?.volume),
+          hidden:
+            visibility !== undefined &&
+            (powerLevel$.value(userId) ?? usersDefault$.value) < visibility,
         };
       }),
     moderator$: (id) =>
@@ -221,5 +255,7 @@ export function createFloorControl(
       }),
     setDevice,
     setDefaults,
+    setAuditoriumVisibility,
+    usersDefault$,
   };
 }

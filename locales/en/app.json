@@ -170,6 +170,12 @@
   "mute_microphone_button_label": "Mute microphone",
   "participant_count_one": "{{count, number}}",
   "participant_count_other": "{{count, number}}",
+  "power_level": {
+    "admin": "Admin",
+    "custom": "Custom level ({{level}})",
+    "default": "Default",
+    "moderator": "Moderator"
+  },
   "qr_code": "QR Code",
   "rageshake_button_error_caption": "Retry sending logs",
   "rageshake_request_modal": {
@@ -236,6 +242,8 @@
     "feedback_tab_title": "Feedback",
     "framerate_label": "Framerate",
     "moderator": {
+      "auditorium_label": "Auditorium mode: only show tiles from…",
+      "auditorium_off": "Everyone",
       "defaults_description": "Applies to everyone, moderators included. Individual devices can be unmuted from their tile's menu.",
       "mute_audio_by_default": "Mute everyone's microphone by default",
       "mute_video_by_default": "Turn off everyone's camera by default"

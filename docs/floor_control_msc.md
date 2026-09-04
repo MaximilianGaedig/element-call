@@ -30,6 +30,7 @@ the same room.
       "audio_muted": true,
       "video_muted": false
     },
+    "auditorium_visibility": 50,
     "devices": {
       "@alice:example.org:DEVICEID": {
         "audio_muted": false
@@ -56,9 +57,12 @@ the same room.
     need not honour more than 131072 (twice). An integer because Matrix
     events cannot carry floats.
 - A device's effective controls are its own entry, falling back to `defaults`
-  for any field the entry does not set. This applies to everyone in the room,
-  moderators included: anyone who can send this event can control anyone,
-  regardless of power level, and is controlled by it in turn.
+  for any field the entry does not set. Users who could themselves send this
+  event (that is, moderators) are not subject to `defaults`, only to explicit
+  entries, so that a room muted by default still has audible moderators.
+- `auditorium_visibility` (number, top level): auditorium mode. Only users
+  whose power level is at least this are shown as tiles in the call; everyone
+  else is still in the call but not displayed. Unset means everyone is shown.
 - All fields are optional; a missing event means nothing is controlled.
 
 The event is sent by anyone with sufficient power level to send state events of
@@ -69,7 +73,9 @@ slots.
 
 ## Client behaviour
 
-Clients rendering a call must apply the effective controls to every device they
+Clients rendering a call must not display tiles for users below
+`auditorium_visibility` (other than the local user's own tile), and must apply
+the effective controls to every device they
 render: mute the audio of an `audio_muted` device, not display the video of a
 `video_muted` device, and scale the audio of a device with a `volume` by that
 factor. This protects the room even before the controlled device has reacted.

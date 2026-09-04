@@ -675,9 +675,10 @@ export function createCallViewModel$(
   );
 
   /**
-   * List of user media (camera feeds) that we want tiles for.
+   * All user media (camera feeds) in the call, before auditorium mode hides
+   * any.
    */
-  const userMedia$ = keyedItems(
+  const allUserMedia$ = keyedItems(
     scope,
     "CallViewModel userMedia$",
     computed(
@@ -733,6 +734,16 @@ export function createCallViewModel$(
         }),
         reaction$: computed(() => reactions$.value[mediaId] ?? undefined),
       }),
+  );
+
+  /**
+   * The user media we want tiles for. Auditorium mode hides the tiles of
+   * users below a power level; we always see ourselves.
+   */
+  const userMedia$ = computed<WrappedUserMediaViewModel[]>(
+    () =>
+      allUserMedia$.value.filter((m) => m.local || !m.moderation$.value.hidden),
+    shallowArrayEquals,
   );
 
   // Placeholder media for the person we're ringing, until they answer

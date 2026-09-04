@@ -62,17 +62,20 @@ describe("createFloorControl", () => {
       audioMuted: true,
       videoMuted: false,
       volume: 0.5,
+      hidden: false,
     });
     expect(fc.moderation$("@bob:e:B", "@bob:e").value).toEqual({
       audioMuted: false,
       videoMuted: true,
       volume: 0.5,
+      hidden: false,
     });
     // Moderators are subject to the defaults like anyone else
     expect(fc.moderation$("@mod:e:M", "@mod:e").value).toEqual({
       audioMuted: true,
       videoMuted: false,
       volume: 0.5,
+      hidden: false,
     });
   });
 
@@ -95,6 +98,7 @@ describe("createFloorControl", () => {
       audioMuted: true,
       videoMuted: true,
       volume: undefined,
+      hidden: false,
     });
   });
 
@@ -121,6 +125,25 @@ describe("createFloorControl", () => {
       "m.room.member",
       { membership: "ban" },
       "@alice:e",
+    );
+  });
+
+  it("hides users below the auditorium power level", async () => {
+    const { room, sendStateEvent } = setup(
+      { auditorium_visibility: 50 },
+      ["@mod:e"],
+      { "@mod:e": 100, "@bob:e": 50 },
+    );
+    const fc = createFloorControl(testScope(), room, "@mod:e", slot);
+    expect(fc.moderation$("@alice:e:A", "@alice:e").value.hidden).toBe(true);
+    expect(fc.moderation$("@bob:e:B", "@bob:e").value.hidden).toBe(false);
+    expect(fc.moderation$("@mod:e:M", "@mod:e").value.hidden).toBe(false);
+    await fc.setAuditoriumVisibility(undefined);
+    expect(sendStateEvent).toHaveBeenCalledWith(
+      "!room",
+      FloorControlEventType,
+      {},
+      slot,
     );
   });
 

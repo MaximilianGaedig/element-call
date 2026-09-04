@@ -30,7 +30,27 @@ export const ModeratorSettingsModal: FC<Props> = ({
   floorControl,
 }) => {
   const { t } = useTranslation();
-  const defaults = useBehavior(floorControl.content$).defaults ?? {};
+  const content = useBehavior(floorControl.content$);
+  const defaults = content.defaults ?? {};
+  const usersDefault = useBehavior(floorControl.usersDefault$);
+  const visibility = content.auditorium_visibility;
+
+  // The same choice of levels Element Web offers, plus off, plus whatever
+  // custom level might already be set
+  const levels: { value: number | undefined; label: string }[] = [
+    { value: undefined, label: t("settings.moderator.auditorium_off") },
+    { value: usersDefault, label: t("power_level.default") },
+    { value: 50, label: t("power_level.moderator") },
+    { value: 100, label: t("power_level.admin") },
+  ];
+  if (
+    visibility !== undefined &&
+    !levels.some(({ value }) => value === visibility)
+  )
+    levels.push({
+      value: visibility,
+      label: t("power_level.custom", { level: visibility }),
+    });
 
   return (
     <Modal
@@ -61,6 +81,26 @@ export const ModeratorSettingsModal: FC<Props> = ({
               void floorControl.setDefaults({ video_muted: e.target.checked })
             }
           />
+        </FieldRow>
+        <FieldRow>
+          <label htmlFor="auditoriumVisibility">
+            {t("settings.moderator.auditorium_label")}
+          </label>
+          <select
+            id="auditoriumVisibility"
+            value={visibility ?? ""}
+            onChange={(e): void =>
+              void floorControl.setAuditoriumVisibility(
+                e.target.value === "" ? undefined : Number(e.target.value),
+              )
+            }
+          >
+            {levels.map(({ value, label }) => (
+              <option key={value ?? ""} value={value ?? ""}>
+                {label}
+              </option>
+            ))}
+          </select>
         </FieldRow>
       </Form>
     </Modal>
