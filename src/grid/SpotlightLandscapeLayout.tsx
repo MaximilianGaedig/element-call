@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { type CSSProperties, type FC, type ReactNode } from "react";
+import { type CSSProperties, type FC, type ReactNode, useRef } from "react";
 import classNames from "classnames";
 import { Resizable } from "re-resizable";
 
@@ -69,9 +69,11 @@ export const makeSpotlightLandscapeLayout: CallLayout<
   }): ReactNode {
     useUpdateLayout();
     useVisibleTiles(model.setVisibleTiles);
-    useBehavior(minBounds$);
+    const { width } = useBehavior(minBounds$);
     const onDragTile = useReorderTiles(model);
     const railWidth = useBehavior(model.railWidth$);
+    // The width when the drag began; each move reports its delta from there
+    const startWidth = useRef(railWidth);
 
     return (
       <div ref={ref} className={styles.layer} style={layerStyle(railWidth)}>
@@ -80,11 +82,17 @@ export const makeSpotlightLandscapeLayout: CallLayout<
           className={styles.rail}
           size={{ width: railWidth, height: "100%" }}
           minWidth={minRailWidth}
-          maxWidth="70%"
+          // A pixel maximum: re-resizable works percentages out by measuring
+          // a probe element in the parent, which a CSS grid parent defeats
+          maxWidth={Math.max(minRailWidth, width * 0.7)}
           enable={{ left: true }}
           handleClasses={{ left: styles.handle }}
-          onResize={(_e, _direction, element): void => {
-            model.railWidth$.value = element.offsetWidth;
+          handleWrapperClass={styles.handleWrapper}
+          onResizeStart={(): void => {
+            startWidth.current = model.railWidth$.value;
+          }}
+          onResize={(_e, _direction, _element, delta): void => {
+            model.railWidth$.value = startWidth.current + delta.width;
           }}
         >
           <div className={styles.grid}>

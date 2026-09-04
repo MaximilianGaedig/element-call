@@ -47,8 +47,12 @@ unconditionally select the container so we can use cq units */
 the gap between them, and shows itself when hovered. The layout layer normally
 ignores pointer events so that the tiles above it can be interacted with, so
 they must be switched back on here. */
+.handleWrapper,
 .handle {
   pointer-events: auto;
+}
+
+.handle {
   z-index: 2;
   inline-size: var(--gap) !important;
   inset-inline-start: calc(-1 * var(--gap)) !important;
