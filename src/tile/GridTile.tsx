@@ -486,6 +486,15 @@ const RemoteUserMediaTile: FC<RemoteUserMediaTileProps> = ({
                 }}
               />
               <MenuItem
+                Icon={moderation.pinned ? UnpinIcon : PinIcon}
+                label={
+                  moderation.pinned
+                    ? t("video_tile.unpin_for_everyone")
+                    : t("video_tile.pin_for_everyone")
+                }
+                onSelect={() => void moderator.setPinned(!moderation.pinned)}
+              />
+              <MenuItem
                 as="div"
                 Icon={VolumeOnIcon}
                 label={null}

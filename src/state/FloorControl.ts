@@ -39,6 +39,8 @@ export interface DeviceControlContent {
    * honour more than twice that.
    */
   volume?: number;
+  /** Whether the device is pinned to the spotlight for everyone. */
+  pinned?: boolean;
 }
 
 export interface FloorControlContent {
@@ -60,6 +62,8 @@ export interface Moderation {
   volume: number | undefined;
   /** Whether the device's tile is hidden by auditorium mode. */
   hidden: boolean;
+  /** Whether a moderator has pinned the device to the spotlight for everyone. */
+  pinned: boolean;
 }
 
 export const unmoderated: Moderation = {
@@ -67,6 +71,7 @@ export const unmoderated: Moderation = {
   videoMuted: false,
   volume: undefined,
   hidden: false,
+  pinned: false,
 };
 
 /** Actions a moderator can take on a device. */
@@ -74,6 +79,7 @@ export interface ModeratorControls {
   setAudioMuted: (muted: boolean) => Promise<void>;
   setVideoMuted: (muted: boolean) => Promise<void>;
   setVolume: (volume: number) => Promise<void>;
+  setPinned: (pinned: boolean) => Promise<void>;
 }
 
 /** Actions a moderator can take on a user's room membership. */
@@ -222,6 +228,7 @@ export function createFloorControl(
           hidden:
             visibility !== undefined &&
             (powerLevel$.value(userId) ?? usersDefault$.value) < visibility,
+          pinned: device?.pinned ?? false,
         };
       }),
     moderator$: (id) =>
@@ -234,6 +241,7 @@ export function createFloorControl(
                 setDevice(id, { video_muted: muted }),
               setVolume: async (volume) =>
                 setDevice(id, { volume: Math.round(volume * volumeUnit) }),
+              setPinned: async (pinned) => setDevice(id, { pinned }),
             }
           : null,
       ),

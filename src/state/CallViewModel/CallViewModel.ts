@@ -716,8 +716,9 @@ export function createCallViewModel$(
         }
       }
     },
-    (scope, _, dup, mediaId, userId, participant, connection$, rtcId) =>
-      createWrappedUserMedia(scope, {
+    (scope, _, dup, mediaId, userId, participant, connection$, rtcId) => {
+      const moderation$ = floorControl.moderation$(mediaId, userId);
+      return createWrappedUserMedia(scope, {
         id: `${mediaId}:${dup}`,
         userId,
         rtcBackendIdentity: rtcId,
@@ -734,14 +735,19 @@ export function createCallViewModel$(
           return computed(() => name$.value ?? userId);
         })(),
         mxcAvatarUrl$: matrixMemberMetadataStore.avatarUrl$(userId),
-        moderation$: floorControl.moderation$(mediaId, userId),
+        moderation$,
         // Moderating yourself is what the mute buttons are for
         moderator$:
           participant.type === "local"
             ? constant(null)
             : floorControl.moderator$(mediaId),
         memberActions$: floorControl.memberActions$(userId),
-        pinned$: computed(() => pinnedIds$.value.has(`${mediaId}:${dup}`)),
+        // Pinned locally, or for everyone by a moderator
+        pinned$: computed(
+          () =>
+            pinnedIds$.value.has(`${mediaId}:${dup}`) ||
+            moderation$.value.pinned,
+        ),
         handRaised$: computed(() => handsRaised$.value[mediaId]?.time ?? null),
         handRaisedOrder$: computed(() => {
           const hands = handsRaised$.value;
@@ -752,7 +758,8 @@ export function createCallViewModel$(
           return all.filter((h) => h.time < mine.time).length + 1;
         }),
         reaction$: computed(() => reactions$.value[mediaId] ?? undefined),
-      }),
+      });
+    },
   );
 
   /**

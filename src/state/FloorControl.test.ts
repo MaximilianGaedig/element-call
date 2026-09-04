@@ -63,12 +63,14 @@ describe("createFloorControl", () => {
       videoMuted: false,
       volume: 0.5,
       hidden: false,
+      pinned: false,
     });
     expect(fc.moderation$("@bob:e:B", "@bob:e").value).toEqual({
       audioMuted: false,
       videoMuted: true,
       volume: 0.5,
       hidden: false,
+      pinned: false,
     });
     // Moderators are subject to the defaults like anyone else
     expect(fc.moderation$("@mod:e:M", "@mod:e").value).toEqual({
@@ -76,6 +78,7 @@ describe("createFloorControl", () => {
       videoMuted: false,
       volume: 0.5,
       hidden: false,
+      pinned: false,
     });
   });
 
@@ -99,6 +102,7 @@ describe("createFloorControl", () => {
       videoMuted: true,
       volume: undefined,
       hidden: false,
+      pinned: false,
     });
   });
 
@@ -126,6 +130,20 @@ describe("createFloorControl", () => {
       { membership: "ban" },
       "@alice:e",
     );
+  });
+
+  it("lets moderators pin a device for everyone", async () => {
+    const { room, sendStateEvent } = setup(undefined, ["@mod:e"]);
+    const fc = createFloorControl(testScope(), room, "@mod:e", slot);
+    await fc.moderator$("@bob:e:B").value!.setPinned(true);
+    expect(sendStateEvent).toHaveBeenCalledWith(
+      "!room",
+      FloorControlEventType,
+      { devices: { "@bob:e:B": { pinned: true } } },
+      slot,
+    );
+    room.emit(RoomStateEvent.Update, null!);
+    expect(fc.moderation$("@bob:e:B", "@bob:e").value.pinned).toBe(true);
   });
 
   it("hides users below the auditorium power level", async () => {

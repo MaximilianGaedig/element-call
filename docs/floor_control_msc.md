@@ -56,6 +56,8 @@ the same room.
     65536 leaves the volume unchanged. Values above 65536 amplify; clients
     need not honour more than 131072 (twice). An integer because Matrix
     events cannot carry floats.
+  - `pinned` (boolean): the device is pinned to the spotlight for everyone, as
+    if each viewer had pinned it themselves.
 - A device's effective controls are its own entry, falling back to `defaults`
   for any field the entry does not set. This applies to everyone in the room,
   moderators included: anyone who can send this event can control anyone,
