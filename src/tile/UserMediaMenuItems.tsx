@@ -9,6 +9,7 @@ Please see LICENSE in the repository root for full details.
 import { type FC, type ReactNode, useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  AdminIcon,
   BlockIcon,
   LeaveIcon,
   MicOffIcon,
@@ -248,21 +249,28 @@ const RemoteItems: FC<{ vm: RemoteUserMediaViewModel }> = ({ vm }) => {
           />
         </>
       )}
-      {memberActions && (
-        <>
-          <MenuItem
-            Icon={LeaveIcon}
-            label={t("video_tile.kick")}
-            kind="critical"
-            onSelect={() => void memberActions.kick()}
-          />
-          <MenuItem
-            Icon={BlockIcon}
-            label={t("video_tile.ban")}
-            kind="critical"
-            onSelect={() => void memberActions.ban()}
-          />
-        </>
+      {memberActions?.makeModerator && (
+        <MenuItem
+          Icon={AdminIcon}
+          label={t("video_tile.make_moderator")}
+          onSelect={() => void memberActions.makeModerator!()}
+        />
+      )}
+      {memberActions?.kick && (
+        <MenuItem
+          Icon={LeaveIcon}
+          label={t("video_tile.kick")}
+          kind="critical"
+          onSelect={() => void memberActions.kick!()}
+        />
+      )}
+      {memberActions?.ban && (
+        <MenuItem
+          Icon={BlockIcon}
+          label={t("video_tile.ban")}
+          kind="critical"
+          onSelect={() => void memberActions.ban!()}
+        />
       )}
     </>
   );

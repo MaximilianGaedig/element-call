@@ -144,10 +144,12 @@ export const initializeWidget = (
         stateKey,
       }));
       // Moderators mute other devices through floor control (keyed by slot),
-      // and kick or ban by setting membership directly
+      // kick or ban by setting membership directly, and make other users
+      // moderators by raising their power level
       sendState.push(
         { eventType: FloorControlEventType },
         { eventType: EventType.RoomMember },
+        { eventType: EventType.RoomPowerLevels },
       );
       const receiveState = [
         { eventType: EventType.RoomCreate },
@@ -156,6 +158,7 @@ export const initializeWidget = (
         { eventType: EventType.RoomEncryption },
         { eventType: EventType.GroupCallMemberPrefix },
         { eventType: FloorControlEventType },
+        { eventType: EventType.RoomPowerLevels },
       ];
 
       const sendRecvToDevice = [

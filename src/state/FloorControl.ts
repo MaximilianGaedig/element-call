@@ -108,10 +108,19 @@ export interface ModeratorControls {
   setBlocked: (blocked: boolean) => Promise<void>;
 }
 
-/** Actions a moderator can take on a user's room membership. */
+/** Actions a moderator can take on a user's room membership, where allowed. */
 export interface MemberActions {
-  kick: () => Promise<void>;
-  ban: () => Promise<void>;
+  kick: (() => Promise<void>) | null;
+  ban: (() => Promise<void>) | null;
+  /** Raises the user's power level to what floor control needs. */
+  makeModerator: (() => Promise<void>) | null;
+}
+
+interface PowerLevelsContent {
+  users?: Record<string, number>;
+  users_default?: number;
+  events?: Record<string, number>;
+  state_default?: number;
 }
 
 export interface FloorControl {
@@ -128,9 +137,10 @@ export interface FloorControl {
     userId: string,
   ) => Behavior<ModeratorControls | null>;
   /**
-   * Kicking and banning the given user, if the local user has the power to.
-   * These set the membership state event directly rather than going through
-   * the kick and ban APIs, so that they work through the widget API too.
+   * Kicking, banning and promoting the given user to moderator, if the local
+   * user has the power to. These set the state events directly rather than
+   * going through the kick and ban APIs, so that they work through the widget
+   * API too.
    */
   memberActions$: (userId: string) => Behavior<MemberActions | null>;
   /**
@@ -236,11 +246,12 @@ export function createFloorControl(
       state.maySendStateEvent(FloorControlEventType, userId),
   );
   const canModerate$ = computed(() => mayModerate$.value(localUserId));
-  const usersDefault$ = read(
+  const powerLevels$ = read(
     (state) =>
-      (state.getStateEvents(EventType.RoomPowerLevels, "")?.getContent()
-        .users_default as number | undefined) ?? 0,
+      (state.getStateEvents(EventType.RoomPowerLevels, "")?.getContent() ??
+        {}) as PowerLevelsContent,
   );
+  const usersDefault$ = computed(() => powerLevels$.value.users_default ?? 0);
   const powerLevel$ = read(
     (state) => (userId: string) => state.getMember(userId)?.powerLevel,
   );
@@ -252,6 +263,31 @@ export function createFloorControl(
       state.hasSufficientPowerLevelFor(action, localLevel) &&
       (state.getMember(userId)?.powerLevel ?? 0) < localLevel;
   });
+  // Whether the local user may raise the given user's power level to what
+  // floor control needs: they must be able to change power levels, have at
+  // least that level themselves, and outrank the user
+  const mayPromote$ = read((state) => {
+    const localLevel = state.getMember(localUserId)?.powerLevel ?? 0;
+    const { events, state_default: stateDefault } = powerLevels$.value;
+    const required = events?.[FloorControlEventType] ?? stateDefault ?? 50;
+    return (userId: string): boolean =>
+      userId !== localUserId &&
+      state.maySendStateEvent(EventType.RoomPowerLevels, localUserId) &&
+      !state.maySendStateEvent(FloorControlEventType, userId) &&
+      localLevel >= required &&
+      (state.getMember(userId)?.powerLevel ?? 0) < localLevel;
+  });
+  const makeModerator = async (userId: string): Promise<void> => {
+    const content = powerLevels$.peek();
+    const required =
+      content.events?.[FloorControlEventType] ?? content.state_default ?? 50;
+    await room.client.sendStateEvent(
+      room.roomId,
+      EventType.RoomPowerLevels,
+      { ...content, users: { ...content.users, [userId]: required } },
+      "",
+    );
+  };
   const setMembership = async (
     userId: string,
     membership: KnownMembership,
@@ -367,14 +403,16 @@ export function createFloorControl(
         const mayRemove = mayRemove$.value;
         const kick = mayRemove(userId, "kick");
         const ban = mayRemove(userId, "ban");
-        return kick || ban
+        const promote = mayPromote$.value(userId);
+        return kick || ban || promote
           ? {
-              kick: async () => {
-                if (kick) await setMembership(userId, KnownMembership.Leave);
-              },
-              ban: async () => {
-                if (ban) await setMembership(userId, KnownMembership.Ban);
-              },
+              kick: kick
+                ? async () => setMembership(userId, KnownMembership.Leave)
+                : null,
+              ban: ban
+                ? async () => setMembership(userId, KnownMembership.Ban)
+                : null,
+              makeModerator: promote ? async () => makeModerator(userId) : null,
             }
           : null;
       }),
