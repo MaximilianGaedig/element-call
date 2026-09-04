@@ -61,6 +61,11 @@ the same room.
   - `hidden` (boolean): the device's tile is not shown to anyone. The device
     itself still sees and hears the call, and its media is still heard unless
     also muted.
+  - `blocked` (boolean, device entries only): the device is shut out of the
+    call. Everyone treats it as though it had no RTC membership: they show no
+    tile for it, display none of its media, do not connect to its SFU, and
+    do not send it media where they can avoid doing so. The device must leave
+    the session and may not rejoin while blocked.
 - A device ID of `*` (for example `@alice:example.org:*`) makes an entry apply
   to all of that user's devices. Where a device also has its own entry, its
   fields take precedence over the wildcard's, field by field.
@@ -101,6 +106,15 @@ A `hidden` device likewise carries on as normal; viewers do not show its tile.
 The device should warn its user that they are hidden. Because a hidden tile
 can't be reached to unhide it, clients should offer moderators a list of
 hidden devices to restore.
+
+Clients apply a `blocked` device by filtering it out of the session's
+memberships before doing anything else with them, so that lifting the block
+is handled exactly like the device joining. A blocked device leaves the
+session and its client refuses to rejoin until the block is lifted. Note that
+where a blocked device shares an SFU with others, the SFU will still forward
+their media to it unless it enforces the block itself, and MatrixRTC's
+encryption key distribution is not aware of the block; this proposal only
+covers what clients can do on their own.
 
 ## Potential issues
 

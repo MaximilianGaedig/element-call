@@ -61,6 +61,8 @@ interface Props {
   participantCount: number | null;
   onShareClick: (() => void) | null;
   waitingForInvite?: boolean;
+  /** Whether a moderator has blocked this device from the call. */
+  blocked?: boolean;
 }
 
 export const LobbyView: FC<Props> = ({
@@ -74,6 +76,7 @@ export const LobbyView: FC<Props> = ({
   participantCount,
   onShareClick,
   waitingForInvite,
+  blocked = false,
 }) => {
   useEffect(() => {
     logger.info("[Lifecycle] LobbyView Component mounted");
@@ -233,13 +236,15 @@ export const LobbyView: FC<Props> = ({
                 [styles.wait]: waitingForInvite,
               })}
               size={waitingForInvite ? "md" : "lg"}
-              disabled={waitingForInvite}
+              disabled={waitingForInvite || blocked || undefined}
               onClick={() => {
-                if (!waitingForInvite) onEnter();
+                if (!waitingForInvite && !blocked) onEnter();
               }}
               data-testid="lobby_joinCall"
             >
-              {enterLabel ?? t("lobby.join_button")}
+              {blocked
+                ? t("lobby.blocked_button")
+                : (enterLabel ?? t("lobby.join_button"))}
             </Button>
           </VideoPreview>
           {!recentsButtonInFooter && recentsButton}

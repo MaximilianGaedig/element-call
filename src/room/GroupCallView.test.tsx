@@ -164,7 +164,8 @@ function createGroupCallView(
     currentState: {
       ...mockEmitter(),
       getJoinRule: () => JoinRule.Invite,
-    } as Partial<RoomState> as RoomState,
+      getStateEvents: () => null,
+    } as unknown as RoomState,
   });
   const rtcSession = new MockRTCSession(room, []).withMemberships(
     constant([localRtcMember]),

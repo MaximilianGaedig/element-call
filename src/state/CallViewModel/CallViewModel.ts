@@ -6,6 +6,7 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
+import { type CallMembership } from "matrix-js-sdk/lib/matrixrtc";
 import {
   type BaseKeyProvider,
   type ConnectionState,
@@ -35,6 +36,7 @@ import { type GridMove, gridLikeLayout } from "../GridLikeLayout";
 import {
   createFloorControl,
   type FloorControl,
+  isBlocked,
   mediaId,
 } from "../FloorControl.ts";
 import { spotlightExpandedLayout } from "../SpotlightExpandedLayout";
@@ -177,6 +179,9 @@ const showFooterMs = 4000;
 
 export type WindowMode = "normal" | "narrow" | "flat" | "pip";
 
+/** Why we left the call. */
+export type LeaveReason = "user" | "blocked" | AutoLeaveReason;
+
 /** What giving a tile emphasis does in the current layout. */
 export type TileEmphasis = "enlarge" | "pin";
 
@@ -220,7 +225,7 @@ export interface CallViewModel {
    *
    * TODO: it seems more reasonable to add a leave() method (that calls requestDisconnect) that will then update leaveReason$ and remove the hangup pattern
    */
-  leaveReason$: Behavior<"user" | AutoLeaveReason | null>;
+  leaveReason$: Behavior<LeaveReason | null>;
   /** Call to initiate hangup. Use in conbination with reconnection state track the async hangup process. */
   hangup: () => void;
 
@@ -448,10 +453,6 @@ export function createCallViewModel$(
   //  - matrixMemberMetadataStore via createMatrixMemberMetadata$
 
   // ------------------------------------------------------------------------
-  // memberships$
-  const memberships$ = createMemberships$(scope, matrixRTCSession);
-
-  // ------------------------------------------------------------------------
   // floorControl: moderators muting devices through room state
   const floorControl = createFloorControl(
     scope,
@@ -459,6 +460,20 @@ export function createCallViewModel$(
     userId,
     computeSlotId(matrixRTCSession.slotDescription),
   );
+
+  // ------------------------------------------------------------------------
+  // memberships$
+  // Devices a moderator has blocked are treated as not being in the session
+  // at all: no tiles, no media, no connection to their SFU. Everything below
+  // derives from this list, so filtering here is enough, and a block being
+  // lifted brings them back exactly as if they'd just joined.
+  const allMemberships$ = createMemberships$(scope, matrixRTCSession);
+  const memberships$ = computed<CallMembership[]>(() => {
+    const content = floorControl.content$.value;
+    return allMemberships$.value.filter(
+      (m) => !isBlocked(content, m.userId, m.deviceId),
+    );
+  }, shallowArrayEquals);
   // Our own device honours a moderator's audio mute by not publishing. A
   // video mute is only applied by viewers, who hide the video; our camera
   // stays as it is and the local tile warns that nobody can see it.
@@ -834,13 +849,18 @@ export function createCallViewModel$(
   );
 
   // Why we should leave the call, once we should. The first reason wins.
-  const leaveReason$ = state<"user" | AutoLeaveReason | null>(null);
-  const leave = (reason: "user" | AutoLeaveReason): void => {
+  const leaveReason$ = state<LeaveReason | null>(null);
+  const leave = (reason: LeaveReason): void => {
     if (leaveReason$.peek() === null) leaveReason$.value = reason;
   };
   scope.effect(() => {
     const reason = autoLeaveReason$.value;
     if (reason !== null) leave(reason);
+  });
+  // If we're the one blocked, we leave (and the lobby won't let us back in
+  // until the block is lifted)
+  scope.effect(() => {
+    if (localModeration$.value.blocked) leave("blocked");
   });
   if (widget !== null) {
     const onHangup = (ev: CustomEvent<IWidgetApiRequest>): void => {

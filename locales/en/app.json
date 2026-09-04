@@ -151,6 +151,7 @@
   "layout_switch_label": "Layout",
   "lobby": {
     "ask_to_join": "Request to join call",
+    "blocked_button": "Blocked by a moderator",
     "join_as_guest": "Join as guest",
     "join_button": "Join call",
     "leave_button": "Back to recents",
@@ -245,12 +246,15 @@
       "all_devices": "all devices",
       "auditorium_label": "Auditorium mode: only show tiles from…",
       "auditorium_off": "Everyone",
+      "blocked_heading": "Blocked participants",
       "defaults_description": "Applies to everyone, moderators included. Individual devices can be unmuted from their tile's menu.",
       "hidden_heading": "Hidden participants",
       "mute_audio_by_default": "Mute everyone's microphone by default",
       "mute_video_by_default": "Turn off everyone's camera by default",
+      "none_blocked": "Nobody is blocked.",
       "none_hidden": "Nobody is hidden.",
-      "show": "Show"
+      "show": "Show",
+      "unblock": "Unblock"
     },
     "moderator_settings": "Moderator settings",
     "noise_suppression_label": "Noise suppression",
@@ -287,6 +291,7 @@
   "video_tile": {
     "always_show": "Always show",
     "ban": "Ban from room",
+    "block_from_call": "Block from call",
     "call_ended": "Call ended",
     "calling": "Calling…",
     "camera_starting": "Video loading...",

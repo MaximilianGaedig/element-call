@@ -10,6 +10,7 @@ import { type MatrixEvent, RoomStateEvent, type Room } from "matrix-js-sdk";
 
 import {
   createFloorControl,
+  isBlocked,
   type FloorControlContent,
   FloorControlEventType,
 } from "./FloorControl.ts";
@@ -63,6 +64,7 @@ describe("createFloorControl", () => {
       videoMuted: false,
       volume: 0.5,
       hidden: false,
+      blocked: false,
       pinned: false,
       explicit: false,
     });
@@ -71,6 +73,7 @@ describe("createFloorControl", () => {
       videoMuted: true,
       volume: 0.5,
       hidden: false,
+      blocked: false,
       pinned: false,
       explicit: true,
     });
@@ -80,6 +83,7 @@ describe("createFloorControl", () => {
       videoMuted: false,
       volume: 0.5,
       hidden: false,
+      blocked: false,
       pinned: false,
       explicit: false,
     });
@@ -105,6 +109,7 @@ describe("createFloorControl", () => {
       videoMuted: true,
       volume: undefined,
       hidden: false,
+      blocked: false,
       pinned: false,
       explicit: true,
     });
@@ -234,6 +239,19 @@ describe("createFloorControl", () => {
     const b = fc.moderation$("@alice:e:B", "@alice:e").value;
     expect([b.hidden, b.audioMuted, b.explicit]).toEqual([true, true, true]);
     expect(fc.moderation$("@bob:e:B", "@bob:e").value.hidden).toBe(false);
+  });
+
+  it("reports blocked devices, including through the wildcard", () => {
+    const content = {
+      devices: {
+        "@alice:e:A": { blocked: true },
+        "@bob:e:*": { blocked: true },
+      },
+    };
+    expect(isBlocked(content, "@alice:e", "A")).toBe(true);
+    expect(isBlocked(content, "@alice:e", "B")).toBe(false);
+    expect(isBlocked(content, "@bob:e", "anything")).toBe(true);
+    expect(isBlocked({}, "@alice:e", "A")).toBe(false);
   });
 
   it("hides users below the auditorium power level", async () => {

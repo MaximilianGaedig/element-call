@@ -199,6 +199,16 @@ export const ModeratorSettingsModal: FC<Props> = ({
           void floorControl.setDevice(id, userId, { hidden: false })
         }
       />
+      <RemovableList
+        title={t("settings.moderator.blocked_heading")}
+        empty={t("settings.moderator.none_blocked")}
+        action={t("settings.moderator.unblock")}
+        entries={entries.filter(([, entry]) => entry.blocked)}
+        room={room}
+        onRemove={(id, userId) =>
+          void floorControl.setDevice(id, userId, { blocked: false })
+        }
+      />
     </Modal>
   );
 };

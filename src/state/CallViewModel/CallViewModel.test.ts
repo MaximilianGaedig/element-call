@@ -1693,6 +1693,38 @@ describe("floor control", () => {
   const alice2Id = `${aliceUserId}:AAA2`;
   const alice2Participant = mockRemoteParticipant({ identity: alice2Id });
 
+  test("a blocked device is treated as not being in the call", () => {
+    withTestScheduler(({ expectObservable }) => {
+      withCallViewModel(
+        {
+          remoteParticipants$: constant([
+            aliceParticipant,
+            bobParticipant,
+            daveParticipant,
+          ]),
+          rtcMembers$: constant([
+            localRtcMember,
+            aliceRtcMember,
+            bobRtcMember,
+            daveRtcMember,
+          ]),
+          floorControl: { devices: { [aliceId]: { blocked: true } } },
+        },
+        (vm) => {
+          expectObservable(summarizeLayout$(vm.layout$), {
+            settled: true,
+          }).toBe("a", {
+            a: {
+              type: "grid",
+              spotlight: undefined,
+              grid: [`${localId}:0`, `${bobId}:0`, `${daveId}:0`],
+            },
+          });
+        },
+      );
+    });
+  });
+
   test("pins apply to one device, not all of a user's devices", () => {
     withTestScheduler(({ schedule, expectObservable }) => {
       withCallViewModel(

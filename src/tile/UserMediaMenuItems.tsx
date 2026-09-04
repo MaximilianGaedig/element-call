@@ -215,6 +215,12 @@ const RemoteItems: FC<{ vm: RemoteUserMediaViewModel }> = ({ vm }) => {
             label={t("video_tile.hide_for_everyone")}
             onSelect={() => void moderator.setHidden(true)}
           />
+          <MenuItem
+            Icon={BlockIcon}
+            label={t("video_tile.block_from_call")}
+            kind="critical"
+            onSelect={() => void moderator.setBlocked(true)}
+          />
           <MenuItem as="div" Icon={VolumeOnIcon} label={null} onSelect={null}>
             <Slider
               className={styles.volumeSlider}

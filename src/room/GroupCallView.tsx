@@ -5,6 +5,10 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
+import { type RoomState } from "matrix-js-sdk";
+import { useRoomState } from "./useRoomState";
+import { isBlockedInRoom } from "../state/FloorControl.ts";
+import { type LeaveReason } from "../state/CallViewModel/CallViewModel.ts";
 import {
   type FC,
   type ReactNode,
@@ -335,9 +339,7 @@ export const GroupCallView: FC<Props> = ({
 
   // TODO split this into leave and onDisconnect
   const onLeft = useCallback(
-    (
-      reason: "timeout" | "user" | "allOthersLeft" | "decline" | "error",
-    ): void => {
+    (reason: LeaveReason | "error"): void => {
       let audioPromise: Promise<void> | undefined = undefined;
       switch (reason) {
         case "allOthersLeft":
@@ -460,6 +462,15 @@ export const GroupCallView: FC<Props> = ({
       onDismiss={onDismissInviteModal}
     />
   );
+  // A device a moderator has blocked can't join until the block is lifted
+  const blocked = useRoomState(
+    room,
+    useCallback(
+      (state: RoomState) =>
+        isBlockedInRoom(state, client.getUserId()!, client.getDeviceId()!),
+      [client],
+    ),
+  );
   const lobbyView = (
     <>
       {shareModal}
@@ -468,6 +479,7 @@ export const GroupCallView: FC<Props> = ({
         matrixInfo={matrixInfo}
         muteStates={muteStates}
         onEnter={() => setJoined(true)}
+        blocked={blocked}
         confineToRoom={confineToRoom}
         hideHeader={header !== HeaderStyle.Standard}
         participantCount={participantCount}

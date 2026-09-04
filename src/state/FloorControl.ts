@@ -46,6 +46,11 @@ export interface DeviceControlContent {
    * and hears the call as normal.
    */
   hidden?: boolean;
+  /**
+   * Whether the device is shut out of the call: everyone treats it as not
+   * being in the MatrixRTC session at all, and it must leave and stay out.
+   */
+  blocked?: boolean;
 }
 
 export interface FloorControlContent {
@@ -71,6 +76,8 @@ export interface Moderation {
   volume: number | undefined;
   /** Whether the device's tile is hidden, by a moderator or auditorium mode. */
   hidden: boolean;
+  /** Whether a moderator has shut the device out of the call. */
+  blocked: boolean;
   /** Whether a moderator has pinned the device to the spotlight for everyone. */
   pinned: boolean;
   /**
@@ -86,6 +93,7 @@ export const unmoderated: Moderation = {
   videoMuted: false,
   volume: undefined,
   hidden: false,
+  blocked: false,
   pinned: false,
   explicit: false,
 };
@@ -97,6 +105,7 @@ export interface ModeratorControls {
   setVolume: (volume: number) => Promise<void>;
   setPinned: (pinned: boolean) => Promise<void>;
   setHidden: (hidden: boolean) => Promise<void>;
+  setBlocked: (blocked: boolean) => Promise<void>;
 }
 
 /** Actions a moderator can take on a user's room membership. */
@@ -143,6 +152,37 @@ export const mediaId = (userId: string, deviceId: string): string =>
 
 /** The media ID that stands for all of a user's devices. */
 export const wildcardMediaId = (userId: string): string => mediaId(userId, "*");
+
+/**
+ * Whether the given device is blocked from the call by the given floor control
+ * content. Blocking is only ever per device (or per user's devices), never a
+ * default.
+ */
+export function isBlocked(
+  content: FloorControlContent,
+  userId: string,
+  deviceId: string,
+): boolean {
+  return (
+    deviceEntry(content.devices, mediaId(userId, deviceId), userId)?.blocked ??
+    false
+  );
+}
+
+/**
+ * Reads whether the given device is blocked straight from room state, for
+ * use before there's a call view model, such as in the lobby.
+ */
+export function isBlockedInRoom(
+  state: RoomState,
+  userId: string,
+  deviceId: string,
+): boolean {
+  const content = state
+    .getStateEvents(FloorControlEventType, "")
+    ?.getContent() as FloorControlContent | undefined;
+  return content !== undefined && isBlocked(content, userId, deviceId);
+}
 
 /**
  * The entry that applies to a device: its own, over any for all of its user's
@@ -240,6 +280,7 @@ export function createFloorControl(
     volume: volumeUnit,
     pinned: false,
     hidden: false,
+    blocked: false,
   };
   const setDevice = async (
     id: string,
@@ -294,6 +335,7 @@ export function createFloorControl(
             (device?.hidden ?? defaults?.hidden ?? false) ||
             (visibility !== undefined &&
               (powerLevel$.value(userId) ?? usersDefault$.value) < visibility),
+          blocked: device?.blocked ?? false,
           pinned: device?.pinned ?? false,
           explicit: device !== undefined,
         };
@@ -312,6 +354,7 @@ export function createFloorControl(
                 }),
               setPinned: async (pinned) => setDevice(id, userId, { pinned }),
               setHidden: async (hidden) => setDevice(id, userId, { hidden }),
+              setBlocked: async (blocked) => setDevice(id, userId, { blocked }),
             }
           : null,
       ),

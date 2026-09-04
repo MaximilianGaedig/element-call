@@ -40,6 +40,7 @@ import { type MuteStates } from "../state/MuteStates";
 import { type MatrixInfo } from "./VideoPreview";
 import { InviteButton } from "../button/InviteButton";
 import {
+  type LeaveReason,
   type CallViewModel,
   createCallViewModel$,
 } from "../state/CallViewModel/CallViewModel.ts";
@@ -102,9 +103,7 @@ export interface ActiveCallProps extends Omit<
 > {
   e2eeSystem: EncryptionSystem;
   // TODO refactor those reasons into an enum
-  onLeft: (
-    reason: "user" | "timeout" | "decline" | "allOthersLeft" | "error",
-  ) => void;
+  onLeft: (reason: LeaveReason | "error") => void;
 }
 
 export const ActiveCall: FC<ActiveCallProps> = (props) => {
