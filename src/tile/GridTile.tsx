@@ -163,16 +163,21 @@ const UserMediaTileInner: FC<UserMediaTileProps & { menu: ReactNode }> = ({
       : t("microphone_off");
 
   const [menuOpen, setMenuOpen] = useState(false);
+  // Moderators are shown which tiles they've applied floor control to
+  const moderator = useBehavior(vm.moderator$);
+  const moderation = useBehavior(vm.moderation$);
+  const moderated = moderator !== null && moderation.explicit;
   const menuTrigger = useMemo(
     () => (
       <button
         aria-label={t("common.options")}
         tabIndex={focusable ? undefined : -1}
+        data-moderated={moderated || undefined}
       >
         <OverflowHorizontalIcon aria-hidden width={20} height={20} />
       </button>
     ),
-    [t, focusable],
+    [t, focusable, moderated],
   );
 
   const raisedHandOnClick = useMemo(

@@ -278,6 +278,17 @@ unconditionally select the container so we can use cqmin units */
   opacity: 1;
 }
 
+/* A tile a moderator has applied floor control to: the options button stays
+visible, in the raised-hand yellow, so that moderators can see it at a glance */
+.fg > button[data-moderated] {
+  opacity: 1;
+  background: var(--cpd-color-yellow-900);
+}
+
+.fg > button[data-moderated] > svg {
+  color: #000;
+}
+
 @media (hover) {
   .fg:hover > button {
     opacity: 1;

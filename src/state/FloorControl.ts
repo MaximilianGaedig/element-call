@@ -64,6 +64,11 @@ export interface Moderation {
   hidden: boolean;
   /** Whether a moderator has pinned the device to the spotlight for everyone. */
   pinned: boolean;
+  /**
+   * Whether a moderator has set anything for this device in particular, as
+   * opposed to it just following the defaults.
+   */
+  explicit: boolean;
 }
 
 export const unmoderated: Moderation = {
@@ -72,6 +77,7 @@ export const unmoderated: Moderation = {
   volume: undefined,
   hidden: false,
   pinned: false,
+  explicit: false,
 };
 
 /** Actions a moderator can take on a device. */
@@ -229,6 +235,7 @@ export function createFloorControl(
             visibility !== undefined &&
             (powerLevel$.value(userId) ?? usersDefault$.value) < visibility,
           pinned: device?.pinned ?? false,
+          explicit: device !== undefined && Object.keys(device).length > 0,
         };
       }),
     moderator$: (id) =>

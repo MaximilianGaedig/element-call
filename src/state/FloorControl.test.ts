@@ -64,6 +64,7 @@ describe("createFloorControl", () => {
       volume: 0.5,
       hidden: false,
       pinned: false,
+      explicit: false,
     });
     expect(fc.moderation$("@bob:e:B", "@bob:e").value).toEqual({
       audioMuted: false,
@@ -71,6 +72,7 @@ describe("createFloorControl", () => {
       volume: 0.5,
       hidden: false,
       pinned: false,
+      explicit: true,
     });
     // Moderators are subject to the defaults like anyone else
     expect(fc.moderation$("@mod:e:M", "@mod:e").value).toEqual({
@@ -79,6 +81,7 @@ describe("createFloorControl", () => {
       volume: 0.5,
       hidden: false,
       pinned: false,
+      explicit: false,
     });
   });
 
@@ -103,6 +106,7 @@ describe("createFloorControl", () => {
       volume: undefined,
       hidden: false,
       pinned: false,
+      explicit: true,
     });
   });
 

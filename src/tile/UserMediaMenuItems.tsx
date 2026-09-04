@@ -144,6 +144,27 @@ const RemoteItems: FC<{ vm: RemoteUserMediaViewModel }> = ({ vm }) => {
           step={0.01}
         />
       </MenuItem>
+      {/* Non-moderators can at least see that a moderator set the volume */}
+      {moderator === null && moderation.volume !== undefined && (
+        <MenuItem
+          as="div"
+          Icon={VolumeOnIcon}
+          label={null}
+          onSelect={null}
+          disabled
+        >
+          <Slider
+            className={styles.volumeSlider}
+            label={t("video_tile.volume_for_everyone")}
+            value={moderation.volume}
+            onValueChange={() => {}}
+            min={0}
+            max={2}
+            step={0.01}
+            disabled
+          />
+        </MenuItem>
+      )}
       {(moderator || memberActions) && (
         <>
           <Separator />
