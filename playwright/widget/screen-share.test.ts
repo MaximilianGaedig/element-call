@@ -121,31 +121,10 @@ widgetTest("Sharing screen in group call", async ({ addUser, browserName }) => {
       frame.locator('video[data-lk-source="screen_share"]'),
     ).toHaveCount(2);
 
-    // Expect 2 indicators at the bottom
-    await expect(frame.getByTestId("screenshare-indicator")).toHaveCount(2);
-
-    // Check the first indicator is visible
-    await expect(
-      frame.getByTestId("screenshare-indicator").first(),
-    ).toHaveAttribute("data-visible", "true");
-
-    await carol.page.pause();
-
-    // now click on next
-    await expect(frame.getByRole("button", { name: "Next" })).toBeVisible();
-    await frame.getByRole("button", { name: "Next" }).click();
-
-    // Check the second indicator is visible
-    await expect(
-      frame.getByTestId("screenshare-indicator").nth(1),
-    ).toHaveAttribute("data-visible", "true");
-    // the first one should be grayed out
-    await expect(
-      frame.getByTestId("screenshare-indicator").first(),
-    ).toHaveAttribute("data-visible", "false");
-
-    // There should be a prev button now
-    await expect(frame.getByRole("button", { name: "Back" })).toBeVisible();
+    // Both screen shares are tiled side by side in the spotlight rather than
+    // paged through, so there is no carousel to step through
+    await expect(frame.getByRole("button", { name: "Next" })).toHaveCount(0);
+    await expect(frame.getByRole("button", { name: "Back" })).toHaveCount(0);
 
     // await carol.page.pause();
   }
