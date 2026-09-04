@@ -87,6 +87,14 @@ export class TestHelpers {
     await page.getByRole("alert").getByRole("button", { name: "Join" }).click({
       timeout: 5000,
     });
+    // Wait for the widget to be in the call, which also gives the permission
+    // prompt handler a chance to run
+    await expect(
+      page
+        .locator('iframe[title="Element Call"]')
+        .contentFrame()
+        .getByRole("button", { name: "End call" }),
+    ).toBeVisible({ timeout: 15000 });
   }
 
   /**
@@ -121,6 +129,14 @@ export class TestHelpers {
     });
     const page = await userContext.newPage();
     await page.goto(host);
+    // Element Web doesn't yet know about the floor control event, so it asks
+    // the user to approve the widget's request to send and receive it;
+    // approve it whenever the prompt appears
+    const approve = page.getByRole("button", { name: "Approve" });
+    await page.addLocatorHandler(
+      page.getByText("Approve widget permissions"),
+      async () => await approve.click(),
+    );
 
     await page.getByRole("link", { name: "Sign in" }).click({
       timeout: 10000,
