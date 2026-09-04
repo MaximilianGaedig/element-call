@@ -69,6 +69,8 @@ const TileWrapper_ = memo(
 
     useDrag(
       (state) => {
+        // A new gesture forgets any drag whose click never arrived
+        if (state.first) dragged.current = false;
         if (state.last && !state.tap) dragged.current = true;
         onDrag?.current!(id, state);
       },
@@ -82,11 +84,6 @@ const TileWrapper_ = memo(
         // be dragged; moving straight away scrolls as normal.
         preventScroll: 250,
         preventScrollAxis: "xy",
-        // Track the pointer on the window rather than by capturing it on the
-        // tile: when the grid reorders around a dragged tile, React moves its
-        // element in the DOM, and a moved element loses pointer capture, which
-        // would end the drag.
-        pointer: { capture: false },
         // We deliberately don't use filterTaps: together with preventScroll
         // it swallows the clicks of buttons within tiles (like the 'switch
         // camera' button) on mobile, because a short tap never reaches the

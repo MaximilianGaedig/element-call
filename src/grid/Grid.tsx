@@ -18,6 +18,7 @@ import {
   type ComponentType,
   type Dispatch,
   type FC,
+  type ReactElement,
   type ReactNode,
   type Ref,
   type SetStateAction,
@@ -632,18 +633,29 @@ export function Grid<
           Slot={Slot}
         />
       </LayoutContext>
-      {tileTransitions((spring, { id, model, onDrag, width, height }) => (
-        <TileWrapper
-          key={id}
-          id={id}
-          onDrag={onDrag ? onTileDragRef : null}
-          targetWidth={width}
-          targetHeight={height}
-          model={model}
-          Tile={Tile}
-          {...spring}
-        />
-      ))}
+      {
+        // Render the tiles in a fixed order (by ID) rather than layout order,
+        // so that reordering the layout never moves their elements in the DOM.
+        // A moved element loses pointer capture, which would end a drag in
+        // progress. Stacking is handled by the zIndex spring, not DOM order.
+        // react-spring hands back a fragment of keyed elements.
+        [
+          ...(
+            tileTransitions((spring, { id, model, onDrag, width, height }) => (
+              <TileWrapper
+                key={id}
+                id={id}
+                onDrag={onDrag ? onTileDragRef : null}
+                targetWidth={width}
+                targetHeight={height}
+                model={model}
+                Tile={Tile}
+                {...spring}
+              />
+            )).props as { children: ReactElement[] }
+          ).children,
+        ].sort((a, b) => Number(a.key) - Number(b.key))
+      }
     </div>
   );
 }
