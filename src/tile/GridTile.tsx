@@ -10,7 +10,6 @@ import {
   type FC,
   type ReactNode,
   type Ref,
-  useCallback,
   useRef,
   useState,
   useMemo,
@@ -21,35 +20,18 @@ import { useTranslation } from "react-i18next";
 import {
   MicOnSolidIcon,
   MicOffSolidIcon,
-  MicOffIcon,
   OverflowHorizontalIcon,
-  VolumeOnIcon,
-  VolumeOffIcon,
-  VisibilityOnIcon,
-  UserProfileIcon,
   VolumeOffSolidIcon,
   SwitchCameraSolidIcon,
-  VideoCallOffIcon,
-  LeaveIcon,
-  BlockIcon,
   PinIcon,
   UnpinIcon,
   ExpandIcon,
   CollapseIcon,
 } from "@vector-im/compound-design-tokens/assets/web/icons";
-import {
-  ContextMenu,
-  MenuItem,
-  ToggleMenuItem,
-  Menu,
-  Separator,
-  Text,
-} from "@vector-im/compound-web";
+import { ContextMenu, MenuItem, Menu, Text } from "@vector-im/compound-web";
 
 import styles from "./GridTile.module.css";
-import { Slider } from "../Slider";
 import { MediaView } from "./MediaView";
-import { useLatest } from "../useLatest";
 import { type GridTileViewModel } from "../state/TileViewModel";
 import { type TileEmphasis } from "../state/CallViewModel/CallViewModel";
 import { constant } from "../state/Behavior";
@@ -58,6 +40,7 @@ import { useReactionsSender } from "../reactions/useReactionsSender";
 import { useBehavior } from "../useBehavior";
 import { type LocalUserMediaViewModel } from "../state/media/LocalUserMediaViewModel";
 import { type RemoteUserMediaViewModel } from "../state/media/RemoteUserMediaViewModel";
+import { UserMediaMenuItems } from "./UserMediaMenuItems";
 import { type UserMediaViewModel } from "../state/media/UserMediaViewModel";
 import { type RingingMediaViewModel } from "../state/media/RingingMediaViewModel";
 import { RingingStatus } from "./RingingStatus";
@@ -258,8 +241,8 @@ const UserMediaTileInner: FC<UserMediaTileProps & { menu: ReactNode }> = ({
  * A user media tile enhanced with a context menu.
  */
 const UserMediaTile: FC<
-  UserMediaTileProps & { menuStart?: ReactNode; menuEnd?: ReactNode }
-> = ({ menuStart, menuEnd, ...props }) => {
+  UserMediaTileProps & { onOpenProfile?: (() => void) | null }
+> = ({ onOpenProfile = null, ...props }) => {
   const { t } = useTranslation();
   const { emphasis, emphasised, onEmphasise } = props;
   // The same thing double-clicking the tile does, for the menu
@@ -277,17 +260,13 @@ const UserMediaTile: FC<
   }, [t, emphasis, emphasised, onEmphasise]);
   const menu = useMemo(
     () => (
-      <>
-        {emphasiseItem}
-        {menuStart}
-        {/*
-       No additional menu item (used to be the manual fit to frame.
-       Placeholder for future menu items that should be placed here.
-       */}
-        {menuEnd}
-      </>
+      <UserMediaMenuItems
+        vm={props.vm}
+        onOpenProfile={onOpenProfile}
+        leading={emphasiseItem}
+      />
     ),
-    [emphasiseItem, menuStart, menuEnd],
+    [props.vm, onOpenProfile, emphasiseItem],
   );
 
   // ContextMenu is expensive to render, so we avoid subscribing to any
@@ -321,43 +300,10 @@ const LocalUserMediaTile: FC<LocalUserMediaTileProps> = ({
 }) => {
   const { t } = useTranslation();
   const mirror = useBehavior(vm.mirror$);
-  const alwaysShow = useBehavior(vm.alwaysShow$);
   const switchCamera = useBehavior(vm.switchCamera$);
   const focusUrl = useBehavior(vm.focusUrl$);
   const moderation = useBehavior(vm.moderation$);
   const videoEnabled = useBehavior(vm.videoEnabled$);
-
-  const latestAlwaysShow = useLatest(alwaysShow);
-  const onSelectAlwaysShow = useCallback(
-    (e: Event) => {
-      e.preventDefault();
-      vm.setAlwaysShow(!latestAlwaysShow.current);
-    },
-    [vm, latestAlwaysShow],
-  );
-
-  const menuStart = useMemo(
-    () => (
-      <ToggleMenuItem
-        Icon={VisibilityOnIcon}
-        label={t("video_tile.always_show")}
-        checked={alwaysShow}
-        onSelect={onSelectAlwaysShow}
-      />
-    ),
-    [t, alwaysShow, onSelectAlwaysShow],
-  );
-  const menuEnd = useMemo(
-    () =>
-      onOpenProfile && (
-        <MenuItem
-          Icon={UserProfileIcon}
-          label={t("common.profile")}
-          onSelect={onOpenProfile}
-        />
-      ),
-    [t, onOpenProfile],
-  );
 
   return (
     <UserMediaTile
@@ -377,8 +323,7 @@ const LocalUserMediaTile: FC<LocalUserMediaTileProps> = ({
           </button>
         )
       }
-      menuStart={menuStart}
-      menuEnd={menuEnd}
+      onOpenProfile={onOpenProfile}
       focusable={focusable}
       focusUrl={focusUrl}
       // Our own camera keeps showing to us; the warning is that nobody else
@@ -405,34 +350,9 @@ const RemoteUserMediaTile: FC<RemoteUserMediaTileProps> = ({
   vm,
   ...props
 }) => {
-  const { t } = useTranslation();
   const waitingForMedia = useBehavior(vm.waitingForMedia$);
   const playbackMuted = useBehavior(vm.playbackMuted$);
-  const playbackVolume = useBehavior(vm.playbackVolume$);
   const focusUrl = useBehavior(vm.focusUrl$);
-  const moderation = useBehavior(vm.moderation$);
-  const moderator = useBehavior(vm.moderator$);
-  const memberActions = useBehavior(vm.memberActions$);
-  // The volume for everyone as it's being dragged, before it's sent
-  const [draftModeratedVolume, setDraftModeratedVolume] = useState<
-    number | null
-  >(null);
-  const onCommitModeratedVolume = useCallback(() => {
-    if (draftModeratedVolume !== null) {
-      void moderator?.setVolume(draftModeratedVolume);
-      setDraftModeratedVolume(null);
-    }
-  }, [moderator, draftModeratedVolume]);
-
-  const onSelectMute = useCallback(
-    (e: Event) => {
-      e.preventDefault();
-      vm.togglePlaybackMuted();
-    },
-    [vm],
-  );
-
-  const VolumeIcon = playbackMuted ? VolumeOffIcon : VolumeOnIcon;
 
   return (
     <UserMediaTile
@@ -441,110 +361,6 @@ const RemoteUserMediaTile: FC<RemoteUserMediaTileProps> = ({
       waitingForMedia={waitingForMedia}
       playbackMuted={playbackMuted}
       mirror={false}
-      menuStart={
-        <>
-          <ToggleMenuItem
-            Icon={MicOffIcon}
-            label={t("video_tile.mute_for_me")}
-            checked={playbackMuted}
-            onSelect={onSelectMute}
-          />
-          {/* TODO: Figure out how to make this slider keyboard accessible */}
-          <MenuItem as="div" Icon={VolumeIcon} label={null} onSelect={null}>
-            <Slider
-              className={styles.volumeSlider}
-              label={t("video_tile.volume")}
-              value={playbackVolume}
-              onValueChange={vm.adjustPlaybackVolume}
-              onValueCommit={vm.commitPlaybackVolume}
-              min={0}
-              max={2}
-              step={0.01}
-            />
-          </MenuItem>
-        </>
-      }
-      menuEnd={
-        <>
-          {(moderator || memberActions) && (
-            <>
-              <Separator />
-              <Text
-                as="div"
-                size="sm"
-                weight="semibold"
-                className={styles.menuHeading}
-              >
-                {t("video_tile.moderator_controls")}
-              </Text>
-            </>
-          )}
-          {moderator && (
-            <>
-              <ToggleMenuItem
-                Icon={MicOffIcon}
-                label={t("video_tile.mute_audio_for_everyone")}
-                checked={moderation.audioMuted}
-                onSelect={(e) => {
-                  e.preventDefault();
-                  void moderator.setAudioMuted(!moderation.audioMuted);
-                }}
-              />
-              <ToggleMenuItem
-                Icon={VideoCallOffIcon}
-                label={t("video_tile.mute_video_for_everyone")}
-                checked={moderation.videoMuted}
-                onSelect={(e) => {
-                  e.preventDefault();
-                  void moderator.setVideoMuted(!moderation.videoMuted);
-                }}
-              />
-              <MenuItem
-                Icon={moderation.pinned ? UnpinIcon : PinIcon}
-                label={
-                  moderation.pinned
-                    ? t("video_tile.unpin_for_everyone")
-                    : t("video_tile.pin_for_everyone")
-                }
-                onSelect={() => void moderator.setPinned(!moderation.pinned)}
-              />
-              <MenuItem
-                as="div"
-                Icon={VolumeOnIcon}
-                label={null}
-                onSelect={null}
-              >
-                <Slider
-                  className={styles.volumeSlider}
-                  label={t("video_tile.volume_for_everyone")}
-                  value={draftModeratedVolume ?? moderation.volume ?? 1}
-                  onValueChange={setDraftModeratedVolume}
-                  onValueCommit={onCommitModeratedVolume}
-                  min={0}
-                  max={2}
-                  step={0.01}
-                />
-              </MenuItem>
-            </>
-          )}
-          {memberActions && (
-            <>
-              <MenuItem
-                Icon={LeaveIcon}
-                label={t("video_tile.kick")}
-                kind="critical"
-                onSelect={() => void memberActions.kick()}
-              />
-              <MenuItem
-                Icon={BlockIcon}
-                label={t("video_tile.ban")}
-                kind="critical"
-                onSelect={() => void memberActions.ban()}
-              />
-            </>
-          )}
-        </>
-      }
       focusUrl={focusUrl}
       {...props}
     />

@@ -487,6 +487,7 @@ export const InCallView: FC<InCallViewProps> = ({
             targetHeight={targetHeight}
             showIndicators={showSpotlightIndicators}
             tiled={spotlightTiled}
+            onUnpin={vm.togglePinned}
             showNameTags={showNameTags}
             showRingingStatus={showRingingStatus}
             focusable={!contentObscured}

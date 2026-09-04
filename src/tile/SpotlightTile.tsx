@@ -25,12 +25,13 @@ import {
   VolumeOnIcon,
   VolumeOffSolidIcon,
   VolumeOnSolidIcon,
+  UnpinIcon,
 } from "@vector-im/compound-design-tokens/assets/web/icons";
 import { animated } from "@react-spring/web";
 import { useTranslation } from "react-i18next";
 import classNames from "classnames";
 import { type TrackReferenceOrPlaceholder } from "@livekit/components-core";
-import { Menu, MenuItem, Text } from "@vector-im/compound-web";
+import { ContextMenu, Menu, MenuItem, Text } from "@vector-im/compound-web";
 
 import FullScreenMaximiseIcon from "../icons/FullScreenMaximise.svg?react";
 import FullScreenMinimiseIcon from "../icons/FullScreenMinimise.svg?react";
@@ -54,6 +55,7 @@ import { Slider } from "../Slider";
 import { platform } from "../Platform";
 import { type RingingMediaViewModel } from "../state/media/RingingMediaViewModel";
 import { RingingStatus } from "./RingingStatus";
+import { UserMediaMenuItems } from "./UserMediaMenuItems";
 
 interface SpotlightItemBaseProps {
   ref?: Ref<HTMLDivElement>;
@@ -113,16 +115,21 @@ const SpotlightRemoteUserMediaItem: FC<SpotlightRemoteUserMediaItemProps> = ({
 
 interface SpotlightUserMediaItemProps extends SpotlightMemberMediaItemBaseProps {
   vm: UserMediaViewModel;
+  onUnpin: ((vm: UserMediaViewModel) => void) | undefined;
 }
 
 const SpotlightUserMediaItem: FC<SpotlightUserMediaItemProps> = ({
   vm,
   targetWidth,
   targetHeight,
+  onUnpin,
   ...props
 }) => {
+  const { t } = useTranslation();
   const videoEnabled = useBehavior(vm.videoEnabled$);
   const speaking = useBehavior(vm.speaking$);
+  const pinned = useBehavior(vm.pinned$);
+  const moderation = useBehavior(vm.moderation$);
 
   const baseProps: SpotlightUserMediaItemBaseProps &
     RefAttributes<HTMLDivElement> = {
@@ -134,10 +141,34 @@ const SpotlightUserMediaItem: FC<SpotlightUserMediaItemProps> = ({
     ...props,
   };
 
-  return vm.local ? (
+  const item = vm.local ? (
     <SpotlightLocalUserMediaItem vm={vm} {...baseProps} />
   ) : (
     <SpotlightRemoteUserMediaItem vm={vm} {...baseProps} />
+  );
+
+  // Pinned users live here rather than in the grid, so they need the same
+  // context menu as a grid tile, plus a way to unpin them (unless it was a
+  // moderator who pinned them, which the moderator controls cover)
+  return (
+    <ContextMenu
+      title={props.displayName}
+      trigger={item}
+      hasAccessibleAlternative
+    >
+      <UserMediaMenuItems
+        vm={vm}
+        leading={
+          pinned && !moderation.pinned && onUnpin ? (
+            <MenuItem
+              Icon={UnpinIcon}
+              label={t("video_tile.unpin")}
+              onSelect={() => onUnpin(vm)}
+            />
+          ) : null
+        }
+      />
+    </ContextMenu>
   );
 };
 
@@ -171,11 +202,13 @@ const SpotlightRemoteScreenShareItem: FC<
 interface SpotlightMemberMediaItemProps extends SpotlightItemBaseProps {
   vm: MemberMediaViewModel;
   tiled: boolean;
+  onUnpin: ((vm: UserMediaViewModel) => void) | undefined;
 }
 
 const SpotlightMemberMediaItem: FC<SpotlightMemberMediaItemProps> = ({
   vm,
   tiled,
+  onUnpin,
   ...props
 }) => {
   const video = useBehavior(vm.video$);
@@ -197,6 +230,7 @@ const SpotlightMemberMediaItem: FC<SpotlightMemberMediaItemProps> = ({
       <SpotlightUserMediaItem
         vm={vm}
         videoFit={tiled ? "cover" : undefined}
+        onUnpin={onUnpin}
         {...baseProps}
       />
     );
@@ -260,6 +294,7 @@ interface SpotlightItemProps {
   tiled: boolean;
   className?: string;
   "aria-hidden"?: boolean;
+  onUnpin: ((vm: UserMediaViewModel) => void) | undefined;
 }
 
 const SpotlightItem: FC<SpotlightItemProps> = ({
@@ -276,6 +311,7 @@ const SpotlightItem: FC<SpotlightItemProps> = ({
   tiled,
   className,
   "aria-hidden": ariaHidden,
+  onUnpin,
 }) => {
   const ourRef = useRef<HTMLDivElement | null>(null);
 
@@ -320,7 +356,12 @@ const SpotlightItem: FC<SpotlightItemProps> = ({
       {...baseProps}
     />
   ) : (
-    <SpotlightMemberMediaItem vm={vm} tiled={tiled} {...baseProps} />
+    <SpotlightMemberMediaItem
+      vm={vm}
+      tiled={tiled}
+      onUnpin={onUnpin}
+      {...baseProps}
+    />
   );
 };
 
@@ -406,6 +447,8 @@ interface Props {
    * through them one at a time.
    */
   tiled?: boolean;
+  /** Unpins a user the local user pinned; enables Unpin in item menus. */
+  onUnpin?: (vm: UserMediaViewModel) => void;
   showNameTags: boolean;
   showRingingStatus: boolean;
   focusable: boolean;
@@ -426,6 +469,7 @@ export const SpotlightTile: FC<Props> = ({
   targetHeight,
   showIndicators,
   tiled: tiledProp = false,
+  onUnpin,
   showNameTags,
   showRingingStatus,
   focusable = true,
@@ -563,6 +607,7 @@ export const SpotlightTile: FC<Props> = ({
             tiled={tiled}
             className={itemClassName}
             aria-hidden={!tiled && (scrollToId ?? visibleId) !== vm.id}
+            onUnpin={onUnpin}
           />
         ))}
       </div>

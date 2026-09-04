@@ -326,6 +326,10 @@ export interface CallViewModel {
    * What emphasiseTile would do in the current layout, if anything.
    */
   tileEmphasis$: Behavior<TileEmphasis | null>;
+  /**
+   * Pins a user to the spotlight, or unpins them.
+   */
+  togglePinned: (media: UserMediaViewModel) => void;
   showSpotlightIndicators$: Behavior<boolean>;
   /**
    * Whether a spotlight holding several media should show them all at once as
@@ -1522,6 +1526,7 @@ export function createCallViewModel$(
     tileStoreGeneration$: tileStoreGeneration$,
     floorControl,
     emphasiseTile,
+    togglePinned,
     tileEmphasis$: computed(() => {
       switch (layoutMedia$.value.type) {
         case "grid":
