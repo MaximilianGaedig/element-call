@@ -35,7 +35,6 @@ function buildMuteBehaviors(
   | "toggleAudio$"
   | "videoEnabled$"
   | "videoBusy$"
-  | "videoMutedByModerator$"
   | "toggleVideo$"
 > {
   return {
@@ -45,7 +44,6 @@ function buildMuteBehaviors(
     toggleAudio$: computed(() => muteStates.audio.toggle$.value ?? undefined),
     videoEnabled$: muteStates.video.enabled$,
     videoBusy$: muteStates.video.syncing$,
-    videoMutedByModerator$: muteStates.video.moderatorMuted$,
     toggleVideo$: computed(() => muteStates.video.toggle$.value ?? undefined),
   };
 }
@@ -211,7 +209,6 @@ export function createLobbyFooterViewModel(
       audioEnabled: undefined,
       audioBusy: false,
       audioMutedByModerator: false,
-      videoMutedByModerator: false,
       videoEnabled: undefined,
       videoBusy: false,
       layoutSwitchVm: null,

@@ -62,10 +62,14 @@ render: mute the audio of an `audio_muted` device, not display the video of a
 `video_muted` device, and scale the audio of a device with a `volume` by that
 factor. This protects the room even before the controlled device has reacted.
 
-A device that is itself controlled must stop publishing the muted media, and
-must not let its user unmute it while the control is in place. It should make
-clear that a moderator did this rather than the user. When the control is
-lifted the device stays muted until its user chooses to unmute.
+A device whose audio is controlled must stop publishing it, and must not let
+its user unmute while the control is in place. It should make clear that a
+moderator did this rather than the user. When the control is lifted the device
+stays muted until its user chooses to unmute.
+
+A device whose video is controlled keeps its camera as it is: viewers simply do
+not display the video. The device should warn its user that nobody can see
+them, so that they know their camera is not doing anything.
 
 ## Potential issues
 

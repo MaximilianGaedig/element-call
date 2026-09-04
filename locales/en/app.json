@@ -165,8 +165,7 @@
   "microphone_off": "Microphone off",
   "microphone_on": "Microphone on",
   "moderation": {
-    "audio_muted_by_moderator": "A moderator has muted your microphone",
-    "video_muted_by_moderator": "A moderator has turned off your camera"
+    "audio_muted_by_moderator": "A moderator has muted your microphone"
   },
   "mute_microphone_button_label": "Mute microphone",
   "participant_count_one": "{{count, number}}",

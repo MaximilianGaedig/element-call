@@ -72,8 +72,6 @@ export interface FooterState {
   audioMutedByModerator: boolean;
   videoEnabled: boolean;
   videoBusy: boolean;
-  /** Whether a moderator has turned off our camera, disabling the button */
-  videoMutedByModerator: boolean;
   videoBlurEnabled: boolean;
   showFooter: boolean;
 
@@ -136,12 +134,8 @@ export const CallFooter: FC<FooterProps> = ({
   const audioMutedByModerator = useBehavior(vm.audioMutedByModerator$);
   const videoEnabled = useBehavior(vm.videoEnabled$);
   const videoBusy = useBehavior(vm.videoBusy$);
-  const videoMutedByModerator = useBehavior(vm.videoMutedByModerator$);
   const audioDisabledReason = audioMutedByModerator
     ? t("moderation.audio_muted_by_moderator")
-    : undefined;
-  const videoDisabledReason = videoMutedByModerator
-    ? t("moderation.video_muted_by_moderator")
     : undefined;
   const toggleAudio = useBehavior(vm.toggleAudio$);
   const toggleVideo = useBehavior(vm.toggleVideo$);
@@ -219,7 +213,6 @@ export const CallFooter: FC<FooterProps> = ({
         enabled={videoEnabled ?? false}
         busy={videoBusy ?? false}
         onMuteClick={toggleVideo}
-        muteDisabledReason={videoDisabledReason}
         options={videoOptions}
         selectedOption={selectedVideo}
         onSelect={selectVideoButtonOption}
@@ -236,7 +229,6 @@ export const CallFooter: FC<FooterProps> = ({
         busy={videoBusy ?? false}
         onClick={toggleVideo}
         disabled={(videoBusy ?? false) || toggleVideo === undefined}
-        disabledReason={videoDisabledReason}
         data-testid="incall_videomute"
       />,
     );
