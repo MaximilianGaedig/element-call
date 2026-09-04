@@ -45,9 +45,15 @@ export const makeSpotlightLandscapeLayout: CallLayout<
     Slot,
   }): ReactNode {
     useUpdateLayout();
-    useBehavior(minBounds$);
+    const { width } = useBehavior(minBounds$);
     const railWidth = useBehavior(model.railWidth$);
+    // The width when the drag began; each move reports its delta from there
+    const startWidth = useRef(railWidth);
 
+    // The resize handle lives on this layer's empty stand-in for the rail
+    // rather than around the rail's slots: re-resizable rewrites the sizes of
+    // its element and inserts an overlay while dragging, which would upset
+    // the measurement of any slots inside it.
     return (
       <div ref={ref} className={styles.layer} style={layerStyle(railWidth)}>
         <div className={styles.spotlight}>
@@ -57,27 +63,6 @@ export const makeSpotlightLandscapeLayout: CallLayout<
             model={model.spotlight}
           />
         </div>
-        <div className={styles.grid} />
-      </div>
-    );
-  },
-
-  scrolling: function SpotlightLandscapeLayoutScrolling({
-    ref,
-    model,
-    Slot,
-  }): ReactNode {
-    useUpdateLayout();
-    useVisibleTiles(model.setVisibleTiles);
-    const { width } = useBehavior(minBounds$);
-    const onDragTile = useReorderTiles(model);
-    const railWidth = useBehavior(model.railWidth$);
-    // The width when the drag began; each move reports its delta from there
-    const startWidth = useRef(railWidth);
-
-    return (
-      <div ref={ref} className={styles.layer} style={layerStyle(railWidth)}>
-        <SpotlightSlot media$={model.spotlight.media$} />
         <Resizable
           className={styles.rail}
           size={{ width: railWidth, height: "100%" }}
@@ -94,19 +79,36 @@ export const makeSpotlightLandscapeLayout: CallLayout<
           onResize={(_e, _direction, _element, delta): void => {
             model.railWidth$.value = startWidth.current + delta.width;
           }}
-        >
-          <div className={styles.grid}>
-            {model.grid.map((m) => (
-              <Slot
-                key={m.id}
-                className={styles.slot}
-                id={m.id}
-                model={m}
-                onDrag={onDragTile(m)}
-              />
-            ))}
-          </div>
-        </Resizable>
+        />
+      </div>
+    );
+  },
+
+  scrolling: function SpotlightLandscapeLayoutScrolling({
+    ref,
+    model,
+    Slot,
+  }): ReactNode {
+    useUpdateLayout();
+    useVisibleTiles(model.setVisibleTiles);
+    useBehavior(minBounds$);
+    const onDragTile = useReorderTiles(model);
+    const railWidth = useBehavior(model.railWidth$);
+
+    return (
+      <div ref={ref} className={styles.layer} style={layerStyle(railWidth)}>
+        <SpotlightSlot media$={model.spotlight.media$} />
+        <div className={styles.grid}>
+          {model.grid.map((m) => (
+            <Slot
+              key={m.id}
+              className={styles.slot}
+              id={m.id}
+              model={m}
+              onDrag={onDragTile(m)}
+            />
+          ))}
+        </div>
       </div>
     );
   },
