@@ -24,11 +24,16 @@ import {
   VolumeOffSolidIcon,
   SwitchCameraSolidIcon,
   PinIcon,
-  UnpinIcon,
   ExpandIcon,
   CollapseIcon,
 } from "@vector-im/compound-design-tokens/assets/web/icons";
-import { ContextMenu, MenuItem, Menu, Text } from "@vector-im/compound-web";
+import {
+  ContextMenu,
+  MenuItem,
+  Menu,
+  Text,
+  ToggleMenuItem,
+} from "@vector-im/compound-web";
 
 import styles from "./GridTile.module.css";
 import { MediaView } from "./MediaView";
@@ -256,14 +261,21 @@ const UserMediaTile: FC<
   // The same thing double-clicking the tile does, for the menu
   const emphasiseItem = useMemo(() => {
     if (!emphasis || !onEmphasise) return null;
-    const [Icon, label] =
-      emphasis === "pin"
-        ? emphasised
-          ? [UnpinIcon, t("video_tile.unpin")]
-          : [PinIcon, t("video_tile.pin")]
-        : emphasised
-          ? [CollapseIcon, t("video_tile.shrink")]
-          : [ExpandIcon, t("video_tile.enlarge")];
+    if (emphasis === "pin")
+      return (
+        <ToggleMenuItem
+          Icon={PinIcon}
+          label={t("video_tile.pin")}
+          checked={emphasised ?? false}
+          onSelect={(e) => {
+            e.preventDefault();
+            onEmphasise();
+          }}
+        />
+      );
+    const [Icon, label] = emphasised
+      ? [CollapseIcon, t("video_tile.shrink")]
+      : [ExpandIcon, t("video_tile.enlarge")];
     return <MenuItem Icon={Icon} label={label} onSelect={onEmphasise} />;
   }, [t, emphasis, emphasised, onEmphasise]);
   const menu = useMemo(

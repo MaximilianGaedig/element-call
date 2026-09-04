@@ -14,7 +14,6 @@ import {
   MicOffIcon,
   MicOnIcon,
   PinIcon,
-  UnpinIcon,
   UserProfileIcon,
   VideoCallOffIcon,
   VisibilityOffIcon,
@@ -204,6 +203,18 @@ const RemoteItems: FC<{ vm: RemoteUserMediaViewModel }> = ({ vm }) => {
               void moderator.setAudioMuted(!moderation.audioMuted);
             }}
           />
+          <MenuItem as="div" Icon={VolumeOnIcon} label={null} onSelect={null}>
+            <Slider
+              className={styles.volumeSlider}
+              label={t("video_tile.volume_for_everyone")}
+              value={draftModeratedVolume ?? moderation.volume ?? 1}
+              onValueChange={setDraftModeratedVolume}
+              onValueCommit={onCommitModeratedVolume}
+              min={0}
+              max={2}
+              step={0.01}
+            />
+          </MenuItem>
           <ToggleMenuItem
             Icon={VideoCallOffIcon}
             label={t("video_tile.mute_video_for_everyone")}
@@ -213,14 +224,14 @@ const RemoteItems: FC<{ vm: RemoteUserMediaViewModel }> = ({ vm }) => {
               void moderator.setVideoMuted(!moderation.videoMuted);
             }}
           />
-          <MenuItem
-            Icon={moderation.pinned ? UnpinIcon : PinIcon}
-            label={
-              moderation.pinned
-                ? t("video_tile.unpin_for_everyone")
-                : t("video_tile.pin_for_everyone")
-            }
-            onSelect={() => void moderator.setPinned(!moderation.pinned)}
+          <ToggleMenuItem
+            Icon={PinIcon}
+            label={t("video_tile.pin_for_everyone")}
+            checked={moderation.pinned}
+            onSelect={(e) => {
+              e.preventDefault();
+              void moderator.setPinned(!moderation.pinned);
+            }}
           />
           {/* Once hidden the tile is gone, so unhiding is in Moderator
           settings instead */}
@@ -235,18 +246,6 @@ const RemoteItems: FC<{ vm: RemoteUserMediaViewModel }> = ({ vm }) => {
             kind="critical"
             onSelect={() => void moderator.setBlocked(true)}
           />
-          <MenuItem as="div" Icon={VolumeOnIcon} label={null} onSelect={null}>
-            <Slider
-              className={styles.volumeSlider}
-              label={t("video_tile.volume_for_everyone")}
-              value={draftModeratedVolume ?? moderation.volume ?? 1}
-              onValueChange={setDraftModeratedVolume}
-              onValueCommit={onCommitModeratedVolume}
-              min={0}
-              max={2}
-              step={0.01}
-            />
-          </MenuItem>
         </>
       )}
       {memberActions && (

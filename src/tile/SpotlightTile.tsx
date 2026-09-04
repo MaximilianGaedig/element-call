@@ -29,7 +29,7 @@ import {
   VolumeOnIcon,
   VolumeOffSolidIcon,
   VolumeOnSolidIcon,
-  UnpinIcon,
+  PinIcon,
   OverflowHorizontalIcon,
 } from "@vector-im/compound-design-tokens/assets/web/icons";
 import { animated } from "@react-spring/web";
@@ -43,7 +43,13 @@ import {
 import { useTranslation } from "react-i18next";
 import classNames from "classnames";
 import { type TrackReferenceOrPlaceholder } from "@livekit/components-core";
-import { ContextMenu, Menu, MenuItem, Text } from "@vector-im/compound-web";
+import {
+  ContextMenu,
+  Menu,
+  MenuItem,
+  Text,
+  ToggleMenuItem,
+} from "@vector-im/compound-web";
 
 import { MediaView } from "./MediaView";
 import styles from "./SpotlightTile.module.css";
@@ -158,10 +164,14 @@ const SpotlightUserMediaItem: FC<SpotlightUserMediaItemProps> = ({
       vm={vm}
       leading={
         unpinnable ? (
-          <MenuItem
-            Icon={UnpinIcon}
-            label={t("video_tile.unpin")}
-            onSelect={() => onUnpin(vm)}
+          <ToggleMenuItem
+            Icon={PinIcon}
+            label={t("video_tile.pin")}
+            checked
+            onSelect={(e) => {
+              e.preventDefault();
+              onUnpin(vm);
+            }}
           />
         ) : null
       }
