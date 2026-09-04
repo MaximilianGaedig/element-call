@@ -23,6 +23,7 @@ import type { ICreateClientOpts, MatrixClient, Room } from "matrix-js-sdk";
 import IndexedDBWorker from "../IndexedDBWorker?worker";
 import { generateUrlSearchParams, getUrlParams } from "../UrlParams";
 import { Config } from "../config/Config";
+import { FloorControlEventType } from "../state/FloorControl";
 import { E2eeType } from "../e2ee/e2eeType";
 import {
   type EncryptionSystem,
@@ -253,6 +254,8 @@ export async function createRoom(
         "m.room.encrypted": 50,
         "m.sticker": 50,
         "org.matrix.msc3401.call.member": 0,
+        // Only moderators may control the floor; state_default is 0 here
+        [FloorControlEventType]: 50,
       },
       users: {
         [client.getUserId()!]: 100,
