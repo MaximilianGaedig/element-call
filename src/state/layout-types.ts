@@ -75,8 +75,8 @@ export type LayoutMedia =
   | PipLayoutMedia;
 
 /**
- * Where a tile floating over the layout sits, as fractions of the space it can
- * move in: 0 is the start edge, 1 is the end edge.
+ * Where a tile floating over the layout sits, in pixels from the start edges
+ * of the space it can move in. Infinity means flush with the end edge.
  */
 export interface FloatingPosition {
   x: number;

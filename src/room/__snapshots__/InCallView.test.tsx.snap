@@ -96,7 +96,7 @@ exports[`InCallView > rendering > renders 1`] = `
           <div
             class="_local_185815 _floating_cd5276 _slot_b0d1cd"
             data-id="0"
-            style="--floating-x: 1; --floating-y: 0;"
+            style="--floating-x: Infinity; --floating-y: 0;"
           />
         </div>
       </div>

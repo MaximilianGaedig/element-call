@@ -11,23 +11,33 @@ import { type FloatingPosition } from "../state/layout-types.ts";
 import { type DragCallback } from "./Grid.tsx";
 import styles from "./Floating.module.css";
 
-/** How close to an edge (as a fraction of the travel) a dropped tile snaps. */
-const snap = 0.1;
+/**
+ * How close to an edge, in pixels, a dropped tile snaps. This is the margin
+ * the tiles keep from the edges (--cpd-space-4x), so that a tile dropped
+ * within its margin sits flush against it.
+ */
+const snap = 16;
 
 /**
- * Where a floating tile should settle after being dropped: clamped to the
- * layout, and snapped to any edge it lands near.
+ * Where a floating tile should settle after being dropped: exactly where it
+ * was left, except that it snaps to any edge it lands near. The CSS clamps
+ * it to the layout's margins.
  */
 export function droppedPosition({
-  xRatio,
-  yRatio,
+  containerX,
+  containerY,
+  container,
+  tile,
 }: Parameters<DragCallback>[0]): FloatingPosition {
-  const settle = (ratio: number): number => {
-    if (!(ratio > snap)) return 0;
-    if (ratio > 1 - snap) return 1;
-    return ratio;
+  const settle = (offset: number, travel: number): number => {
+    if (!(offset > snap)) return 0;
+    if (offset > travel - snap) return Infinity;
+    return offset;
   };
-  return { x: settle(xRatio), y: settle(yRatio) };
+  return {
+    x: settle(containerX, container.width - tile.width),
+    y: settle(containerY, container.height - tile.height),
+  };
 }
 
 export const floatingClass = styles.floating;

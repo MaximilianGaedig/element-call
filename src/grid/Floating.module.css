@@ -8,8 +8,9 @@ Please see LICENSE in the repository root for full details.
 /* A tile floating over the layout, such as the local video PiP. Layouts set
 --floating-inline-size and --floating-block-size, and optionally --floating-inset
 (or the four --floating-inset-* sides) to keep it clear of the edges. The
-position comes from --floating-x and --floating-y, which run from 0 at the
-start edge to 1 at the end edge of the space it can move in. */
+position comes from --floating-x and --floating-y: pixel offsets from the
+start edges of the container, clamped to the insets, so that 0 means the start
+edge and infinity means the end edge. */
 
 .floating {
   position: absolute;
@@ -31,14 +32,14 @@ start edge to 1 at the end edge of the space it can move in. */
     --floating-inset-block-end,
     var(--floating-inset, 0px)
   );
-  inset-inline-start: calc(
-    var(--inset-inline-start) + var(--floating-x) *
-      (100% - var(--inset-inline-start) - var(--inset-inline-end) -
-        var(--floating-inline-size))
+  inset-inline-start: clamp(
+    var(--inset-inline-start),
+    var(--floating-x) * 1px,
+    100% - var(--inset-inline-end) - var(--floating-inline-size)
   );
-  inset-block-start: calc(
-    var(--inset-block-start) + var(--floating-y) *
-      (100% - var(--inset-block-start) - var(--inset-block-end) -
-        var(--floating-block-size))
+  inset-block-start: clamp(
+    var(--inset-block-start),
+    var(--floating-y) * 1px,
+    100% - var(--inset-block-end) - var(--floating-block-size)
   );
 }

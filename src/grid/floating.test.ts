@@ -9,18 +9,30 @@ import { expect, test } from "vitest";
 
 import { droppedPosition } from "./floating.ts";
 
-const drop = (xRatio: number, yRatio: number): { x: number; y: number } =>
-  droppedPosition({ x: 0, y: 0, xRatio, yRatio, over: undefined });
+// A 1000×500 container holding a 100×50 tile
+const drop = (
+  containerX: number,
+  containerY: number,
+): { x: number; y: number } =>
+  droppedPosition({
+    x: 0,
+    y: 0,
+    containerX,
+    containerY,
+    container: { width: 1000, height: 500 },
+    tile: { width: 100, height: 50 },
+    over: undefined,
+  });
 
-test("tiles dropped near an edge snap to it", () => {
-  expect(drop(0.05, 0.97)).toEqual({ x: 0, y: 1 });
+test("tiles dropped within the margin of an edge snap to it", () => {
+  expect(drop(10, 440)).toEqual({ x: 0, y: Infinity });
 });
 
-test("tiles dropped elsewhere stay put", () => {
-  expect(drop(0.3, 0.6)).toEqual({ x: 0.3, y: 0.6 });
+test("tiles dropped elsewhere stay exactly put", () => {
+  expect(drop(300, 123.4)).toEqual({ x: 300, y: 123.4 });
 });
 
 test("tiles dragged off the page are pulled back in", () => {
-  expect(drop(-0.4, 1.7)).toEqual({ x: 0, y: 1 });
+  expect(drop(-400, 700)).toEqual({ x: 0, y: Infinity });
   expect(drop(NaN, NaN)).toEqual({ x: 0, y: 0 });
 });

@@ -197,15 +197,22 @@ interface Drag {
    */
   y: number;
   /**
-   * How far along its container the dragged tile is horizontally: 0 when
-   * flush with the start edge, 1 when flush with the end edge.
+   * The X coordinate of the dragged tile relative to its container (its
+   * slot's offset parent).
    */
-  xRatio: number;
+  containerX: number;
   /**
-   * How far along its container the dragged tile is vertically: 0 when flush
-   * with the top edge, 1 when flush with the bottom edge.
+   * The Y coordinate of the dragged tile relative to its container.
    */
-  yRatio: number;
+  containerY: number;
+  /**
+   * The size of the container.
+   */
+  container: { width: number; height: number };
+  /**
+   * The size of the dragged tile.
+   */
+  tile: { width: number; height: number };
   /**
    * The ID of the tile whose slot the dragged tile was dropped onto, if any.
    */
@@ -461,7 +468,14 @@ export function Grid<
     callback: DragCallback,
   ): void => {
     const { tileId, tileX, tileY } = dragState.current!;
-    const tile = placedTiles.find((t) => t.id === tileId)!;
+    const tile = placedTiles.find((t) => t.id === tileId);
+    // The tile can vanish mid-gesture (a reconnect can replace it, say).
+    // Then there's nothing to drag any more; forget the gesture rather than
+    // leaving it half-done, which would poison every later drag.
+    if (tile === undefined) {
+      dragState.current = null;
+      return;
+    }
 
     springRef.current
       .find((c) => (c.item as Tile<TileModel>).id === tileId)
@@ -499,8 +513,10 @@ export function Grid<
       callback({
         x: tileX,
         y: tileY,
-        xRatio: (tileX - container.x) / (container.width - tile.width),
-        yRatio: (tileY - container.y) / (container.height - tile.height),
+        containerX: tileX - container.x,
+        containerY: tileY - container.y,
+        container: { width: container.width, height: container.height },
+        tile: { width: tile.width, height: tile.height },
         over: placedTiles.find(
           (t) =>
             t.id !== tileId &&
@@ -539,11 +555,14 @@ export function Grid<
     if (!tap) {
       const tileController = springRef.current.find(
         (c) => (c.item as Tile<TileModel>).id === tileId,
-      )!;
-      const callback = tiles.get(tileController.item.id)!.onDrag;
+      );
+      const callback =
+        tileController && tiles.get(tileController.item.id)?.onDrag;
 
-      if (callback != null) {
-        if (dragState.current === null) {
+      if (tileController !== undefined && callback != null) {
+        // A gesture always begins with its own tile; any drag state left over
+        // from another tile is stale
+        if (dragState.current?.tileId !== tileId) {
           const tileSpring = tileController.get();
           dragState.current = {
             tileId,
@@ -560,10 +579,9 @@ export function Grid<
         dragState.current.cursorY += dy;
 
         animateDraggedTile(last, callback);
-
-        if (last) dragState.current = null;
       }
     }
+    if (last) dragState.current = null;
   };
 
   const onTileDragRef = useRef(onTileDrag);
@@ -577,10 +595,12 @@ export function Grid<
     ({ xy: [, y], delta: [, dy] }) => {
       scrollOffset.current = y;
 
-      if (dragState.current !== null) {
+      const callback =
+        dragState.current && tiles.get(dragState.current.tileId)?.onDrag;
+      if (dragState.current !== null && callback != null) {
         dragState.current.tileY += dy;
         dragState.current.cursorY += dy;
-        animateDraggedTile(false, tiles.get(dragState.current.tileId)!.onDrag!);
+        animateDraggedTile(false, callback);
       }
     },
     { target: gridRoot ?? undefined },
