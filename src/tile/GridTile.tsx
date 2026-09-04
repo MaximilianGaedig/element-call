@@ -287,6 +287,7 @@ const LocalUserMediaTile: FC<LocalUserMediaTileProps> = ({
   const switchCamera = useBehavior(vm.switchCamera$);
   const focusUrl = useBehavior(vm.focusUrl$);
   const moderation = useBehavior(vm.moderation$);
+  const videoEnabled = useBehavior(vm.videoEnabled$);
 
   const latestAlwaysShow = useLatest(alwaysShow);
   const onSelectAlwaysShow = useCallback(
@@ -342,8 +343,10 @@ const LocalUserMediaTile: FC<LocalUserMediaTileProps> = ({
       menuEnd={menuEnd}
       focusable={focusable}
       focusUrl={focusUrl}
+      // Our own camera keeps showing to us; the warning is that nobody else
+      // sees it, which only matters while it's on
       warning={
-        moderation.videoMuted
+        moderation.videoMuted && videoEnabled
           ? t("video_tile.video_muted_by_moderator")
           : undefined
       }

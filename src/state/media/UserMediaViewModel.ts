@@ -122,17 +122,14 @@ export function createBaseUserMedia(
       [ParticipantEvent.IsSpeakingChanged],
       (p) => p?.isSpeaking ?? false,
     ),
-    // Media a moderator has muted is treated as muted whether or not the
-    // device has caught up and stopped publishing it yet
+    // Audio a moderator has muted is treated as muted whether or not the
+    // device has caught up and stopped publishing it yet. (Video mutes are
+    // applied by viewers, see RemoteUserMediaViewModel; our own camera is
+    // shown to us as it is.)
     audioEnabled$: computed(
       () => !moderation$.value.audioMuted && audioEnabled$.value,
     ),
-    videoEnabled$: computed(
-      () => !moderation$.value.videoMuted && videoEnabled$.value,
-    ),
-    video$: computed(() =>
-      moderation$.value.videoMuted ? undefined : memberMedia.video$.value,
-    ),
+    videoEnabled$,
     videoOrientation$: computed(() =>
       videoAspectRatio$.value > 1 ? "landscape" : "portrait",
     ),

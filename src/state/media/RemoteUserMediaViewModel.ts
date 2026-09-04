@@ -59,10 +59,17 @@ export function createRemoteUserMedia(
     speaking$: computed(() =>
       pretendToBeDisconnected$.value ? false : baseUserMedia.speaking$.value,
     ),
-    videoEnabled$: computed(() =>
-      pretendToBeDisconnected$.value
-        ? false
-        : baseUserMedia.videoEnabled$.value,
+    // Video a moderator has muted isn't shown, whatever the device does
+    videoEnabled$: computed(
+      () =>
+        !pretendToBeDisconnected$.value &&
+        !inputs.moderation$.value.videoMuted &&
+        baseUserMedia.videoEnabled$.value,
+    ),
+    video$: computed(() =>
+      inputs.moderation$.value.videoMuted
+        ? undefined
+        : baseUserMedia.video$.value,
     ),
     // If livekitRoom is undefined, the user is not attempting to publish on
     // any transport and so we shouldn't expect a participant. (They might
