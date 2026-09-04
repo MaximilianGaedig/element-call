@@ -426,6 +426,10 @@ export function Grid<
   // Drag state is stored in a ref rather than component state, because we use
   // react-spring's imperative API during gestures to improve responsiveness
   const dragState = useRef<DragState | null>(null);
+  // The latest placements, for settling a dropped tile after the layout has
+  // reacted to the drop
+  const placedTilesRef = useRef(placedTiles);
+  placedTilesRef.current = placedTiles;
 
   // If true, disables animations
   const immediate =
@@ -499,17 +503,15 @@ export function Grid<
       return;
     }
 
-    springRef.current
-      .find((c) => (c.item as Tile<TileModel>).id === tileId)
+    const controller = springRef.current.find(
+      (c) => (c.item as Tile<TileModel>).id === tileId,
+    );
+    controller
       ?.start(
         endOfGesture
           ? {
               scale: 1,
               zIndex: tile.zIndex,
-              x: tile.x,
-              y: tile.y,
-              width: tile.width,
-              height: tile.height,
               immediate: immediate || ((key): boolean => key === "zIndex"),
               // Allow the tile's position to settle before pushing its
               // z-index back down
@@ -527,6 +529,26 @@ export function Grid<
             },
       )
       .catch(logger.error);
+    if (endOfGesture) {
+      // Settle the tile onto its slot, but only once the layout has had the
+      // chance to react to the drop: sending it back to the slot it started
+      // from first, and then on to a new one, made it bounce. Floating
+      // tiles get a slot where they were dropped; a tile dropped outside
+      // any slot goes home.
+      requestAnimationFrame(() => {
+        const settled = placedTilesRef.current.find((t) => t.id === tileId);
+        if (settled === undefined) return;
+        controller
+          ?.start({
+            x: settled.x,
+            y: settled.y,
+            width: settled.width,
+            height: settled.height,
+            immediate,
+          })
+          .catch(logger.error);
+      });
+    }
 
     const centerX = tileX + tile.width / 2;
     const centerY = tileY + tile.height / 2;
