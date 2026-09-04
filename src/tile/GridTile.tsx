@@ -146,6 +146,7 @@ const UserMediaTileInner: FC<UserMediaTileProps & { menu: ReactNode }> = ({
   const audioEnabled = useBehavior(vm.audioEnabled$);
   const videoEnabled = useBehavior(vm.videoEnabled$);
   const speaking = useBehavior(vm.speaking$);
+  const pinned = useBehavior(vm.pinned$);
 
   const rtcBackendIdentity = vm.rtcBackendIdentity;
   const handRaised = useBehavior(vm.handRaised$);
@@ -209,6 +210,7 @@ const UserMediaTileInner: FC<UserMediaTileProps & { menu: ReactNode }> = ({
         />
       }
       displayName={displayName}
+      pinned={pinned}
       mxcAvatarUrl={mxcAvatarUrl}
       focusable={focusable}
       primaryButton={

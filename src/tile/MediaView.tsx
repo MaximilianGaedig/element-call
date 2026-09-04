@@ -53,6 +53,8 @@ interface Props extends ComponentProps<typeof animated.div> {
   status?: ReactNode;
   showNameTags: boolean;
   nameTagLeadingIcon?: ReactNode;
+  /** Whether to mark the name tag as pinned. */
+  pinned?: boolean;
   displayName: string;
   mxcAvatarUrl: string | undefined;
   avatarStyle?: "solid" | "translucent";
@@ -99,6 +101,7 @@ export const MediaView: FC<Props> = ({
   unencryptedWarning,
   showNameTags,
   nameTagLeadingIcon,
+  pinned = false,
   displayName,
   mxcAvatarUrl,
   avatarStyle = "solid",
@@ -254,6 +257,7 @@ export const MediaView: FC<Props> = ({
               className={styles.name}
               data-testid="name_tag"
             >
+              {pinned && "📌 "}
               {displayName}
             </Text>
             {warnings}

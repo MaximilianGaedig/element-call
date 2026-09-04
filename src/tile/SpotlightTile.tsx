@@ -93,6 +93,7 @@ interface SpotlightMemberMediaItemBaseProps extends SpotlightItemBaseProps {
 interface SpotlightUserMediaItemBaseProps extends SpotlightMemberMediaItemBaseProps {
   videoEnabled: boolean;
   soundWaves: boolean | undefined;
+  pinned: boolean;
   primaryButton: ReactNode;
 }
 
@@ -196,6 +197,7 @@ const SpotlightUserMediaItem: FC<SpotlightUserMediaItemProps> = ({
     setVideoAspectRatio: vm.setVideoAspectRatio,
     videoEnabled,
     soundWaves: props.background === "transparent" ? speaking : undefined,
+    pinned,
     primaryButton,
     targetWidth,
     targetHeight,
