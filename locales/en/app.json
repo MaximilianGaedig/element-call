@@ -236,7 +236,7 @@
     "feedback_tab_title": "Feedback",
     "framerate_label": "Framerate",
     "moderator": {
-      "defaults_description": "Moderators are exempt. Individual devices can be unmuted from their tile's menu.",
+      "defaults_description": "Applies to everyone, moderators included. Individual devices can be unmuted from their tile's menu.",
       "mute_audio_by_default": "Mute everyone's microphone by default",
       "mute_video_by_default": "Turn off everyone's camera by default"
     },
