@@ -6,7 +6,13 @@ Please see LICENSE in the repository root for full details.
 */
 
 import { test, expect, vi, beforeAll, afterAll } from "vitest";
-import { act, isInaccessible, render, screen } from "@testing-library/react";
+import {
+  act,
+  isInaccessible,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import { axe } from "vitest-axe";
 import userEvent from "@testing-library/user-event";
 import { TooltipProvider } from "@vector-im/compound-web";
@@ -104,6 +110,42 @@ test("SpotlightTile shows multiple media side by side", async () => {
   expect(isInaccessible(screen.getByText("Alice"))).toBe(false);
   expect(isInaccessible(screen.getByText("Bob"))).toBe(false);
   expect(screen.queryByRole("button", { name: "Next" })).toBe(null);
+});
+
+test("SpotlightTile zooms in on one item", async () => {
+  const [vm1, vm2] = aliceAndBob();
+  const onToggleExpanded = vi.fn();
+  const props = {
+    vm: new SpotlightTileViewModel(
+      constant([vm1, vm2]),
+      constant(false),
+      constant("solid"),
+    ),
+    targetWidth: 300,
+    targetHeight: 200,
+    onToggleExpanded,
+    showIndicators: true,
+    tiled: true,
+    showNameTags: true,
+    showRingingStatus: true,
+    focusable: true,
+  } as const;
+  const { rerender } = render(<SpotlightTile {...props} expanded={false} />);
+
+  const user = userEvent.setup();
+  // Each item has its own zoom button
+  const bob = screen.getByText("Bob").closest("[data-id]") as HTMLElement;
+  await user.click(within(bob).getByRole("button", { name: "Expand" }));
+  expect(onToggleExpanded).toHaveBeenCalledTimes(1);
+
+  // Once expanded, only the zoomed item is shown, and zooming out collapses
+  rerender(<SpotlightTile {...props} expanded />);
+  expect(screen.queryByText("Alice")).toBe(null);
+  screen.getByText("Bob");
+  await user.click(screen.getByRole("button", { name: "Collapse" }));
+  expect(onToggleExpanded).toHaveBeenCalledTimes(2);
+  rerender(<SpotlightTile {...props} expanded={false} />);
+  screen.getByText("Alice");
 });
 
 test("SpotlightTile is accessible", async () => {

@@ -45,8 +45,6 @@ import classNames from "classnames";
 import { type TrackReferenceOrPlaceholder } from "@livekit/components-core";
 import { ContextMenu, Menu, MenuItem, Text } from "@vector-im/compound-web";
 
-import FullScreenMaximiseIcon from "../icons/FullScreenMaximise.svg?react";
-import FullScreenMinimiseIcon from "../icons/FullScreenMinimise.svg?react";
 import { MediaView } from "./MediaView";
 import styles from "./SpotlightTile.module.css";
 import { useInitial } from "../useInitial";
@@ -64,7 +62,6 @@ import { type ScreenShareViewModel } from "../state/media/ScreenShareViewModel";
 import { type RemoteScreenShareViewModel } from "../state/media/RemoteScreenShareViewModel";
 import { type MediaViewModel } from "../state/media/MediaViewModel";
 import { Slider } from "../Slider";
-import { platform } from "../Platform";
 import { type RingingMediaViewModel } from "../state/media/RingingMediaViewModel";
 import { RingingStatus } from "./RingingStatus";
 import { UserMediaMenuItems } from "./UserMediaMenuItems";
@@ -130,6 +127,7 @@ const SpotlightRemoteUserMediaItem: FC<SpotlightRemoteUserMediaItemProps> = ({
 interface SpotlightUserMediaItemProps extends SpotlightMemberMediaItemBaseProps {
   vm: UserMediaViewModel;
   onUnpin: ((vm: UserMediaViewModel) => void) | undefined;
+  buttons: ReactNode;
 }
 
 const SpotlightUserMediaItem: FC<SpotlightUserMediaItemProps> = ({
@@ -137,6 +135,7 @@ const SpotlightUserMediaItem: FC<SpotlightUserMediaItemProps> = ({
   targetWidth,
   targetHeight,
   onUnpin,
+  buttons,
   ...props
 }) => {
   const { t } = useTranslation();
@@ -169,24 +168,27 @@ const SpotlightUserMediaItem: FC<SpotlightUserMediaItemProps> = ({
   );
   const [menuOpen, setMenuOpen] = useState(false);
   const primaryButton = (
-    <Menu
-      open={menuOpen}
-      onOpenChange={setMenuOpen}
-      title={props.displayName}
-      trigger={
-        <button
-          aria-label={t("common.options")}
-          tabIndex={props.focusable ? undefined : -1}
-          data-moderated={moderated || undefined}
-        >
-          <OverflowHorizontalIcon aria-hidden width={20} height={20} />
-        </button>
-      }
-      side="left"
-      align="start"
-    >
-      {menu}
-    </Menu>
+    <>
+      {buttons}
+      <Menu
+        open={menuOpen}
+        onOpenChange={setMenuOpen}
+        title={props.displayName}
+        trigger={
+          <button
+            aria-label={t("common.options")}
+            tabIndex={props.focusable ? undefined : -1}
+            data-moderated={moderated || undefined}
+          >
+            <OverflowHorizontalIcon aria-hidden width={20} height={20} />
+          </button>
+        }
+        side="left"
+        align="start"
+      >
+        {menu}
+      </Menu>
+    </>
   );
 
   const baseProps: SpotlightUserMediaItemBaseProps &
@@ -222,25 +224,45 @@ SpotlightUserMediaItem.displayName = "SpotlightUserMediaItem";
 interface SpotlightScreenShareItemProps extends SpotlightMemberMediaItemBaseProps {
   vm: ScreenShareViewModel;
   videoEnabled: boolean;
+  buttons: ReactNode;
 }
 
 const SpotlightScreenShareItem: FC<SpotlightScreenShareItemProps> = ({
   vm,
+  buttons,
   ...props
 }) => {
-  return <MediaView videoFit="contain" mirror={false} {...props} />;
+  return (
+    <MediaView
+      videoFit="contain"
+      mirror={false}
+      primaryButton={buttons}
+      {...props}
+    />
+  );
 };
 
 interface SpotlightRemoteScreenShareItemProps extends SpotlightMemberMediaItemBaseProps {
   vm: RemoteScreenShareViewModel;
+  buttons: ReactNode;
 }
 
 const SpotlightRemoteScreenShareItem: FC<
   SpotlightRemoteScreenShareItemProps
-> = ({ vm, ...props }) => {
+> = ({ vm, buttons, ...props }) => {
   const videoEnabled = useBehavior(vm.videoEnabled$);
   return (
-    <SpotlightScreenShareItem vm={vm} videoEnabled={videoEnabled} {...props} />
+    <SpotlightScreenShareItem
+      vm={vm}
+      videoEnabled={videoEnabled}
+      buttons={
+        <>
+          <ScreenShareVolumeButton vm={vm} />
+          {buttons}
+        </>
+      }
+      {...props}
+    />
   );
 };
 
@@ -248,14 +270,30 @@ interface SpotlightMemberMediaItemProps extends SpotlightItemBaseProps {
   vm: MemberMediaViewModel;
   tiled: boolean;
   onUnpin: ((vm: UserMediaViewModel) => void) | undefined;
+  /** Whether this item has been zoomed in on to fill the whole view. */
+  zoomed: boolean;
+  onToggleZoom: (() => void) | undefined;
 }
 
 const SpotlightMemberMediaItem: FC<SpotlightMemberMediaItemProps> = ({
   vm,
   tiled,
   onUnpin,
+  zoomed,
+  onToggleZoom,
   ...props
 }) => {
+  const { t } = useTranslation();
+  const ZoomIcon = zoomed ? CollapseIcon : ExpandIcon;
+  const buttons = onToggleZoom && (
+    <button
+      aria-label={zoomed ? t("video_tile.collapse") : t("video_tile.expand")}
+      onClick={onToggleZoom}
+      tabIndex={props.focusable ? undefined : -1}
+    >
+      <ZoomIcon aria-hidden width={20} height={20} />
+    </button>
+  );
   const video = useBehavior(vm.video$);
   const unencryptedWarning = useBehavior(vm.unencryptedWarning$);
   const focusUrl = useBehavior(vm.focusUrl$);
@@ -276,13 +314,19 @@ const SpotlightMemberMediaItem: FC<SpotlightMemberMediaItemProps> = ({
         vm={vm}
         videoFit={tiled ? "cover" : undefined}
         onUnpin={onUnpin}
+        buttons={buttons}
         {...baseProps}
       />
     );
   return vm.local ? (
-    <SpotlightScreenShareItem vm={vm} videoEnabled {...baseProps} />
+    <SpotlightScreenShareItem
+      vm={vm}
+      videoEnabled
+      buttons={buttons}
+      {...baseProps}
+    />
   ) : (
-    <SpotlightRemoteScreenShareItem vm={vm} {...baseProps} />
+    <SpotlightRemoteScreenShareItem vm={vm} buttons={buttons} {...baseProps} />
   );
 };
 
@@ -341,6 +385,8 @@ interface SpotlightItemProps {
   style?: ComponentProps<typeof animated.div>["style"];
   "aria-hidden"?: boolean;
   onUnpin: ((vm: UserMediaViewModel) => void) | undefined;
+  zoomed: boolean;
+  onToggleZoom: (() => void) | undefined;
 }
 
 const SpotlightItem: FC<SpotlightItemProps> = ({
@@ -359,6 +405,8 @@ const SpotlightItem: FC<SpotlightItemProps> = ({
   className,
   "aria-hidden": ariaHidden,
   onUnpin,
+  zoomed,
+  onToggleZoom,
 }) => {
   const ourRef = useRef<HTMLDivElement | null>(null);
 
@@ -408,6 +456,8 @@ const SpotlightItem: FC<SpotlightItemProps> = ({
       vm={vm}
       tiled={tiled}
       onUnpin={onUnpin}
+      zoomed={zoomed}
+      onToggleZoom={onToggleZoom}
       {...baseProps}
     />
   );
@@ -448,10 +498,7 @@ const ScreenShareVolumeButton: FC<ScreenShareVolumeButtonProps> = ({ vm }) => {
         side="top"
         align="end"
         trigger={
-          <button
-            className={styles.expand}
-            aria-label={t("video_tile.screen_share_volume")}
-          >
+          <button aria-label={t("video_tile.screen_share_volume")}>
             <VolumeSolidIcon aria-hidden width={20} height={20} />
           </button>
         }
@@ -491,6 +538,7 @@ interface SpotlightItemsContext {
   intersectionObserver$: Behavior<IntersectionObserver>;
   className: string | undefined;
   onUnpin: ((vm: UserMediaViewModel) => void) | undefined;
+  onToggleZoom: ((vm: MediaViewModel) => void) | undefined;
 }
 
 const SpotlightItemsContext = createContext<SpotlightItemsContext | null>(null);
@@ -559,6 +607,8 @@ const SpotlightItemTile: FC<TileProps<MediaViewModel, HTMLDivElement>> = ({
       snap={false}
       tiled
       onUnpin={context.onUnpin}
+      zoomed={false}
+      onToggleZoom={context.onToggleZoom && (() => context.onToggleZoom!(vm))}
     />
   );
 };
@@ -620,37 +670,41 @@ export const SpotlightTile: FC<Props> = ({
   const ref = useMergedRefs(ourRef, theirRef);
   const maximised = useBehavior(vm.maximised$);
   const background = useBehavior(vm.background$);
-  const media = useBehavior(vm.media$);
+  const allMedia = useBehavior(vm.media$);
+  const canTile = tiledProp && allMedia.length > 1 && !expanded;
+  // Zooming in on an item expands the spotlight and shows that item alone
+  const [zoomedId, setZoomedId] = useState<string | null>(null);
+  const zoomed = expanded
+    ? allMedia.find((vm) => vm.id === zoomedId)
+    : undefined;
+  const media = useMemo(
+    () => (zoomed === undefined ? allMedia : [zoomed]),
+    [zoomed, allMedia],
+  );
+  const onToggleZoom = useMemo(
+    () =>
+      onToggleExpanded === null
+        ? undefined
+        : (vm: MediaViewModel): void => {
+            if (zoomed?.id === vm.id) {
+              setZoomedId(null);
+              onToggleExpanded();
+            } else {
+              setZoomedId(vm.id);
+              if (!expanded) onToggleExpanded();
+            }
+          },
+    [onToggleExpanded, zoomed, expanded],
+  );
   const [visibleId, setVisibleId] = useState<string | undefined>(media[0]?.id);
   const latestMedia = useLatest(media);
   const latestVisibleId = useLatest(visibleId);
   const visibleIndex = media.findIndex((vm) => vm.id === visibleId);
-  const visibleMedia = media.at(visibleIndex);
-  const tiled = tiledProp && media.length > 1 && !expanded;
+  const tiled = canTile && media.length > 1;
   const columns = Math.ceil(Math.sqrt(media.length));
   const canGoBack = !tiled && visibleIndex > 0;
   const canGoToNext =
     !tiled && visibleIndex !== -1 && visibleIndex < media.length - 1;
-
-  const isFullscreen = useCallback((): boolean => {
-    const rootElement = document.body;
-    if (rootElement && document.fullscreenElement) return true;
-    return false;
-  }, []);
-
-  const FullScreenIcon = isFullscreen()
-    ? FullScreenMinimiseIcon
-    : FullScreenMaximiseIcon;
-
-  const onToggleFullscreen = useCallback(() => {
-    const rootElement = document.body;
-    if (!rootElement) return;
-    if (isFullscreen()) {
-      void document?.exitFullscreen();
-    } else {
-      void rootElement.requestFullscreen();
-    }
-  }, [isFullscreen]);
 
   // To keep track of which item is visible, we need an intersection observer
   // hooked up to the root element and the items. Because the items will run
@@ -695,8 +749,6 @@ export const SpotlightTile: FC<Props> = ({
       setScrollToId(media[visibleIndex + 1].id);
   }, [latestVisibleId, latestMedia, setScrollToId]);
 
-  const ToggleExpandIcon = expanded ? CollapseIcon : ExpandIcon;
-
   const itemsContext = useMemo<SpotlightItemsContext>(
     () => ({
       showNameTags,
@@ -706,6 +758,7 @@ export const SpotlightTile: FC<Props> = ({
       intersectionObserver$,
       className: itemClassName,
       onUnpin,
+      onToggleZoom,
     }),
     [
       showNameTags,
@@ -715,6 +768,7 @@ export const SpotlightTile: FC<Props> = ({
       intersectionObserver$,
       itemClassName,
       onUnpin,
+      onToggleZoom,
     ],
   );
   const itemsModel = useMemo<SpotlightItemsModel>(
@@ -729,7 +783,6 @@ export const SpotlightTile: FC<Props> = ({
       data-maximised={maximised}
       // User items have an options button in the bottom-right corner, which
       // the tile's own buttons must stay clear of
-      data-options-button={media.some((vm) => vm.type === "user") || undefined}
       style={style}
     >
       {canGoBack && (
@@ -771,40 +824,16 @@ export const SpotlightTile: FC<Props> = ({
               snap={scrollToId === null || scrollToId === vm.id}
               tiled={false}
               className={itemClassName}
-              aria-hidden={(scrollToId ?? visibleId) !== vm.id}
+              aria-hidden={
+                media.length > 1 && (scrollToId ?? visibleId) !== vm.id
+              }
               onUnpin={onUnpin}
+              zoomed={zoomed?.id === vm.id}
+              onToggleZoom={onToggleZoom && (() => onToggleZoom(vm))}
             />
           ))}
         </div>
       )}
-
-      <div className={styles.bottomRightButtons}>
-        {visibleMedia?.type === "screen share" && !visibleMedia.local && (
-          <ScreenShareVolumeButton vm={visibleMedia} />
-        )}
-        {platform === "desktop" && (
-          <button
-            className={classNames(styles.expand)}
-            aria-label={"maximise"}
-            onClick={onToggleFullscreen}
-            tabIndex={focusable ? undefined : -1}
-          >
-            <FullScreenIcon aria-hidden width={20} height={20} />
-          </button>
-        )}
-        {onToggleExpanded && (
-          <button
-            className={classNames(styles.expand)}
-            aria-label={
-              expanded ? t("video_tile.collapse") : t("video_tile.expand")
-            }
-            onClick={onToggleExpanded}
-            tabIndex={focusable ? undefined : -1}
-          >
-            <ToggleExpandIcon aria-hidden width={20} height={20} />
-          </button>
-        )}
-      </div>
 
       {canGoToNext && (
         <button

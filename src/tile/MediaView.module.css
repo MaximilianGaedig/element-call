@@ -258,7 +258,7 @@ unconditionally select the container so we can use cqmin units */
   color: var(--cpd-color-icon-critical-primary);
 }
 
-.fg > button {
+.fg .buttons > button {
   appearance: none;
   border: none;
   border-radius: var(--cpd-radius-pill-effect);
@@ -273,19 +273,19 @@ unconditionally select the container so we can use cqmin units */
 }
 
 .fg:has(:focus-visible) > button,
-.fg > button[data-enabled="true"],
-.fg > button[data-state="open"] {
+.fg .buttons > button[data-enabled="true"],
+.fg .buttons > button[data-state="open"] {
   opacity: 1;
 }
 
 /* A tile a moderator has applied floor control to: the options button stays
 visible, in the raised-hand yellow, so that moderators can see it at a glance */
-.fg > button[data-moderated] {
+.fg .buttons > button[data-moderated] {
   opacity: 1;
   background: var(--cpd-color-yellow-900);
 }
 
-.fg > button[data-moderated] > svg {
+.fg .buttons > button[data-moderated] > svg {
   color: #000;
 }
 
@@ -294,25 +294,27 @@ visible, in the raised-hand yellow, so that moderators can see it at a glance */
     opacity: 1;
   }
 
-  .fg > button:hover {
+  .fg .buttons > button:hover {
     background: var(--cpd-color-bg-action-primary-hovered);
   }
 }
 
-.fg > button:active {
+.fg .buttons > button:active {
   background: var(--cpd-color-bg-action-primary-pressed);
 }
 
-.fg > button[data-state="open"] {
+.fg .buttons > button[data-state="open"] {
   background: var(--cpd-color-bg-action-primary-pressed);
 }
 
-.fg > button > svg {
+.fg .buttons > button > svg {
   display: block;
   color: var(--cpd-color-icon-on-solid-primary);
 }
 
-.fg > button:first-of-type {
+.fg > .buttons {
   grid-area: button;
   place-self: end;
+  display: flex;
+  gap: var(--cpd-space-2x);
 }

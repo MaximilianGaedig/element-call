@@ -261,7 +261,7 @@ export const MediaView: FC<Props> = ({
         ) : (
           warnings
         )}
-        {primaryButton}
+        <div className={styles.buttons}>{primaryButton}</div>
       </div>
     </animated.div>
   );

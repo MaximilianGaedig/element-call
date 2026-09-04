@@ -120,37 +120,6 @@ Please see LICENSE in the repository root for full details.
   inset-inline-end: var(--cpd-space-1x);
 }
 
-.expand {
-  appearance: none;
-  cursor: pointer;
-  padding: var(--cpd-space-2x);
-  border: none;
-  border-radius: var(--cpd-radius-pill-effect);
-  background: rgba(from var(--cpd-color-gray-100) r g b / 0.6);
-  box-shadow: var(--small-drop-shadow);
-  transition:
-    opacity 0.15s,
-    background-color 0.1s;
-  z-index: 1;
-  --inset: 6px;
-  inset-block-end: var(--inset);
-  inset-inline-end: var(--inset);
-}
-
-.bottomRightButtons {
-  display: flex;
-  gap: var(--cpd-space-2x);
-  position: absolute;
-  inset-block-end: var(--cpd-space-1x);
-  inset-inline-end: var(--cpd-space-1x);
-  z-index: 1;
-}
-
-/* Sit above a user item's options button (its 10px inset plus its height) */
-.tile[data-options-button] .bottomRightButtons {
-  inset-block-end: calc(10px + 28px + var(--cpd-space-2x));
-}
-
 .volumeSlider {
   width: 100%;
   min-width: 172px;
@@ -178,22 +147,6 @@ Please see LICENSE in the repository root for full details.
 /* Make icons change color with the theme */
 .menuMuteButton > svg {
   color: var(--cpd-color-icon-primary);
-}
-
-.expand > svg {
-  display: block;
-  color: var(--cpd-color-icon-primary);
-}
-
-@media (hover) {
-  .expand:hover {
-    background: var(--cpd-color-gray-400);
-  }
-}
-
-.expand:active,
-.expand[data-state="open"] {
-  background: var(--cpd-color-gray-100);
 }
 
 @media (hover) {
