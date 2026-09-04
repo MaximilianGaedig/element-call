@@ -59,15 +59,15 @@ import { ElementWidgetActions, widget } from "../../widget";
 import {
   layoutShallowEquals,
   type Alignment,
-  type GridLayoutMedia,
   type Layout,
   type LayoutMedia,
-  type OneOnOneDesktopLayoutMedia,
-  type OneOnOneMobileLayoutMedia,
-  type SpotlightExpandedLayoutMedia,
-  type SpotlightLandscapeLayoutMedia,
-  type SpotlightPortraitLayoutMedia,
 } from "../layout-types.ts";
+import {
+  chooseSpotlightSpeaker,
+  computeLayoutMedia,
+  computeSpotlight,
+  type OneOnOneMedia,
+} from "../layoutMedia.ts";
 import { ElementCallError, UnknownCallError } from "../../utils/errors.ts";
 import { type Scope } from "../Scope.ts";
 import { keyedItems } from "../keyedItems.ts";
@@ -163,8 +163,6 @@ export interface CallViewModelOptions {
 
 // This is the number of participants that we think constitutes a "small" call
 // on mobile. No spotlight tile should be shown below this threshold.
-const smallMobileCallThreshold = 3;
-
 // How long the footer should be shown for when hovering over or interacting
 // with the interface
 const showFooterMs = 4000;
@@ -755,33 +753,17 @@ export function createCallViewModel$(
     );
   }
 
-  let prevSpotlightSpeaker: WrappedUserMediaViewModel | undefined;
-  const spotlightSpeaker$ = computed<WrappedUserMediaViewModel | undefined>(
-    () => {
-      const mediaItems = userMedia$.value;
-      // Only remote users that are still in the call should be sticky
-      const prev = prevSpotlightSpeaker;
-      const stickyMedia =
-        prev !== undefined && !prev.local && mediaItems.includes(prev)
-          ? prev
-          : undefined;
-      // Decide who to spotlight:
-      // If the previous speaker is still speaking, stick with them rather than
-      // switching eagerly to someone else
-      const speaker = stickyMedia?.speaking$.value
-        ? stickyMedia
-        : // Otherwise, select any remote user who is speaking
-          (mediaItems.find((m) => !m.local && m.speaking$.value) ??
-          // Otherwise, stick with the person who was last speaking
-          stickyMedia ??
-          // Otherwise, spotlight an arbitrary remote user
-          mediaItems.find((m) => !m.local) ??
-          // Otherwise, spotlight the local user
-          mediaItems.find((m) => m.local));
-      prevSpotlightSpeaker = speaker;
-      return speaker;
-    },
+  // The previous pick is fed back in, so this is a state written by an effect
+  // rather than a computed (computeds must be pure).
+  const spotlightSpeaker$ = state<WrappedUserMediaViewModel | undefined>(
+    undefined,
   );
+  scope.effect(() => {
+    spotlightSpeaker$.value = chooseSpotlightSpeaker(
+      spotlightSpeaker$.peek(),
+      userMedia$.value.map((m) => ({ media: m, speaking: m.speaking$.value })),
+    );
+  });
 
   /**
    * The user media sorted into the order they should appear in the grid.
@@ -812,29 +794,30 @@ export function createCallViewModel$(
     },
   );
 
+  const spotlightAndPip$ = computed(() =>
+    computeSpotlight({
+      ringing: ringingMedia$.value,
+      screenShares: screenShares$.value,
+      speaker: spotlightSpeaker$.value,
+      localPip: localUserMediaForPip$.value,
+    }),
+  );
+
   /**
    * The media to show in the spotlight.
    */
-  const spotlight$ = computed<MediaViewModel[]>(() => {
-    const ringingMedia = ringingMedia$.value;
-    if (ringingMedia !== null) return [ringingMedia];
-    const screenShares = screenShares$.value;
-    if (screenShares.length > 0) return screenShares;
-    const speaker = spotlightSpeaker$.value;
-    return speaker ? [speaker] : [];
-  }, shallowArrayEquals);
+  const spotlight$ = computed<MediaViewModel[]>(
+    () => spotlightAndPip$.value.spotlight,
+    shallowArrayEquals,
+  );
 
   /**
    * The media to show in the picture-in-picture tile of the expanded spotlight
    * layout.
    */
-  const spotlightPip$ = computed<UserMediaViewModel | undefined>(() => {
-    if (ringingMedia$.value !== null) return localUserMediaForPip$.value;
-    if (screenShares$.value.length > 0) return spotlightSpeaker$.value;
-    // Hide PiP if redundant (i.e. if local user is already in spotlight)
-    const pip = localUserMediaForPip$.value;
-    return pip === spotlightSpeaker$.value ? undefined : pip;
-  });
+  const spotlightPip$ = computed<UserMediaViewModel | undefined>(
+    () => spotlightAndPip$.value.pip,
+  );
 
   const hasRemoteScreenShares$ = computed(() =>
     spotlight$.value.some((vm) => vm.type === "screen share" && !vm.local),
@@ -879,10 +862,7 @@ export function createCallViewModel$(
     hasRemoteScreenShares$,
   );
 
-  const oneOnOneLayoutMedia$ = computed<{
-    local: LocalUserMediaViewModel;
-    remote: UserMediaViewModel | RingingMediaViewModel;
-  } | null>(() => {
+  const oneOnOneLayoutMedia$ = computed<OneOnOneMedia | null>(() => {
     const userMedia = userMedia$.value;
     // One-on-one layout only supports 2 user media, no screen shares
     if (userMedia.length > 2 || screenShares$.value.length > 0) return null;
@@ -906,94 +886,20 @@ export function createCallViewModel$(
   /**
    * The media to be used to produce a layout.
    */
-  const layoutMedia$ = computed<LayoutMedia>(() => {
-    const gridLayout = (): GridLayoutMedia => {
-      const spotlight = spotlight$.value;
-      return {
-        type: "grid",
-        edgeToEdge: false,
-        spotlight: spotlight.some((vm) => vm.type === "screen share")
-          ? spotlight
-          : undefined,
-        grid: grid$.value,
-      };
-    };
-    const spotlightLandscape = (
-      edgeToEdge: boolean,
-    ): SpotlightLandscapeLayoutMedia => ({
-      type: "spotlight-landscape",
-      edgeToEdge,
+  const layoutMedia$ = computed<LayoutMedia>(() =>
+    computeLayoutMedia({
+      windowMode: windowMode$.value,
+      layoutMode: layoutSwitchVm.layout$.value,
+      spotlightExpanded: spotlightExpanded$.value,
+      oneOnOne: oneOnOneLayoutMedia$.value,
+      localVideoEnabled:
+        oneOnOneLayoutMedia$.value?.local.videoEnabled$.value ?? false,
       spotlight: spotlight$.value,
       grid: grid$.value,
-    });
-    const spotlightPortrait = (): SpotlightPortraitLayoutMedia => ({
-      type: "spotlight-portrait",
-      edgeToEdge: false,
-      spotlight: spotlight$.value,
-      grid: grid$.value,
-    });
-    const spotlightExpanded = (
-      edgeToEdge: boolean,
-    ): SpotlightExpandedLayoutMedia => ({
-      type: "spotlight-expanded",
-      edgeToEdge,
-      spotlight: spotlight$.value,
       pip: spotlightPip$.value,
-    });
-    const oneOnOneDesktop = (
-      media: NonNullable<typeof oneOnOne>,
-    ): OneOnOneDesktopLayoutMedia =>
-      media.remote.type === "ringing"
-        ? {
-            type: "one-on-one-desktop",
-            edgeToEdge: false,
-            spotlight: media.local,
-            pip: media.remote,
-          }
-        : {
-            type: "one-on-one-desktop",
-            edgeToEdge: false,
-            spotlight: media.remote,
-            pip: media.local,
-          };
-    const oneOnOneMobile = (
-      media: NonNullable<typeof oneOnOne>,
-    ): OneOnOneMobileLayoutMedia => ({
-      type: "one-on-one-mobile",
-      edgeToEdge: true,
-      spotlight: media.remote,
-      pip: media.local.videoEnabled$.value ? media.local : undefined,
-    });
-
-    const oneOnOne = oneOnOneLayoutMedia$.value;
-    switch (windowMode$.value) {
-      case "normal":
-        if (layoutSwitchVm.layout$.value === "grid")
-          return oneOnOne === null ? gridLayout() : oneOnOneDesktop(oneOnOne);
-        return spotlightExpanded$.value
-          ? spotlightExpanded(false)
-          : spotlightLandscape(false);
-      case "narrow":
-        if (oneOnOne !== null) return oneOnOneMobile(oneOnOne);
-        return grid$.value.length > smallMobileCallThreshold ||
-          spotlight$.value.some((vm) => vm.type === "screen share")
-          ? spotlightPortrait()
-          : gridLayout();
-      case "flat":
-        if (oneOnOne !== null) return oneOnOneMobile(oneOnOne);
-        // Yes, grid mode actually gets you a "spotlight" layout in this window
-        // mode.
-        return layoutSwitchVm.layout$.value === "grid"
-          ? spotlightLandscape(true)
-          : spotlightExpanded(true);
-      case "pip":
-        return {
-          type: "pip",
-          edgeToEdge: platform !== "desktop",
-          spotlight: spotlight$.value,
-        };
-    }
-  });
+      desktop: platform === "desktop",
+    }),
+  );
 
   // Tell the embedding app which way the picture-in-picture media is oriented
   let prevPipOrientation: "landscape" | "portrait" | undefined;
