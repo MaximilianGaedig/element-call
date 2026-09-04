@@ -68,7 +68,7 @@ describe("createFloorControl", () => {
     expect(fc.moderation$("@mod:e:M", "@mod:e").value).toEqual({
       audioMuted: true,
       videoMuted: false,
-      volume: undefined,
+      volume: 0.5,
     });
   });
 
