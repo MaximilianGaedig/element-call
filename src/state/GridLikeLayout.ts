@@ -15,6 +15,7 @@ import { type TileStore } from "./TileStore";
 import { type State } from "./Behavior";
 import { moveMember, reconcileOrder } from "./gridOrder.ts";
 import { type UserMediaViewModel } from "./media/UserMediaViewModel.ts";
+import { type MediaViewModel } from "./media/MediaViewModel.ts";
 
 /**
  * A request from the user to move one grid tile's media onto another's spot.
@@ -42,22 +43,24 @@ export function gridLikeLayout(
   move: GridMove | null,
   prevTiles: TileStore,
 ): [Layout & { type: GridLikeLayoutType }, TileStore] {
-  // Spotlit users don't also appear in the grid (except for the local user)
-  const spotlit = (media.spotlight ?? []).find(
-    (vm) => vm.type === "user" && !vm.local,
-  );
-  const prevSpotlit = prevTiles.spotlightMedia.find(
-    (vm) => vm.type === "user" && !vm.local,
-  );
+  // Spotlit users don't also appear in the grid (except for the local user).
+  // The first of them is the speaker, who swaps places with the previous
+  // speaker; the rest are pinned and simply leave the grid while pinned.
+  const spotlitUsers = (spotlight: MediaViewModel[]): UserMediaViewModel[] =>
+    spotlight.filter(
+      (vm): vm is UserMediaViewModel => vm.type === "user" && !vm.local,
+    );
+  const spotlit = spotlitUsers(media.spotlight ?? []);
+  const prevSpotlit = spotlitUsers(prevTiles.spotlightMedia);
   const prevOrder =
     move === null
       ? prevTiles.gridMedia
       : moveMember(prevTiles.gridMedia, move.media, move.to);
   const grid = reconcileOrder(prevOrder, {
-    members: media.grid.filter((m) => m.media !== spotlit),
+    members: media.grid.filter((m) => !spotlit.includes(m.media)),
     visibleTiles,
-    entering: spotlit,
-    leaving: prevSpotlit,
+    entering: spotlit[0],
+    leaving: prevSpotlit[0],
   });
 
   const update = prevTiles.from();

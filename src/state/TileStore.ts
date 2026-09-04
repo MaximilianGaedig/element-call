@@ -133,8 +133,7 @@ export class TileStore {
 export class TileStoreBuilder {
   private spotlight: SpotlightTileData | null = null;
   private readonly prevSpotlightSpeaker: UserMediaViewModel | null =
-    this.prevSpotlight?.media.length === 1 &&
-    "speaking$" in this.prevSpotlight.media[0]
+    this.prevSpotlight !== null && "speaking$" in this.prevSpotlight.media[0]
       ? this.prevSpotlight.media[0]
       : null;
 
@@ -213,7 +212,7 @@ export class TileStoreBuilder {
       const [spotlit] = this.spotlight.media;
       if (
         media === this.prevSpotlightSpeaker &&
-        this.spotlight.media.length === 1 &&
+        spotlit !== undefined &&
         "speaking$" in spotlit &&
         spotlit !== media
       ) {

@@ -27,6 +27,20 @@ Please see LICENSE in the repository root for full details.
   border-radius: 0;
 }
 
+.contents[data-tiled] {
+  display: grid;
+  grid-template-columns: repeat(var(--tiled-columns), minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  gap: var(--cpd-space-2x);
+  overflow: hidden;
+  scroll-snap-type: none;
+}
+
+.contents[data-tiled] > .item {
+  min-inline-size: 0;
+  border-radius: var(--cpd-space-4x);
+}
+
 .item {
   height: 100%;
   flex-basis: 100%;

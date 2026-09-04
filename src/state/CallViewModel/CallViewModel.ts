@@ -305,10 +305,16 @@ export interface CallViewModel {
   tileStoreGeneration$: Behavior<number>;
   /**
    * Gives a tile more prominence, or takes it back, at the user's request
-   * (double-clicking it). In the grid layout this doubles the tile's size.
+   * (double-clicking it). In the grid layout this doubles the tile's size; in
+   * the spotlight layouts it pins the user to the spotlight.
    */
   emphasiseTile: (tile: GridTileViewModel) => void;
   showSpotlightIndicators$: Behavior<boolean>;
+  /**
+   * Whether a spotlight holding several media should show them all at once as
+   * tiles, rather than paging through them.
+   */
+  spotlightTiled$: Behavior<boolean>;
   showSpeakingIndicators$: Behavior<boolean>;
   showNameTags$: Behavior<boolean>;
   spotlightExpanded$: Behavior<boolean>;
@@ -760,15 +766,35 @@ export function createCallViewModel$(
     );
   }
 
+  /**
+   * Users the local user has pinned to the spotlight (by double-clicking their
+   * tile), excluding any who have since left.
+   */
+  const pinnedInput$ = state<ReadonlySet<UserMediaViewModel>>(new Set());
+  const pinned$ = computed<WrappedUserMediaViewModel[]>(
+    () => userMedia$.value.filter((m) => pinnedInput$.value.has(m)),
+    shallowArrayEquals,
+  );
+  const togglePinned = (media: UserMediaViewModel): void => {
+    const next = new Set(pinnedInput$.peek());
+    if (!next.delete(media)) next.add(media);
+    pinnedInput$.value = next;
+  };
+
   // The previous pick is fed back in, so this is a state written by an effect
-  // rather than a computed (computeds must be pure).
+  // rather than a computed (computeds must be pure). Pinned users are shown
+  // regardless, so they're not candidates: the speaker slot goes to whoever
+  // would otherwise have had it.
   const spotlightSpeaker$ = state<WrappedUserMediaViewModel | undefined>(
     undefined,
   );
   scope.effect(() => {
+    const pinned = pinned$.value;
     spotlightSpeaker$.value = chooseSpotlightSpeaker(
       spotlightSpeaker$.peek(),
-      userMedia$.value.map((m) => ({ media: m, speaking: m.speaking$.value })),
+      userMedia$.value
+        .filter((m) => !pinned.includes(m))
+        .map((m) => ({ media: m, speaking: m.speaking$.value })),
     );
   });
 
@@ -823,6 +849,7 @@ export function createCallViewModel$(
       ringing: ringingMedia$.value,
       screenShares: screenShares$.value,
       speaker: spotlightSpeaker$.value,
+      pinned: pinned$.value,
       localPip: localUserMediaForPip$.value,
     }),
   );
@@ -942,15 +969,25 @@ export function createCallViewModel$(
     () => layoutMedia$.value.type !== "grid",
   );
 
+  // Only the landscape spotlight has room to tile; the grid layout's floating
+  // spotlight and the portrait layout's strip are too small
+  const spotlightTiled$ = computed(
+    () => layoutMedia$.value.type === "spotlight-landscape",
+  );
+
   const showSpeakingIndicators$ = computed<boolean>(() => {
     const l = layoutMedia$.value;
     switch (l.type) {
       case "spotlight-landscape":
       case "spotlight-portrait":
-        // If the spotlight is showing the active speaker, we can do without
-        // speaking indicators as they're a redundant visual cue. But if
-        // screen sharing feeds are in the spotlight we still need them.
-        return l.spotlight.some((m) => m.type === "screen share");
+        // If the spotlight is showing only the active speaker, we can do
+        // without speaking indicators as they're a redundant visual cue. But
+        // if screen sharing feeds or pinned users share the spotlight we
+        // still need them.
+        return (
+          l.spotlight.length > 1 ||
+          l.spotlight.some((m) => m.type === "screen share")
+        );
       // In expanded spotlight layout, the active speaker is always shown in
       // the picture-in-picture tile so there is no need for speaking
       // indicators. And in one-on-one layout there's no question as to who is
@@ -1202,7 +1239,16 @@ export function createCallViewModel$(
   });
 
   const emphasiseTile = (tile: GridTileViewModel): void => {
-    if (layoutMedia$.peek().type === "grid") tile.toggleEnlarged();
+    const media = tile.media$.peek();
+    switch (layoutMedia$.peek().type) {
+      case "grid":
+        tile.toggleEnlarged();
+        break;
+      case "spotlight-landscape":
+      case "spotlight-portrait":
+        if (media.type === "user") togglePinned(media);
+        break;
+    }
   };
 
   /**
@@ -1385,6 +1431,7 @@ export function createCallViewModel$(
     tileStoreGeneration$: tileStoreGeneration$,
     emphasiseTile,
     showSpotlightIndicators$: showSpotlightIndicators$,
+    spotlightTiled$,
     showSpeakingIndicators$: showSpeakingIndicators$,
     showNameTags$,
     showHeader$: showHeader$,

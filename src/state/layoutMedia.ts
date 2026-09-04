@@ -61,29 +61,39 @@ export interface SpotlightInputs {
   ringing: RingingMediaViewModel | null;
   screenShares: ScreenShareViewModel[];
   speaker: UserMediaViewModel | undefined;
+  /** Users the local user has pinned to the spotlight. */
+  pinned: UserMediaViewModel[];
   /** Local user media suitable for showing in a PiP, if any. */
   localPip: UserMediaViewModel | undefined;
 }
 
 /**
  * Decides what goes in the spotlight, and what goes in the picture-in-picture
- * tile of the expanded spotlight layout.
+ * tile of the expanded spotlight layout. Pinned users come after whatever
+ * would be there anyway.
  */
 export function computeSpotlight({
   ringing,
   screenShares,
   speaker,
+  pinned,
   localPip,
 }: SpotlightInputs): {
   spotlight: MediaViewModel[];
   pip: UserMediaViewModel | undefined;
 } {
   if (ringing !== null) return { spotlight: [ringing], pip: localPip };
-  if (screenShares.length > 0) return { spotlight: screenShares, pip: speaker };
+  if (screenShares.length > 0)
+    return { spotlight: [...screenShares, ...pinned], pip: speaker };
+  const spotlight: MediaViewModel[] = speaker ? [speaker] : [];
+  for (const m of pinned) if (!spotlight.includes(m)) spotlight.push(m);
   return {
-    spotlight: speaker ? [speaker] : [],
+    spotlight,
     // Hide PiP if redundant (i.e. if local user is already in spotlight)
-    pip: localPip === speaker ? undefined : localPip,
+    pip:
+      localPip !== undefined && spotlight.includes(localPip)
+        ? undefined
+        : localPip,
   };
 }
 

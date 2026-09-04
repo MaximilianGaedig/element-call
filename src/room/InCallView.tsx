@@ -444,6 +444,7 @@ export const InCallView: FC<InCallViewProps> = ({
         const showSpotlightIndicators = useBehavior(
           vm.showSpotlightIndicators$,
         );
+        const spotlightTiled = useBehavior(vm.spotlightTiled$);
         const showSpeakingIndicators = useBehavior(vm.showSpeakingIndicators$);
         const showNameTags = useBehavior(vm.showNameTags$);
         const showRingingStatus = vm.ringingStatusLocation === "tile";
@@ -478,6 +479,7 @@ export const InCallView: FC<InCallViewProps> = ({
             targetWidth={targetWidth}
             targetHeight={targetHeight}
             showIndicators={showSpotlightIndicators}
+            tiled={spotlightTiled}
             showNameTags={showNameTags}
             showRingingStatus={showRingingStatus}
             focusable={!contentObscured}

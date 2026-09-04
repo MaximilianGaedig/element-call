@@ -22,6 +22,7 @@ import {
   mockRemoteScreenShare,
 } from "../utils/test";
 import { SpotlightTileViewModel } from "../state/TileViewModel";
+import { type MediaViewModel } from "../state/media/MediaViewModel";
 import { constant, state } from "../state/Behavior";
 import {
   createRingingMedia,
@@ -34,7 +35,7 @@ global.IntersectionObserver = class MockIntersectionObserver {
   public disconnect(): void {}
 } as unknown as typeof IntersectionObserver;
 
-test("SpotlightTile is accessible", async () => {
+const aliceAndBob = (): [MediaViewModel, MediaViewModel] => {
   const vm1 = mockRemoteMedia(
     mockRtcMembership("@alice:example.org", "AAAA"),
     {
@@ -53,7 +54,40 @@ test("SpotlightTile is accessible", async () => {
     mockLocalParticipant({}),
     mockMediaDevices({}),
   );
+  return [vm1, vm2];
+};
 
+test("SpotlightTile shows multiple media side by side", async () => {
+  const [vm1, vm2] = aliceAndBob();
+  const { container } = render(
+    <SpotlightTile
+      vm={
+        new SpotlightTileViewModel(
+          constant([vm1, vm2]),
+          constant(false),
+          constant("solid"),
+        )
+      }
+      targetWidth={300}
+      targetHeight={200}
+      expanded={false}
+      onToggleExpanded={null}
+      showIndicators
+      tiled
+      showNameTags
+      showRingingStatus
+      focusable={true}
+    />,
+  );
+
+  expect(await axe(container)).toHaveNoViolations();
+  expect(isInaccessible(screen.getByText("Alice"))).toBe(false);
+  expect(isInaccessible(screen.getByText("Bob"))).toBe(false);
+  expect(screen.queryByRole("button", { name: "Next" })).toBe(null);
+});
+
+test("SpotlightTile is accessible", async () => {
+  const [vm1, vm2] = aliceAndBob();
   const user = userEvent.setup();
   const toggleExpanded = vi.fn();
   const { container } = render(

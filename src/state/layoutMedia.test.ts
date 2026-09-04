@@ -87,6 +87,7 @@ describe("computeSpotlight", () => {
         ringing,
         screenShares: [screenShare],
         speaker: alice,
+        pinned: [],
         localPip: local,
       }),
     ).toEqual({ spotlight: [ringing], pip: local });
@@ -98,6 +99,7 @@ describe("computeSpotlight", () => {
         ringing: null,
         screenShares: [screenShare],
         speaker: alice,
+        pinned: [],
         localPip: local,
       }),
     ).toEqual({ spotlight: [screenShare], pip: alice });
@@ -109,6 +111,7 @@ describe("computeSpotlight", () => {
         ringing: null,
         screenShares: [],
         speaker: alice,
+        pinned: [],
         localPip: local,
       }),
     ).toEqual({ spotlight: [alice], pip: local });
@@ -117,9 +120,31 @@ describe("computeSpotlight", () => {
         ringing: null,
         screenShares: [],
         speaker: local,
+        pinned: [],
         localPip: local,
       }),
     ).toEqual({ spotlight: [local], pip: undefined });
+  });
+
+  it("adds pinned users after the speaker or screen shares", () => {
+    expect(
+      computeSpotlight({
+        ringing: null,
+        screenShares: [],
+        speaker: alice,
+        pinned: [local],
+        localPip: local,
+      }),
+    ).toEqual({ spotlight: [alice, local], pip: undefined });
+    expect(
+      computeSpotlight({
+        ringing: null,
+        screenShares: [screenShare],
+        speaker: alice,
+        pinned: [alice],
+        localPip: local,
+      }),
+    ).toEqual({ spotlight: [screenShare, alice], pip: alice });
   });
 });
 

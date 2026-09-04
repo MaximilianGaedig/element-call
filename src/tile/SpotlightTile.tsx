@@ -7,6 +7,7 @@ Please see LICENSE in the repository root for full details.
 
 import {
   type ComponentProps,
+  type CSSProperties,
   type FC,
   type Ref,
   type RefAttributes,
@@ -386,6 +387,11 @@ interface Props {
   targetWidth: number;
   targetHeight: number;
   showIndicators: boolean;
+  /**
+   * Whether to show multiple media all at once as tiles, rather than paging
+   * through them one at a time.
+   */
+  tiled?: boolean;
   showNameTags: boolean;
   showRingingStatus: boolean;
   focusable: boolean;
@@ -405,6 +411,7 @@ export const SpotlightTile: FC<Props> = ({
   targetWidth,
   targetHeight,
   showIndicators,
+  tiled: tiledProp = false,
   showNameTags,
   showRingingStatus,
   focusable = true,
@@ -429,8 +436,12 @@ export const SpotlightTile: FC<Props> = ({
   const latestVisibleId = useLatest(visibleId);
   const visibleIndex = media.findIndex((vm) => vm.id === visibleId);
   const visibleMedia = media.at(visibleIndex);
-  const canGoBack = visibleIndex > 0;
-  const canGoToNext = visibleIndex !== -1 && visibleIndex < media.length - 1;
+  const tiled = tiledProp && media.length > 1 && !expanded;
+  const columns = Math.ceil(Math.sqrt(media.length));
+  const rows = Math.ceil(media.length / columns);
+  const canGoBack = !tiled && visibleIndex > 0;
+  const canGoToNext =
+    !tiled && visibleIndex !== -1 && visibleIndex < media.length - 1;
 
   const isFullscreen = useCallback((): boolean => {
     const rootElement = document.body;
@@ -514,13 +525,17 @@ export const SpotlightTile: FC<Props> = ({
           <ChevronLeftIcon aria-hidden width={24} height={24} />
         </button>
       )}
-      <div className={styles.contents}>
+      <div
+        className={styles.contents}
+        data-tiled={tiled || undefined}
+        style={{ "--tiled-columns": columns } as CSSProperties}
+      >
         {media.map((vm) => (
           <SpotlightItem
             key={vm.id}
             vm={vm}
-            targetWidth={targetWidth}
-            targetHeight={targetHeight}
+            targetWidth={tiled ? targetWidth / columns : targetWidth}
+            targetHeight={tiled ? targetHeight / rows : targetHeight}
             showRingingStatus={showRingingStatus}
             showNameTags={showNameTags}
             background={background}
@@ -532,7 +547,7 @@ export const SpotlightTile: FC<Props> = ({
             // that we want to bring into view
             snap={scrollToId === null || scrollToId === vm.id}
             className={itemClassName}
-            aria-hidden={(scrollToId ?? visibleId) !== vm.id}
+            aria-hidden={!tiled && (scrollToId ?? visibleId) !== vm.id}
           />
         ))}
       </div>
@@ -578,7 +593,7 @@ export const SpotlightTile: FC<Props> = ({
       {!expanded && (
         <div
           className={classNames(styles.indicators, {
-            [styles.show]: showIndicators && media.length > 1,
+            [styles.show]: showIndicators && !tiled && media.length > 1,
           })}
         >
           {media.map((vm) => (
