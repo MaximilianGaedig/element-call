@@ -39,6 +39,26 @@ describe("computed", () => {
       [1, 3],
     ]);
   });
+
+  it("diamonds are glitch-free and re-run once per change", () => {
+    const root$ = state("initial");
+    const a$ = computed(() => root$.value + "-A");
+    const b$ = computed(() => root$.value + "-B");
+    const seen: string[] = [];
+    const scope = new Scope();
+    scope.effect(() => {
+      seen.push([root$.value, a$.value, b$.value].join(" "));
+    });
+    root$.value = "updated";
+    root$.value = "again";
+    scope.end();
+    // The effect never sees a$ and b$ derived from different roots
+    expect(seen).toEqual([
+      "initial initial-A initial-B",
+      "updated updated-A updated-B",
+      "again again-A again-B",
+    ]);
+  });
 });
 
 describe("fromEvents", () => {
