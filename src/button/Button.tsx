@@ -23,6 +23,7 @@ import {
   ShareScreenSolidIcon,
   OverflowHorizontalIcon,
   OverflowVerticalIcon,
+  AdminIcon,
   VolumeOnSolidIcon,
   VolumeOffSolidIcon,
 } from "@vector-im/compound-design-tokens/assets/web/icons";
@@ -234,6 +235,28 @@ export const SettingsIconButton: FC<SettingsIconButtonProps> = ({
   );
 };
 
+/**
+ * Opens the moderator settings; shown only to moderators, so it also marks
+ * the local user as one.
+ */
+export const ModeratorIconButton: FC<SettingsIconButtonProps> = ({
+  showForScreenWidth,
+  className,
+  ...props
+}) => {
+  const { t } = useTranslation();
+  return (
+    <Tooltip label={t("settings.moderator_settings")}>
+      <IconButton
+        className={classNamesForScreenWidth(className, showForScreenWidth)}
+        {...props}
+      >
+        <AdminIcon aria-hidden />
+      </IconButton>
+    </Tooltip>
+  );
+};
+
 interface SettingsButtonProps extends ComponentPropsWithoutRef<"button"> {
   size?: "md" | "lg";
   /** If this buttons should be setup to be used in the app bar */
@@ -253,6 +276,25 @@ export const SettingsButton: FC<SettingsButtonProps> = ({
         Icon={
           platform === "android" ? OverflowVerticalIcon : OverflowHorizontalIcon
         }
+        kind={"secondary"}
+        {...props}
+      />
+    </Tooltip>
+  );
+};
+
+export const ModeratorButton: FC<SettingsButtonProps> = ({
+  showForScreenWidth,
+  className,
+  ...props
+}) => {
+  const { t } = useTranslation();
+  return (
+    <Tooltip label={t("settings.moderator_settings")}>
+      <CpdButton
+        className={classNamesForScreenWidth(className, showForScreenWidth)}
+        iconOnly
+        Icon={AdminIcon}
         kind={"secondary"}
         {...props}
       />

@@ -17,13 +17,14 @@ import {
   VideoButton,
   ShareScreenButton,
   SettingsButton,
+  ModeratorButton,
+  ModeratorIconButton,
   ReactionToggleButton,
   LoudspeakerButton,
   SettingsIconButton,
   type ReactionData,
 } from "../button";
 import styles from "./CallFooter.module.css";
-import { SettingsMenu } from "../settings/SettingsMenu";
 import {
   MediaMuteAndSwitchButton,
   type MenuOptions,
@@ -168,18 +169,21 @@ export const CallFooter: FC<FooterProps> = ({
     // screens. On larger screens the SettingsIconButton with
     // showForScreenWidth="wide" in the settingsLogoContainer is used instead.
     buttons.push(
-      <SettingsMenu
+      <SettingsButton
         key="settings"
-        trigger={
-          <SettingsButton
-            showForScreenWidth="narrow"
-            data-testid="settings-bottom-center"
-          />
-        }
-        openSettings={openSettings}
-        openModeratorSettings={openModeratorSettings}
+        showForScreenWidth="narrow"
+        data-testid="settings-bottom-center"
+        onClick={openSettings}
       />,
     );
+    if (openModeratorSettings !== undefined)
+      buttons.push(
+        <ModeratorButton
+          key="moderator"
+          showForScreenWidth="narrow"
+          onClick={openModeratorSettings}
+        />,
+      );
   }
 
   if ((audioOptions?.length ?? 0) > 0) {
@@ -322,16 +326,18 @@ export const CallFooter: FC<FooterProps> = ({
     >
       <div className={styles.settingsLogoContainer}>
         {openSettings !== undefined && (
-          <SettingsMenu
-            trigger={
-              <SettingsIconButton
-                kind="secondary"
-                showForScreenWidth="wide"
-                data-testid="settings-bottom-left"
-              />
-            }
-            openSettings={openSettings}
-            openModeratorSettings={openModeratorSettings}
+          <SettingsIconButton
+            kind="secondary"
+            showForScreenWidth="wide"
+            data-testid="settings-bottom-left"
+            onClick={openSettings}
+          />
+        )}
+        {openSettings !== undefined && openModeratorSettings !== undefined && (
+          <ModeratorIconButton
+            kind="secondary"
+            showForScreenWidth="wide"
+            onClick={openModeratorSettings}
           />
         )}
         {children}

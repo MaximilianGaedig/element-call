@@ -273,8 +273,7 @@
       "show_hand_raised_timer_label": "Show hand raise duration"
     },
     "resolution_label": "Resolution",
-    "screen_share_header": "Screen sharing",
-    "user_settings": "User settings"
+    "screen_share_header": "Screen sharing"
   },
   "star_rating_input_label_one": "{{count}} star",
   "star_rating_input_label_other": "{{count}} stars",

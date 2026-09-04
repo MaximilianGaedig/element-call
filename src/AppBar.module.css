@@ -122,6 +122,8 @@
 .secondaryButton {
   grid-area: secondaryButton;
   justify-self: end;
+  display: flex;
+  gap: var(--cpd-space-2x);
 }
 
 .primaryButton,

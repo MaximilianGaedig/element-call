@@ -31,7 +31,6 @@ import styles from "./InCallView.module.css";
 import { GridTile } from "../tile/GridTile";
 import { SettingsModal, defaultSettingsTab } from "../settings/SettingsModal";
 import { ModeratorSettingsModal } from "../settings/ModeratorSettingsModal";
-import { SettingsMenu } from "../settings/SettingsMenu";
 import { useRageshakeRequestModal } from "../settings/submit-rageshake";
 import { RageshakeRequestModal } from "./RageshakeRequestModal";
 import { useWakeLock } from "../useWakeLock";
@@ -82,7 +81,7 @@ import { useTrackProcessor } from "../livekit/TrackProcessorContext.tsx";
 import { type Layout } from "../state/layout-types.ts";
 import { Scope } from "../state/Scope.ts";
 import { CallFooter, type FooterSnapshot } from "../components/CallFooter.tsx";
-import { SettingsIconButton } from "../button/Button.tsx";
+import { ModeratorIconButton, SettingsIconButton } from "../button/Button.tsx";
 import { createCallFooterViewModel } from "../components/CallFooterViewModel.tsx";
 import { createDeveloperSettingsTabViewModel } from "../settings/DeveloperSettingsTabViewModel.ts";
 import { type DeveloperSettingsSnapshot } from "../settings/DeveloperSettingsTab.tsx";
@@ -602,14 +601,19 @@ export const InCallView: FC<InCallViewProps> = ({
   );
 
   useAppBarSecondaryButton(
-    <SettingsMenu
-      key="settings"
-      trigger={<SettingsIconButton data-testid="settings-app-bar" />}
-      openSettings={() => setSettingsOpen(true)}
-      openModeratorSettings={
-        canModerate ? () => setModeratorSettingsOpen(true) : undefined
-      }
-    />,
+    <>
+      {canModerate && (
+        <ModeratorIconButton
+          key="moderator"
+          onClick={() => setModeratorSettingsOpen(true)}
+        />
+      )}
+      <SettingsIconButton
+        key="settings"
+        data-testid="settings-app-bar"
+        onClick={() => setSettingsOpen(true)}
+      />
+    </>,
   );
 
   // Only hide the settings button if we have an AppBar header and we are showing the header
