@@ -6,6 +6,7 @@ Please see LICENSE in the repository root for full details.
 */
 
 import {
+  type GridMedia,
   type FloatingPosition,
   type Layout,
   type LayoutMedia,
@@ -21,8 +22,8 @@ import { type MediaViewModel } from "./media/MediaViewModel.ts";
  * A request from the user to move one grid tile's media onto another's spot.
  */
 export interface GridMove {
-  media: UserMediaViewModel;
-  to: UserMediaViewModel;
+  media: GridMedia;
+  to: GridMedia;
 }
 
 export type GridLikeLayoutType =

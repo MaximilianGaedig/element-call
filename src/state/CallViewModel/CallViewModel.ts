@@ -1288,8 +1288,12 @@ export function createCallViewModel$(
   const moveTile: MoveTile = (tile, to) => {
     const media = tile.media$.peek();
     const toMedia = to.media$.peek();
-    if (media.type !== "user" || toMedia.type !== "user") return;
-    if (media.local || toMedia.local) localTileMoved$.value = true;
+    if (media.type === "ringing" || toMedia.type === "ringing") return;
+    if (
+      (media.type === "user" && media.local) ||
+      (toMedia.type === "user" && toMedia.local)
+    )
+      localTileMoved$.value = true;
     pendingMove = { media, to: toMedia };
     moves$.value++;
   };
