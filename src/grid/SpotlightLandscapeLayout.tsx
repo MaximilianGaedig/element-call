@@ -37,17 +37,34 @@ const railGap = 20; // Must match --gap in the CSS
 const layerStyle = (
   railWidth: number,
   tileCount: number,
+  railHeight: number,
 ): LayerCSSProperties => {
-  // As many columns as fit, but never more than there are tiles to fill
-  // them: with too few tiles they just grow to fill the width instead
-  const columns = Math.max(
+  // Tiles stay in one column, growing to fill the rail's width, for as long
+  // as they all fit on the page. Only when they'd run off the bottom do they
+  // split into more columns, and only as many as fit horizontally; if even
+  // that can't keep them on the page, they scroll in as many columns as fit.
+  const maxColumns = Math.max(
     1,
     Math.min(
       tileCount,
       Math.floor((railWidth + railGap) / (minRailWidth + railGap)),
     ),
   );
-  const tileWidth = Math.floor((railWidth - (columns - 1) * railGap) / columns);
+  const widthFor = (columns: number): number =>
+    Math.floor((railWidth - (columns - 1) * railGap) / columns);
+  const heightFor = (columns: number): number => {
+    const rows = Math.ceil(tileCount / columns);
+    return (
+      rows * Math.floor((widthFor(columns) * 3) / 4) + (rows - 1) * railGap
+    );
+  };
+  let columns = maxColumns;
+  for (let c = 1; c < maxColumns; c++)
+    if (heightFor(c) <= railHeight) {
+      columns = c;
+      break;
+    }
+  const tileWidth = widthFor(columns);
   return {
     "--rail-width": `${railWidth}px`,
     "--rail-tile-width": `${tileWidth}px`,
@@ -72,7 +89,7 @@ export const makeSpotlightLandscapeLayout: CallLayout<
     Slot,
   }): ReactNode {
     useUpdateLayout();
-    const { width } = useBehavior(minBounds$);
+    const { width, height } = useBehavior(minBounds$);
     const railWidth = useBehavior(model.railWidth$);
     // The width when the drag began; each move reports its delta from there
     const startWidth = useRef(railWidth);
@@ -85,7 +102,7 @@ export const makeSpotlightLandscapeLayout: CallLayout<
       <div
         ref={ref}
         className={styles.layer}
-        style={layerStyle(railWidth, model.grid.length)}
+        style={layerStyle(railWidth, model.grid.length, height)}
       >
         <div className={styles.spotlight}>
           <Slot
@@ -125,7 +142,7 @@ export const makeSpotlightLandscapeLayout: CallLayout<
   }): ReactNode {
     useUpdateLayout();
     useVisibleTiles(model.setVisibleTiles);
-    useBehavior(minBounds$);
+    const { height } = useBehavior(minBounds$);
     const onDragTile = useReorderTiles(model);
     const railWidth = useBehavior(model.railWidth$);
 
@@ -133,7 +150,7 @@ export const makeSpotlightLandscapeLayout: CallLayout<
       <div
         ref={ref}
         className={styles.layer}
-        style={layerStyle(railWidth, model.grid.length)}
+        style={layerStyle(railWidth, model.grid.length, height)}
       >
         <SpotlightSlot media$={model.spotlight.media$} />
         <div className={styles.grid}>
