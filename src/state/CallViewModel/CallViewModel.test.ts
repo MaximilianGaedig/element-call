@@ -1684,6 +1684,26 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
     });
   });
 
+  test("closing the page fires our delayed leave with keepalive", () => {
+    const updateDelayedEvent = vi.fn().mockResolvedValue({});
+    withCallViewModel(
+      { rtcMembers$: constant([localRtcMember]) },
+      (vm, rtcSession) => {
+        Object.assign(rtcSession.room.client, {
+          _unstable_updateDelayedEvent: updateDelayedEvent,
+        });
+        // Not yet joined: nothing to send
+        window.dispatchEvent(new Event("pagehide"));
+        expect(updateDelayedEvent).not.toHaveBeenCalled();
+        rtcSession.delayId = "delay1";
+        window.dispatchEvent(new Event("pagehide"));
+        expect(updateDelayedEvent).toHaveBeenCalledWith("delay1", "send", {
+          keepAlive: true,
+        });
+      },
+    );
+  });
+
   test("local tile appears before our membership comes back over sync", async () => {
     const rtcMembers$ = state([aliceRtcMember]);
     const pr = Promise.withResolvers<void>();

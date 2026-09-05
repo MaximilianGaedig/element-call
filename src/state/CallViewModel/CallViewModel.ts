@@ -27,6 +27,7 @@ import {
   type MatrixRTCSession,
 } from "matrix-js-sdk/lib/matrixrtc";
 import { type IWidgetApiRequest } from "matrix-widget-api";
+import { UpdateDelayedEventAction } from "matrix-js-sdk/lib/@types/requests";
 import { type CallMembershipIdentityParts } from "matrix-js-sdk/lib/matrixrtc/EncryptionManager";
 import { computeSlotId } from "matrix-js-sdk/lib/matrixrtc/utils";
 import { v4 as uuidv4 } from "uuid";
@@ -930,6 +931,23 @@ export function createCallViewModel$(
     scope.onEnd(() =>
       widget!.lazyActions.off(ElementWidgetActions.HangupCall, onHangup),
     );
+  } else {
+    // When the tab is closed or reloaded, fire our delayed leave event now
+    // rather than leaving it to time out: others see us go at once, and a
+    // reload doesn't have the old tab's leave land on top of the new join. A
+    // keepalive request outlives the page. (In widget mode the host client
+    // leaves for us.)
+    const onPageHide = (): void => {
+      const delayId = matrixRTCSession.delayId;
+      if (delayId === undefined || !matrixRTCSession.isJoined()) return;
+      client
+        ._unstable_updateDelayedEvent(delayId, UpdateDelayedEventAction.Send, {
+          keepAlive: true,
+        })
+        .catch((e) => logger.warn("Failed to send leave on page hide", e));
+    };
+    window.addEventListener("pagehide", onPageHide);
+    scope.onEnd(() => window.removeEventListener("pagehide", onPageHide));
   }
 
   /**

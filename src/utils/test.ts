@@ -570,6 +570,8 @@ export class MockRTCSession extends TypedEventEmitter<
     return this.joined;
   }
 
+  public delayId: string | undefined = undefined;
+
   public isKeyRotationSuppressed = false;
 
   public withMemberships(
