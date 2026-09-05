@@ -303,6 +303,7 @@
     "hidden_by_moderator": "Your tile has been hidden",
     "hide_for_everyone": "Hide from everyone",
     "kick": "Remove from room",
+    "make_moderator_confirm": "Make {{displayName}} a moderator? They'll have the same power level as you, so you won't be able to take it back.",
     "microphone_volume": "Microphone volume",
     "moderator_controls": "Moderator controls",
     "mute_audio_for_everyone": "Mute for everyone",

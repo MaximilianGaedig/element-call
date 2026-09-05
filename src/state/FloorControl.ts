@@ -119,6 +119,11 @@ export interface MemberActions {
    * state.
    */
   setModerator: ((moderator: boolean) => Promise<void>) | null;
+  /**
+   * Whether making the user a moderator would put them at the local user's
+   * own level, so that the local user couldn't take it back.
+   */
+  moderatorIrreversible: boolean;
 }
 
 interface PowerLevelsContent {
@@ -272,10 +277,13 @@ export function createFloorControl(
   // they must be able to change power levels and outrank the user (or be
   // them: users may lower their own level), and to make someone a moderator
   // they need at least that level themselves
+  const requiredLevel$ = computed(() => {
+    const { events, state_default: stateDefault } = powerLevels$.value;
+    return events?.[FloorControlEventType] ?? stateDefault ?? 50;
+  });
   const maySetModerator$ = read((state) => {
     const localLevel = state.getMember(localUserId)?.powerLevel ?? 0;
-    const { events, state_default: stateDefault } = powerLevels$.value;
-    const required = events?.[FloorControlEventType] ?? stateDefault ?? 50;
+    const required = requiredLevel$.value;
     return (userId: string): boolean => {
       const level = state.getMember(userId)?.powerLevel ?? 0;
       if (
@@ -420,6 +428,7 @@ export function createFloorControl(
         const kick = mayRemove(userId, "kick");
         const ban = mayRemove(userId, "ban");
         const moderator = maySetModerator$.value(userId);
+        const localLevel = powerLevel$.value(localUserId) ?? 0;
         return kick || ban || moderator
           ? {
               kick: kick
@@ -431,6 +440,8 @@ export function createFloorControl(
               setModerator: moderator
                 ? async (on) => setModerator(userId, on)
                 : null,
+              moderatorIrreversible:
+                userId !== localUserId && requiredLevel$.value >= localLevel,
             }
           : null;
       }),

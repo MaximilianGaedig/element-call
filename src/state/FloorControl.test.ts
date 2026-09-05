@@ -327,6 +327,23 @@ describe("createFloorControl", () => {
     );
   });
 
+  it("warns when a promotion couldn't be taken back", () => {
+    const { room } = setup(undefined, ["@admin:e", "@mod:e"], {
+      "@admin:e": 100,
+      "@mod:e": 50,
+    });
+    // An admin outranks a moderator, so can demote them again
+    const admin = createFloorControl(testScope(), room, "@admin:e", slot);
+    expect(admin.memberActions$("@alice:e").value!.moderatorIrreversible).toBe(
+      false,
+    );
+    // A moderator who can set power levels would make an equal
+    const mod = createFloorControl(testScope(), room, "@mod:e", slot);
+    expect(mod.memberActions$("@alice:e").value!.moderatorIrreversible).toBe(
+      true,
+    );
+  });
+
   it("says which users are moderators", () => {
     const { room } = setup(undefined, ["@mod:e"]);
     const fc = createFloorControl(testScope(), room, "@alice:e", slot);

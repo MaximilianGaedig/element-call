@@ -134,6 +134,7 @@ const RemoteItems: FC<{ vm: RemoteUserMediaViewModel }> = ({ vm }) => {
   const moderator = useBehavior(vm.moderator$);
   const memberActions = useBehavior(vm.memberActions$);
   const isModerator = useBehavior(vm.isModerator$);
+  const displayName = useBehavior(vm.displayName$);
   // The volume for everyone as it's being dragged, before it's sent
   const [draftModeratedVolume, setDraftModeratedVolume] = useState<
     number | null
@@ -251,6 +252,8 @@ const RemoteItems: FC<{ vm: RemoteUserMediaViewModel }> = ({ vm }) => {
               void moderator.setPinned(!moderation.pinned);
             }}
           />
+          {/* Promoting someone to our own level means we can't demote them
+          again, so that's confirmed first */}
           {memberActions?.setModerator && (
             <ToggleMenuItem
               Icon={AdminIcon}
@@ -258,7 +261,16 @@ const RemoteItems: FC<{ vm: RemoteUserMediaViewModel }> = ({ vm }) => {
               checked={isModerator}
               onSelect={(e) => {
                 e.preventDefault();
-                void memberActions.setModerator!(!isModerator);
+                if (
+                  isModerator ||
+                  !memberActions.moderatorIrreversible ||
+                  confirm(
+                    t("video_tile.make_moderator_confirm", {
+                      displayName,
+                    }),
+                  )
+                )
+                  void memberActions.setModerator!(!isModerator);
               }}
             />
           )}
