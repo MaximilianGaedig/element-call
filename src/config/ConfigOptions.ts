@@ -87,6 +87,14 @@ export interface ConfigOptions {
   };
 
   /**
+   * The user ID of a bot that records calls when asked to, such as a
+   * matrixrtc-sip-bridge. Users who may record get a record button, which
+   * invites the bot into the room and sends it recording requests (see
+   * docs/call_recording_msc.md). Unset disables recording.
+   */
+  recording_bot?: string;
+
+  /**
    * A link to the software and services license agreement (SSLA)
    */
   ssla?: string;

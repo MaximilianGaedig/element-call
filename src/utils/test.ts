@@ -366,6 +366,8 @@ export function mockMatrixRoom(room: Partial<MatrixRoom>): MatrixRoom {
       getMember: () => null,
       hasSufficientPowerLevelFor: () => false,
     },
+    getLiveTimeline: () => ({ getEvents: () => [] }),
+    getMember: () => null,
     ...room,
   } as Partial<MatrixRoom> as MatrixRoom;
 }

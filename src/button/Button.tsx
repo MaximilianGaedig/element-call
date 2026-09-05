@@ -5,7 +5,12 @@ Copyright 2026 Element Creations Ltd.
 SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
-import { type ComponentPropsWithoutRef, type FC, type ReactNode } from "react";
+import {
+  type ComponentPropsWithoutRef,
+  type FC,
+  type ReactNode,
+  type SVGAttributes,
+} from "react";
 import classNames from "classnames";
 import { useTranslation } from "react-i18next";
 import {
@@ -154,6 +159,43 @@ export const ShareScreenButton: FC<ShareScreenButtonProps> = ({
         kind={enabled ? "primary" : "secondary"}
         role="switch"
         aria-checked={enabled}
+        {...props}
+      />
+    </Tooltip>
+  );
+};
+
+const RecordIcon: FC<SVGAttributes<SVGElement>> = (props) => (
+  <svg viewBox="0 0 24 24" fill="none" {...props}>
+    <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
+    <circle className={styles.recordDot} cx="12" cy="12" r="4" />
+  </svg>
+);
+
+interface RecordButtonProps extends ComponentPropsWithoutRef<"button"> {
+  size?: "md" | "lg";
+  /** Whether the call is being recorded, which fills the dot */
+  recording: boolean;
+}
+
+export const RecordButton: FC<RecordButtonProps> = ({
+  recording,
+  className,
+  ...props
+}) => {
+  const { t } = useTranslation();
+  const label = recording
+    ? t("recording.stop_button_label")
+    : t("recording.start_button_label");
+  return (
+    <Tooltip label={label}>
+      <CpdButton
+        iconOnly
+        Icon={RecordIcon}
+        kind="secondary"
+        role="switch"
+        aria-checked={recording}
+        className={classNames(className, { [styles.recording]: recording })}
         {...props}
       />
     </Tooltip>

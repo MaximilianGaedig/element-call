@@ -24,6 +24,8 @@ import {
 import { type IWidgetApiRequest } from "matrix-widget-api";
 import { type CallMembershipIdentityParts } from "matrix-js-sdk/lib/matrixrtc/EncryptionManager";
 import { computeSlotId } from "matrix-js-sdk/lib/matrixrtc/utils";
+
+import { createRecording, type Recording } from "../Recording.ts";
 import { v4 as uuidv4 } from "uuid";
 
 import { duplicateTiles, showReactions } from "../../settings/settings";
@@ -318,6 +320,8 @@ export interface CallViewModel {
    * Moderation of devices in the call through room state.
    */
   floorControl: FloorControl;
+  /** Recording the call through a bot, where this deployment has one. */
+  recording: Recording;
   /**
    * Doubles a tile's size in the grid or the spotlight's rail, or takes that
    * back, at the user's request (double-clicking it).
@@ -462,11 +466,14 @@ export function createCallViewModel$(
 
   // ------------------------------------------------------------------------
   // floorControl: moderators muting devices through room state
-  const floorControl = createFloorControl(
+  const slotId = computeSlotId(matrixRTCSession.slotDescription);
+  const floorControl = createFloorControl(scope, matrixRoom, userId, slotId);
+  const recording = createRecording(
     scope,
     matrixRoom,
-    userId,
-    computeSlotId(matrixRTCSession.slotDescription),
+    floorControl,
+    slotId,
+    Config.get().recording_bot,
   );
 
   // ------------------------------------------------------------------------
@@ -1581,6 +1588,7 @@ export function createCallViewModel$(
     }),
     tileStoreGeneration$: tileStoreGeneration$,
     floorControl,
+    recording,
     toggleTileEnlarged,
     togglePinned,
     moveSpotlightItem,

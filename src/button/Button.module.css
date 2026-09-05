@@ -27,3 +27,18 @@ Please see LICENSE in the repository root for full details.
 .disabledWrapper > :disabled {
   pointer-events: none;
 }
+
+.recordDot {
+  fill: var(--cpd-color-icon-critical-primary);
+  transition: r 0.3s ease-out;
+}
+
+.recording .recordDot {
+  r: 9;
+}
+
+@media (prefers-reduced-motion) {
+  .recordDot {
+    transition: none;
+  }
+}

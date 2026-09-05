@@ -16,6 +16,7 @@ import {
   MicButton,
   VideoButton,
   ShareScreenButton,
+  RecordButton,
   SettingsButton,
   ModeratorButton,
   ModeratorIconButton,
@@ -61,6 +62,8 @@ export interface FooterActions {
   toggleVideo: (() => void) | undefined;
   toggleBlur: (() => void) | undefined;
   toggleScreenSharing: (() => void) | undefined;
+  /** Starts or stops recording; also controls if the record button is visible */
+  toggleRecording: (() => void) | undefined;
   /** Also controls if the settings button is visible */
   openSettings: (() => void) | undefined;
   /** Set for moderators, who get a choice of settings from the button */
@@ -93,6 +96,7 @@ export interface FooterState {
   layoutSwitchVm: LayoutSwitchViewModel | null;
 
   sharingScreen: boolean;
+  recording: boolean;
 
   /** Also controls if the audio output button is visible */
   audioOutputSwitcher: AudioOutputSwitcher | undefined;
@@ -146,6 +150,8 @@ export const CallFooter: FC<FooterProps> = ({
   const toggleVideo = useBehavior(vm.toggleVideo$);
   const sharingScreen = useBehavior(vm.sharingScreen$);
   const toggleScreenSharing = useBehavior(vm.toggleScreenSharing$);
+  const recording = useBehavior(vm.recording$);
+  const toggleRecording = useBehavior(vm.toggleRecording$);
   const reactionIdentifier = useBehavior(vm.reactionIdentifier$);
   const reactionData = useBehavior(vm.reactionData$);
   const audioOutputSwitcher = useBehavior(vm.audioOutputSwitcher$);
@@ -256,6 +262,18 @@ export const CallFooter: FC<FooterProps> = ({
         enabled={sharingScreen ?? false}
         onClick={toggleScreenSharing}
         data-testid="incall_screenshare"
+      />,
+    );
+  }
+
+  if (toggleRecording !== undefined) {
+    buttons.push(
+      <RecordButton
+        size={buttonSize}
+        key="record"
+        recording={recording}
+        onClick={toggleRecording}
+        data-testid="incall_record"
       />,
     );
   }

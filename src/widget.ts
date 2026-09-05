@@ -23,7 +23,10 @@ import { getUrlParams } from "./UrlParams";
 import { Config } from "./config/Config";
 import { seedSettingsFromConfig } from "./settings/settings";
 import { ElementCallReactionEventType } from "./reactions";
-import { FloorControlEventType } from "./state/FloorControl.ts";
+import {
+  FloorControlEventType,
+  RecordingEventType,
+} from "./state/FloorControl.ts";
 
 // Subset of the actions in element-web
 export enum ElementWidgetActions {
@@ -146,8 +149,11 @@ export const initializeWidget = (
       // Moderators mute other devices through floor control (keyed by slot),
       // kick or ban by setting membership directly, and make other users
       // moderators by raising their power level
+      // Recording is asked for through a state event keyed by slot, and
+      // means inviting the recorder bot
       sendState.push(
         { eventType: FloorControlEventType },
+        { eventType: RecordingEventType },
         { eventType: EventType.RoomMember },
         { eventType: EventType.RoomPowerLevels },
       );
@@ -158,6 +164,7 @@ export const initializeWidget = (
         { eventType: EventType.RoomEncryption },
         { eventType: EventType.GroupCallMemberPrefix },
         { eventType: FloorControlEventType },
+        { eventType: RecordingEventType },
         { eventType: EventType.RoomPowerLevels },
       ];
 
