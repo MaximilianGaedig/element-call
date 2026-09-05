@@ -13,6 +13,7 @@ import {
   isBlocked,
   type FloorControlContent,
   FloorControlEventType,
+  RecordingEventType,
 } from "./FloorControl.ts";
 import { mockEmitter, testScope } from "../utils/test.ts";
 
@@ -349,5 +350,31 @@ describe("createFloorControl", () => {
     const fc = createFloorControl(testScope(), room, "@alice:e", slot);
     expect(fc.isModerator$("@mod:e").value).toBe(true);
     expect(fc.isModerator$("@alice:e").value).toBe(false);
+  });
+});
+
+describe("recording level", () => {
+  it("reports who may record and sets the level in the power levels", async () => {
+    const { room, sendStateEvent } = setup({}, ["@mod:e"], {
+      "@mod:e": 100,
+      "@alice:e": 10,
+    });
+    const mod = createFloorControl(testScope(), room, "@mod:e", slot);
+    expect(mod.canRecord$.value).toBe(true);
+    expect(mod.canSetRecordingLevel$.value).toBe(true);
+    expect(mod.recordingLevel$.value).toBeUndefined();
+    const alice = createFloorControl(testScope(), room, "@alice:e", slot);
+    expect(alice.canRecord$.value).toBe(false);
+    expect(alice.canSetRecordingLevel$.value).toBe(false);
+    await mod.setRecordingLevel(10);
+    expect(sendStateEvent).toHaveBeenCalledWith(
+      "!room",
+      "m.room.power_levels",
+      {
+        users: { "@mod:e": 100, "@alice:e": 10 },
+        events: { [FloorControlEventType]: 50, [RecordingEventType]: 10 },
+      },
+      "",
+    );
   });
 });

@@ -68,6 +68,13 @@ export interface FloorControlContent {
   auditorium_visibility?: number;
 }
 
+/**
+ * The state event through which the call is recorded (see
+ * docs/call_recording_msc.md), keyed by slot. Who may record is who may
+ * send it, which moderators set through the power levels.
+ */
+export const RecordingEventType = "org.matrix.rtc.recording";
+
 /** What floor control asks of a device, with the defaults applied. */
 export interface Moderation {
   audioMuted: boolean;
@@ -137,6 +144,15 @@ export interface FloorControl {
   content$: Behavior<FloorControlContent>;
   /** Whether the local user may change floor control. */
   canModerate$: Behavior<boolean>;
+  /** Whether the local user may start and stop recording the call. */
+  canRecord$: Behavior<boolean>;
+  /**
+   * The power level set for recording, if the room sets one explicitly;
+   * otherwise it's the state default.
+   */
+  recordingLevel$: Behavior<number | undefined>;
+  /** Whether the local user may change the recording level. */
+  canSetRecordingLevel$: Behavior<boolean>;
   /** Whether the given user may change floor control. */
   isModerator$: (userId: string) => Behavior<boolean>;
   /** What floor control asks of the given device. */
@@ -165,6 +181,8 @@ export interface FloorControl {
   ) => Promise<void>;
   setDefaults: (patch: DeviceControlContent) => Promise<void>;
   setAuditoriumVisibility: (level: number | undefined) => Promise<void>;
+  /** Sets who may record, or unsets it to fall back to the state default. */
+  setRecordingLevel: (level: number | undefined) => Promise<void>;
   /** The room's default power level for users, for labelling levels. */
   usersDefault$: Behavior<number>;
 }
@@ -377,10 +395,36 @@ export function createFloorControl(
     else content.auditorium_visibility = level;
     await send(content);
   };
+  const canRecord$ = read((state) =>
+    state.maySendStateEvent(RecordingEventType, localUserId),
+  );
+  const recordingLevel$ = computed(
+    () => powerLevels$.value.events?.[RecordingEventType],
+  );
+  const canSetRecordingLevel$ = read((state) =>
+    state.maySendStateEvent(EventType.RoomPowerLevels, localUserId),
+  );
+  const setRecordingLevel = async (
+    level: number | undefined,
+  ): Promise<void> => {
+    const content = powerLevels$.peek();
+    const events = { ...content.events };
+    if (level === undefined) delete events[RecordingEventType];
+    else events[RecordingEventType] = level;
+    await room.client.sendStateEvent(
+      room.roomId,
+      EventType.RoomPowerLevels,
+      { ...content, events },
+      "",
+    );
+  };
 
   return {
     content$,
     canModerate$,
+    canRecord$,
+    recordingLevel$,
+    canSetRecordingLevel$,
     isModerator$: (userId) => computed(() => mayModerate$.value(userId)),
     moderation$: (id, userId) =>
       computed(() => {
@@ -447,6 +491,7 @@ export function createFloorControl(
     setDevice,
     setDefaults,
     setAuditoriumVisibility,
+    setRecordingLevel,
     usersDefault$,
   };
 }

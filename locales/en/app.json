@@ -253,6 +253,7 @@
       "mute_video_by_default": "Turn off everyone's camera by default",
       "none_blocked": "Nobody is blocked.",
       "none_hidden": "Nobody is hidden.",
+      "recording_level_label": "Who can record the call…",
       "show": "Show",
       "unblock": "Unblock"
     },

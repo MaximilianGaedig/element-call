@@ -119,23 +119,36 @@ export const ModeratorSettingsModal: FC<Props> = ({
   const defaults = content.defaults ?? {};
   const usersDefault = useBehavior(floorControl.usersDefault$);
   const visibility = content.auditorium_visibility;
+  const recordingLevel = useBehavior(floorControl.recordingLevel$);
+  const canSetRecordingLevel = useBehavior(floorControl.canSetRecordingLevel$);
 
-  // The same choice of levels Element Web offers, plus off, plus whatever
-  // custom level might already be set
-  const levels: { value: number | undefined; label: string }[] = [
-    { value: undefined, label: t("settings.moderator.auditorium_off") },
-    { value: usersDefault, label: t("power_level.default") },
-    { value: 50, label: t("power_level.moderator") },
-    { value: 100, label: t("power_level.admin") },
-  ];
-  if (
-    visibility !== undefined &&
-    !levels.some(({ value }) => value === visibility)
-  )
-    levels.push({
-      value: visibility,
-      label: t("power_level.custom", { level: visibility }),
-    });
+  // The same choice of levels Element Web offers, plus what unset means for
+  // the setting, plus whatever custom level might already be set
+  const levelOptions = (
+    unset: string,
+    current: number | undefined,
+  ): { value: number | undefined; label: string }[] => {
+    const levels = [
+      { value: undefined, label: unset },
+      { value: usersDefault, label: t("power_level.default") },
+      { value: 50, label: t("power_level.moderator") },
+      { value: 100, label: t("power_level.admin") },
+    ];
+    if (current !== undefined && !levels.some(({ value }) => value === current))
+      levels.push({
+        value: current,
+        label: t("power_level.custom", { level: current }),
+      });
+    return levels;
+  };
+  const levels = levelOptions(
+    t("settings.moderator.auditorium_off"),
+    visibility,
+  );
+  const recordingLevels = levelOptions(
+    t("power_level.moderator"),
+    recordingLevel,
+  );
 
   return (
     <Modal
@@ -187,6 +200,28 @@ export const ModeratorSettingsModal: FC<Props> = ({
             ))}
           </select>
         </FieldRow>
+        {canSetRecordingLevel && (
+          <FieldRow>
+            <label htmlFor="recordingLevel">
+              {t("settings.moderator.recording_level_label")}
+            </label>
+            <select
+              id="recordingLevel"
+              value={recordingLevel ?? ""}
+              onChange={(e): void =>
+                void floorControl.setRecordingLevel(
+                  e.target.value === "" ? undefined : Number(e.target.value),
+                )
+              }
+            >
+              {recordingLevels.map(({ value, label }) => (
+                <option key={value ?? ""} value={value ?? ""}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </FieldRow>
+        )}
       </Form>
       <RemovableList
         title={t("settings.moderator.hidden_heading")}
