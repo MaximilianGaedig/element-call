@@ -225,7 +225,7 @@ const UserMediaTileInner: FC<UserMediaTileProps & { menu: ReactNode }> = ({
           <Menu
             open={menuOpen}
             onOpenChange={setMenuOpen}
-            title={displayName}
+            title={`${displayName} (${vm.userId})`}
             trigger={menuTrigger}
             side="left"
             align="start"

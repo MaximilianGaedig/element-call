@@ -186,7 +186,7 @@ const SpotlightUserMediaItem: FC<SpotlightUserMediaItemProps> = ({
       <Menu
         open={menuOpen}
         onOpenChange={setMenuOpen}
-        title={props.displayName}
+        title={`${props.displayName} (${props.userId})`}
         trigger={
           <button
             aria-label={t("common.options")}
