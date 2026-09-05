@@ -107,6 +107,8 @@ describe("widget", () => {
       EventType.CallSDPStreamMetadataChangedPrefix,
       EventType.CallReplaces,
       EventType.CallEncryptionKeysPrefix,
+      "org.matrix.rtc.bridge_info.request",
+      "org.matrix.rtc.bridge_info",
     ];
 
     expect(createRoomWidgetClientSpy.mock.calls[0][1]).toStrictEqual({

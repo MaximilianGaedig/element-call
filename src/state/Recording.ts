@@ -71,24 +71,6 @@ export async function inviteBot(
     );
 }
 
-/** Invites a bot into the room, unless it's already a member or invited. */
-export async function inviteBot(
-  room: MatrixRoom,
-  userId: string,
-): Promise<void> {
-  const membership = room.getMember(userId)?.membership;
-  if (
-    membership !== KnownMembership.Join &&
-    membership !== KnownMembership.Invite
-  )
-    await room.client.sendStateEvent(
-      room.roomId,
-      EventType.RoomMember,
-      { membership: KnownMembership.Invite },
-      userId,
-    );
-}
-
 /**
  * @param recorder The user ID of the bot to ask for recordings, if this
  *   deployment has one.
