@@ -107,6 +107,40 @@ services:
     volumes:
       - ./backend/synapse_tmp:/data:Z
       - ./backend/dev_homeserver.yaml:/data/cfg/homeserver.yaml:Z
+      - ./backend/dev_sipbridge-registration.yaml:/data/cfg/sipbridge-registration.yaml:Z
+    networks:
+      - ecbackend
+
+  # Records calls and bridges SIP callers in; see backend/dev_sipbridge.toml.
+  # Built from a checkout of matrixrtc-sip-bridge and its patched
+  # matrix-rust-sdk next to this repo:
+  #   git clone https://github.com/element-hq/matrixrtc-sip-bridge ../matrixrtc-sip-bridge
+  #   git clone -b matthew/as https://github.com/element-hq/matrix-rust-sdk-private ../matrix-rust-sdk-private
+  # Start it with `docker compose -f docker-compose-dev.yml --profile sipbridge up`.
+  sipbridge:
+    profiles: [sipbridge]
+    build:
+      context: ../matrixrtc-sip-bridge
+      additional_contexts:
+        sdk: ../matrix-rust-sdk-private
+    hostname: sipbridge
+    restart: unless-stopped
+    environment:
+      # Trust the dev CA for the homeserver, LiveKit and Element Call
+      - SSL_CERT_FILE=/usr/local/share/ca-certificates/dev-ca.crt
+    volumes:
+      - ./backend/dev_sipbridge.toml:/app/config.toml:Z
+      - ./backend/dev_sipbridge-registration.yaml:/app/appservice-registration.yaml:Z
+      - ./backend/dev_tls_local-ca.crt:/usr/local/share/ca-certificates/dev-ca.crt:Z
+      - ./backend/sipbridge_tmp:/app/store:Z
+      - ./backend/sipbridge_recordings:/app/recordings:Z
+    ports:
+      # SIP signalling; RTP media stays inside the docker network
+      - 5062:5062/udp
+      - 5062:5062/tcp
+    depends_on:
+      - synapse
+      - nginx
     networks:
       - ecbackend
 

@@ -1,0 +1,42 @@
+# matrixrtc-sip-bridge for the dev stack: records calls (Element Call's
+# record button invites @sipbridge:synapse.m.localhost and sends it
+# org.matrix.rtc.recording events) and offers SIP dial-in. Registers its
+# own account on first start, since the dev homeserver has open
+# registration.
+
+[matrix]
+homeserver = "https://synapse.m.localhost"
+user_id    = "@sipbridge:synapse.m.localhost"
+password   = "sipbridge_password_for_local_dev_only"
+store_path = "/app/store"
+
+[sip]
+listen      = "0.0.0.0:5062"
+# What the dial-in addresses point at: the port is published on the host
+public_host = "localhost"
+# Media only flows within the docker network, since RTP ports aren't
+# published; dial in from a SIP client running in the network, or set
+# this to a reachable address and publish the RTP ports.
+public_ip   = "127.0.0.1"
+
+[sip.auth]
+enabled = false
+
+[bridge]
+uri_prefix = "room"
+livekit_service_url = "https://matrix-rtc.m.localhost/livekit/jwt"
+video = true
+# The local `pnpm dev --host` frontend, through the dev TLS proxy
+element_call_url = "https://call.m.localhost/room"
+recordings_dir = "/app/recordings"
+log_filter = "info,matrixrtc_sip_bridge=debug"
+
+[health]
+listen = "0.0.0.0:9070"
+
+[appservice]
+registration_path = "/app/appservice-registration.yaml"
+listen = "0.0.0.0:9999"
+public_url = "http://sipbridge:9999"
+user_prefix = "_sip_"
+device_id = "SIPBRIDGE"

@@ -233,6 +233,12 @@ including federation:
   - Element Web `app.m.localhost` and `app.othersite.m.localhost`
   - Note certificates will expire on Thr, 20 September 2035 14:27:35 CEST
 
+- Optionally (`--profile sipbridge`) a [matrixrtc-sip-bridge](https://github.com/element-hq/matrixrtc-sip-bridge)
+  as `@sipbridge:synapse.m.localhost`, which records calls from the record
+  button and bridges SIP callers in as an application service. It is built
+  from a checkout next to this repo; see the comments in
+  [docker-compose-dev.yml](./docker-compose-dev.yml).
+
 These use a test 'secret' published in this repository, so this must be used
 only for local development and **_never be exposed to the public Internet._**
 

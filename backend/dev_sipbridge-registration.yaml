@@ -1,0 +1,17 @@
+# Application service registration for the dev matrixrtc-sip-bridge, so
+# that each SIP caller can appear as its own virtual user. Fixed tokens:
+# local development only, never expose this stack to the Internet.
+id: matrixrtc-sip-bridge
+url: http://sipbridge:9999
+as_token: dev_as_token_for_local_dev_only_00000000000000000000000000001
+hs_token: dev_hs_token_for_local_dev_only_00000000000000000000000000002
+sender_localpart: _sip_bridge
+namespaces:
+  users:
+    - exclusive: true
+      regex: '@_sip_.*:synapse.m.localhost'
+  aliases: []
+  rooms: []
+rate_limited: false
+de.sorunome.msc2409.push_ephemeral: true
+org.matrix.msc3202: true

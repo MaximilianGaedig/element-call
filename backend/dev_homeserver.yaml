@@ -69,6 +69,9 @@ rc_message:
   per_second: 0.5
   burst_count: 30
 
+app_service_config_files:
+  - /data/cfg/sipbridge-registration.yaml
+
 matrix_rtc:
   transports:
     - type: livekit

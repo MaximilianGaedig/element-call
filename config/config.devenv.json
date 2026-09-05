@@ -12,5 +12,7 @@
     "delayed_leave_event_delay_ms": 18000,
     "delayed_leave_event_restart_ms": 4000,
     "network_error_retry_ms": 100
-  }
+  },
+  "recording_bot": "@sipbridge:synapse.m.localhost",
+  "sip_bridge": "@sipbridge:synapse.m.localhost"
 }
