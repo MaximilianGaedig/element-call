@@ -68,9 +68,9 @@ modePairs.forEach(([rtcMode1, rtcMode2]) => {
           timeout: 10000,
         });
 
-        // There should be 2 video elements, visible and autoplaying
-        const videoElements = await frame.locator("video").all();
-        expect(videoElements.length).toBe(2);
+        // There should be 2 video elements, visible and autoplaying. A tile
+        // can briefly show before its video is published, so wait for them.
+        await expect(frame.locator("video")).toHaveCount(2, { timeout: 10000 });
 
         await TestHelpers.expectVisibleVideoCount(frame, 2);
       }
