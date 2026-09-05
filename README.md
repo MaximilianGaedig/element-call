@@ -237,7 +237,10 @@ including federation:
   as `@sipbridge:synapse.m.localhost`, which records calls from the record
   button and bridges SIP callers in as an application service. It is built
   from a checkout next to this repo; see the comments in
-  [docker-compose-dev.yml](./docker-compose-dev.yml).
+  [docker-compose-dev.yml](./docker-compose-dev.yml). The image uses
+  Debian's WPE WebKit, which is built without WebRTC, so its recordings show
+  the call's tiles without any media; a composite with video needs the
+  custom WebKit build described in the bridge's README.
 
 These use a test 'secret' published in this repository, so this must be used
 only for local development and **_never be exposed to the public Internet._**

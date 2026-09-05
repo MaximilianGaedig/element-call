@@ -128,6 +128,11 @@ services:
     environment:
       # Trust the dev CA for the homeserver, LiveKit and Element Call
       - SSL_CERT_FILE=/usr/local/share/ca-certificates/dev-ca.crt
+      # WPE's web process sandboxes itself with bwrap, which needs user
+      # namespaces the container doesn't have; the container is the sandbox
+      - WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS=1
+      # GLib resolves *.localhost to loopback, so route loopback:443 to nginx
+      - MATRIXRTC_LOOPBACK_TLS_UPSTREAM=nginx:443
     volumes:
       - ./backend/dev_sipbridge.toml:/app/config.toml:Z
       - ./backend/dev_sipbridge-registration.yaml:/app/appservice-registration.yaml:Z
@@ -215,3 +220,5 @@ services:
           - synapse.othersite.m.localhost
           - matrix-rtc.m.localhost
           - matrix-rtc.othersite.m.localhost
+          # So the sipbridge container can load Element Call as a widget
+          - call.m.localhost
