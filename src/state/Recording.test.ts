@@ -6,7 +6,12 @@ Please see LICENSE in the repository root for full details.
 */
 
 import { describe, expect, it, vi } from "vitest";
-import { type MatrixEvent, type Room, RoomStateEvent } from "matrix-js-sdk";
+import {
+  type MatrixEvent,
+  type Room,
+  RoomEvent,
+  RoomStateEvent,
+} from "matrix-js-sdk";
 
 import { createRecording, type RecordingEventContent } from "./Recording.ts";
 import { constant } from "./Behavior.ts";
@@ -123,5 +128,44 @@ describe("createRecording", () => {
     expect(
       createRecording(testScope(), room, cannot, slot, bot).toggle$.value,
     ).toBeNull();
+  });
+
+  it("collects recordings the recorder posts", () => {
+    const { room } = setup();
+    const r = createRecording(testScope(), room, canRecord, slot, bot);
+    const upload = (sender: string, content: object, id: string): void =>
+      void room.emit(
+        RoomEvent.Timeline,
+        {
+          getSender: () => sender,
+          getContent: () => content,
+          getId: () => id,
+        } as unknown as MatrixEvent,
+        room,
+        false,
+        false,
+        null!,
+      );
+    upload("@alice:e", { msgtype: "m.video", url: "mxc://e/x" }, "$0");
+    upload(bot, { msgtype: "m.notice", body: "Recording started." }, "$1");
+    upload(
+      bot,
+      {
+        msgtype: "m.video",
+        body: "call.webm",
+        url: "mxc://e/v",
+        info: { thumbnail_url: "mxc://e/t" },
+      },
+      "$2",
+    );
+    expect(r.uploads$.value).toEqual([
+      {
+        eventId: "$2",
+        msgtype: "m.video",
+        body: "call.webm",
+        url: "mxc://e/v",
+        thumbnailUrl: "mxc://e/t",
+      },
+    ]);
   });
 });

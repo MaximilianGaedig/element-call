@@ -1,0 +1,45 @@
+/*
+Copyright 2026 Element Creations Ltd.
+
+SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+Please see LICENSE in the repository root for full details.
+*/
+
+.notice {
+  position: absolute;
+  inset-block-start: var(--cpd-space-28x);
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+  z-index: calc(var(--call-view-header-footer-layer) + 1);
+  max-inline-size: calc(100% - var(--cpd-space-8x));
+  display: flex;
+  align-items: center;
+  gap: var(--cpd-space-3x);
+  padding: var(--cpd-space-2x);
+  padding-inline-start: var(--cpd-space-2x);
+  border-radius: var(--cpd-space-3x);
+  background: var(--cpd-color-alpha-gray-1200);
+  color: var(--cpd-color-text-on-solid-primary);
+  box-shadow: var(--small-drop-shadow);
+}
+
+.thumbnail {
+  inline-size: 96px;
+  block-size: 54px;
+  object-fit: cover;
+  border-radius: var(--cpd-space-1x);
+  flex-shrink: 0;
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.filename {
+  color: var(--cpd-color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -7,6 +7,7 @@ Please see LICENSE in the repository root for full details.
 
 import {
   EventType,
+  type MatrixEvent,
   type Room as MatrixRoom,
   RoomEvent,
   RoomStateEvent,
@@ -14,7 +15,7 @@ import {
 } from "matrix-js-sdk";
 import { KnownMembership } from "matrix-js-sdk/lib/types";
 
-import { type Behavior, computed, fromEvents } from "./Behavior.ts";
+import { type Behavior, computed, fromEvents, state } from "./Behavior.ts";
 import { type FloorControl, RecordingEventType } from "./FloorControl.ts";
 import { type Scope } from "./Scope.ts";
 
@@ -43,9 +44,23 @@ export interface RecordingState {
   eventId: string;
 }
 
+/** A finished recording the recorder has posted into the room. */
+export interface RecordingUpload {
+  eventId: string;
+  msgtype: "m.video" | "m.audio";
+  /** The file name */
+  body: string;
+  /** mxc URL of the file */
+  url: string;
+  /** mxc URL of a thumbnail, if there is one */
+  thumbnailUrl: string | undefined;
+}
+
 export interface Recording {
   /** The recording in progress, if any. */
   recording$: Behavior<RecordingState | null>;
+  /** Recordings the recorder has posted since we've been watching. */
+  uploads$: Behavior<RecordingUpload[]>;
   /**
    * Starts a recording, or stops the one in progress. Null if the local
    * user may not record or no recorder is configured.
@@ -106,6 +121,34 @@ export function createRecording(
       : null;
   });
 
+  // The recorder posts finished recordings into the room as media
+  // messages; in the standalone app there's no timeline to see them in, so
+  // collect them as they arrive
+  const uploads$ = state<RecordingUpload[]>([]);
+  const onTimeline = (
+    event: MatrixEvent,
+    _room: unknown,
+    toStart?: boolean,
+  ): void => {
+    if (toStart || event.getSender() !== recorder) return;
+    const content = event.getContent();
+    const msgtype = content.msgtype;
+    if ((msgtype !== "m.video" && msgtype !== "m.audio") || !content.url)
+      return;
+    uploads$.value = [
+      ...uploads$.value,
+      {
+        eventId: event.getId()!,
+        msgtype,
+        body: content.body ?? "",
+        url: content.url,
+        thumbnailUrl: content.info?.thumbnail_url,
+      },
+    ];
+  };
+  room.on(RoomEvent.Timeline, onTimeline);
+  scope.onEnd(() => room.off(RoomEvent.Timeline, onTimeline));
+
   const send = async (content: RecordingEventContent): Promise<void> => {
     await room.client.sendStateEvent(
       room.roomId,
@@ -126,6 +169,7 @@ export function createRecording(
 
   return {
     recording$,
+    uploads$,
     toggle$: computed(() =>
       recorder !== undefined && floorControl.canRecord$.value ? toggle : null,
     ),

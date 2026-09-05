@@ -193,8 +193,10 @@
   "recording": {
     "acknowledge": "Got it",
     "badge": "REC",
+    "download": "Download",
     "in_progress": "This call is being recorded",
     "notice": "{{name}} is recording this call",
+    "ready": "Recording ready",
     "start_button_label": "Record call",
     "stop_button_label": "Stop recording"
   },
