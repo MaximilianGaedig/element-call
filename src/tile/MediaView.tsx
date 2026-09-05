@@ -154,21 +154,14 @@ export const MediaView: FC<Props> = ({
     );
 
   const moderatorBadge = moderator && (
-    <span className={styles.moderatorBadge}>
-      <Tooltip
-        label={t("power_level.moderator")}
-        placement="bottom"
-        isTriggerInteractive={false}
-        nonInteractiveTriggerTabIndex={focusable ? undefined : -1}
-      >
-        <AdminIcon
-          width={20}
-          height={20}
-          className={styles.moderatorIcon}
-          role="img"
-          aria-label={t("power_level.moderator")}
-        />
-      </Tooltip>
+    <span className={styles.moderatorBadge} title={t("power_level.moderator")}>
+      <AdminIcon
+        width={20}
+        height={20}
+        className={styles.moderatorIcon}
+        role="img"
+        aria-label={t("power_level.moderator")}
+      />
     </span>
   );
 
@@ -282,6 +275,7 @@ export const MediaView: FC<Props> = ({
               weight="medium"
               className={styles.name}
               data-testid="name_tag"
+              title={userId}
             >
               {pinned && "📌 "}
               {displayName}
