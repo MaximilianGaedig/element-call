@@ -154,20 +154,22 @@ export const MediaView: FC<Props> = ({
     );
 
   const moderatorBadge = moderator && (
-    <Tooltip
-      label={t("power_level.moderator")}
-      placement="bottom"
-      isTriggerInteractive={false}
-      nonInteractiveTriggerTabIndex={focusable ? undefined : -1}
-    >
-      <AdminIcon
-        width={20}
-        height={20}
-        className={styles.moderatorIcon}
-        role="img"
-        aria-label={t("power_level.moderator")}
-      />
-    </Tooltip>
+    <span className={styles.moderatorBadge}>
+      <Tooltip
+        label={t("power_level.moderator")}
+        placement="bottom"
+        isTriggerInteractive={false}
+        nonInteractiveTriggerTabIndex={focusable ? undefined : -1}
+      >
+        <AdminIcon
+          width={20}
+          height={20}
+          className={styles.moderatorIcon}
+          role="img"
+          aria-label={t("power_level.moderator")}
+        />
+      </Tooltip>
+    </span>
   );
 
   const warnings = unencryptedWarning && (

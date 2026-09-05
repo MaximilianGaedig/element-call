@@ -263,9 +263,15 @@ unconditionally select the container so we can use cqmin units */
   color: var(--cpd-color-yellow-900);
 }
 
-/* When the badge follows another icon (the mute icon), space it from that
-icon as the name is spaced from it */
-.nameTag > svg + .moderatorIcon {
+/* The tooltip wraps the badge in a span, so that's what sits in the flex
+row. When it follows another icon (the mute icon), space it from that icon
+as the name is spaced from it */
+.moderatorBadge,
+.moderatorBadge > * {
+  display: flex;
+}
+
+.nameTag > * + .moderatorBadge {
   margin-inline-start: var(--cpd-space-2x);
 }
 
