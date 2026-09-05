@@ -1683,6 +1683,30 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
       );
     });
   });
+
+  test("local tile appears before our membership comes back over sync", async () => {
+    const rtcMembers$ = state([aliceRtcMember]);
+    const pr = Promise.withResolvers<void>();
+    withCallViewModel({ rtcMembers$ }, (vm, rtcSession) => {
+      void (async (): Promise<void> => {
+        // The echo is built asynchronously, since the identity may be hashed
+        await vi.waitFor(() =>
+          expect(vm.localMatrixLivekitMember$.value).not.toBe(null),
+        );
+        const echo = vm.localMatrixLivekitMember$.value!;
+        expect(echo.membership$.value.deviceId).toBe(localRtcMember.deviceId);
+        // The real membership arriving takes over without a rebuild
+        rtcMembers$.value = [localRtcMember, aliceRtcMember];
+        expect(vm.localMatrixLivekitMember$.value).toBe(echo);
+        expect(echo.membership$.value).toBe(localRtcMember);
+        // Once we've left, there's nothing to echo
+        rtcMembers$.value = [aliceRtcMember];
+        rtcSession.membershipStatus = Status.Disconnected;
+        expect(vm.localMatrixLivekitMember$.value).toBe(null);
+      })().then(pr.resolve, pr.reject);
+    });
+    await pr.promise;
+  });
 });
 
 describe("floor control", () => {

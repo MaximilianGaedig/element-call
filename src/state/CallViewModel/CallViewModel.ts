@@ -6,7 +6,12 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { type CallMembership } from "matrix-js-sdk/lib/matrixrtc";
+import {
+  CallMembership,
+  Status as RTCSessionStatus,
+} from "matrix-js-sdk/lib/matrixrtc";
+import { computeRtcIdentityRaw } from "matrix-js-sdk/lib/matrixrtc/membershipData";
+import { EventType, MatrixEvent } from "matrix-js-sdk";
 import {
   type BaseKeyProvider,
   type ConnectionState,
@@ -594,13 +599,67 @@ export function createCallViewModel$(
     logger: logger.getChild(`[${Date.now()}]`),
   });
 
-  const localRtcMembership$ = computed(
-    () =>
+  // A local echo of our own membership: while the membership manager is
+  // joined, we stand in for the event until it comes back over sync, so the
+  // local tile appears the moment we join rather than a slow sync later. Only
+  // the IDs are read from it, so a legacy-shaped event serves for every mode,
+  // but the backend identity must match the real one or the tile would be
+  // rebuilt when that arrives.
+  const localEchoMembership$ = state<CallMembership | null>(null);
+  scope.effect(() => {
+    const hashed = matrixRTCMode$.value === MatrixRTCMode.Matrix_2_0;
+    let cancelled = false;
+    void (
+      hashed
+        ? computeRtcIdentityRaw(
+            userId,
+            deviceId,
+            ownMembershipIdentity.memberId,
+          )
+        : Promise.resolve(`${userId}:${deviceId}`)
+    ).then((rtcBackendIdentity) => {
+      if (cancelled) return;
+      const event = new MatrixEvent({
+        type: EventType.GroupCallMemberPrefix,
+        sender: userId,
+        event_id: "$local-echo",
+        content: {
+          application: "m.call",
+          call_id: "",
+          device_id: deviceId,
+          foci_preferred: [],
+          focus_active: { type: "livekit", focus_selection: "multi_sfu" },
+        },
+      });
+      localEchoMembership$.value = new CallMembership(
+        event,
+        CallMembership.membershipDataFromMatrixEvent(event),
+        rtcBackendIdentity,
+      );
+    });
+    return (): void => {
+      cancelled = true;
+    };
+  });
+  const membershipStatus$ = fromEvents(
+    scope,
+    matrixRTCSession,
+    [MembershipManagerEvent.StatusChanged],
+    (session) => session.membershipStatus,
+  );
+  const localRtcMembership$ = computed(() => {
+    const status = membershipStatus$.value;
+    return (
       memberships$.value.find(
         (membership) =>
           membership.userId === userId && membership.deviceId === deviceId,
-      ) ?? null,
-  );
+      ) ??
+      (status === RTCSessionStatus.Connecting ||
+      status === RTCSessionStatus.Connected
+        ? localEchoMembership$.value
+        : null)
+    );
+  });
 
   // The local member exists for as long as we have a membership; its
   // membership$ follows ours over that time.
