@@ -631,6 +631,8 @@ export const InCallView: FC<InCallViewProps> = ({
     <CallFooter className={styles.footer} ref={footerRef} vm={footerVm} />
   );
   const allConnections = useBehavior(vm.allConnections$);
+  const dialInMode = useBehavior(vm.dialIn.mode$);
+  const dialInAddresses = useBehavior(vm.dialIn.addresses$);
 
   return (
     // The pointer handler here exists to control the visibility of the footer,
@@ -675,6 +677,7 @@ export const InCallView: FC<InCallViewProps> = ({
             open={moderatorSettingsOpen}
             onDismiss={(): void => setModeratorSettingsOpen(false)}
             floorControl={vm.floorControl}
+            dialIn={vm.dialIn}
             room={matrixRoom}
           />
           <SettingsModal
@@ -685,6 +688,7 @@ export const InCallView: FC<InCallViewProps> = ({
             tab={settingsTab}
             onTabChange={setSettingsTab}
             developerSettingsVm={developerSettingsVm}
+            dialIn={dialInMode === undefined ? undefined : dialInAddresses}
             livekitRooms={allConnections
               .getConnections()
               .map((connectionItem) => ({

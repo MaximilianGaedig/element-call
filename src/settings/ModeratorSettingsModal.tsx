@@ -15,7 +15,10 @@ import { FieldRow, InputField } from "../input/Input";
 import {
   type DeviceControlContent,
   type FloorControl,
+  type SipDialIn,
 } from "../state/FloorControl.ts";
+import { type DialIn } from "../state/DialIn.ts";
+import { DialInAddresses } from "./DialInAddresses";
 import { useBehavior } from "../useBehavior";
 import styles from "./ModeratorSettingsModal.module.css";
 
@@ -23,6 +26,7 @@ interface Props {
   open: boolean;
   onDismiss: () => void;
   floorControl: FloorControl;
+  dialIn: DialIn;
   room: Room;
 }
 
@@ -111,10 +115,14 @@ export const ModeratorSettingsModal: FC<Props> = ({
   open,
   onDismiss,
   floorControl,
+  dialIn,
   room,
 }) => {
   const { t } = useTranslation();
   const content = useBehavior(floorControl.content$);
+  const dialInMode = useBehavior(dialIn.mode$);
+  const setDialInMode = useBehavior(dialIn.setMode$);
+  const addresses = useBehavior(dialIn.addresses$);
   const entries = Object.entries(content.devices ?? {});
   const defaults = content.defaults ?? {};
   const usersDefault = useBehavior(floorControl.usersDefault$);
@@ -222,6 +230,33 @@ export const ModeratorSettingsModal: FC<Props> = ({
             </select>
           </FieldRow>
         )}
+        {setDialInMode !== null && (
+          <FieldRow>
+            <label htmlFor="sipDialIn">
+              {t("settings.moderator.dial_in_label")}
+            </label>
+            <select
+              id="sipDialIn"
+              value={dialInMode ?? ""}
+              onChange={(e): void =>
+                void setDialInMode(
+                  e.target.value === ""
+                    ? undefined
+                    : (e.target.value as SipDialIn),
+                )
+              }
+            >
+              <option value="">{t("settings.moderator.dial_in_off")}</option>
+              <option value="audio">
+                {t("settings.moderator.dial_in_audio")}
+              </option>
+              <option value="video">
+                {t("settings.moderator.dial_in_video")}
+              </option>
+            </select>
+          </FieldRow>
+        )}
+        {dialInMode !== undefined && <DialInAddresses addresses={addresses} />}
       </Form>
       <RemovableList
         title={t("settings.moderator.hidden_heading")}

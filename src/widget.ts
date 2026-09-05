@@ -24,6 +24,10 @@ import { Config } from "./config/Config";
 import { seedSettingsFromConfig } from "./settings/settings";
 import { ElementCallReactionEventType } from "./reactions";
 import {
+  BridgeInfoEventType,
+  BridgeInfoRequestEventType,
+} from "./state/DialIn.ts";
+import {
   FloorControlEventType,
   RecordingEventType,
 } from "./state/FloorControl.ts";
@@ -180,6 +184,9 @@ export const initializeWidget = (
         EventType.CallSDPStreamMetadataChangedPrefix,
         EventType.CallReplaces,
         EventType.CallEncryptionKeysPrefix,
+        // Asking a SIP bridge for the call's addresses
+        BridgeInfoRequestEventType,
+        BridgeInfoEventType,
       ];
 
       const client = createRoomWidgetClient(

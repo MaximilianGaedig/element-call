@@ -26,6 +26,7 @@ import { type CallMembershipIdentityParts } from "matrix-js-sdk/lib/matrixrtc/En
 import { computeSlotId } from "matrix-js-sdk/lib/matrixrtc/utils";
 
 import { createRecording, type Recording } from "../Recording.ts";
+import { createDialIn, type DialIn } from "../DialIn.ts";
 import { v4 as uuidv4 } from "uuid";
 
 import { duplicateTiles, showReactions } from "../../settings/settings";
@@ -322,6 +323,8 @@ export interface CallViewModel {
   floorControl: FloorControl;
   /** Recording the call through a bot, where this deployment has one. */
   recording: Recording;
+  /** Letting people dial in over SIP, where this deployment has a bridge. */
+  dialIn: DialIn;
   /**
    * Doubles a tile's size in the grid or the spotlight's rail, or takes that
    * back, at the user's request (double-clicking it).
@@ -474,6 +477,12 @@ export function createCallViewModel$(
     floorControl,
     slotId,
     Config.get().recording_bot,
+  );
+  const dialIn = createDialIn(
+    scope,
+    matrixRoom,
+    floorControl,
+    Config.get().sip_bridge,
   );
 
   // ------------------------------------------------------------------------
@@ -1589,6 +1598,7 @@ export function createCallViewModel$(
     tileStoreGeneration$: tileStoreGeneration$,
     floorControl,
     recording,
+    dialIn,
     toggleTileEnlarged,
     togglePinned,
     moveSpotlightItem,

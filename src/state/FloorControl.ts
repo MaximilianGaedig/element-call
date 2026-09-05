@@ -66,6 +66,19 @@ export interface FloorControlContent {
    * at all. Unset means everyone is shown.
    */
   auditorium_visibility?: number;
+  /**
+   * Whether people may dial into the call over SIP, and whether with video.
+   * Unset means not at all.
+   */
+  sip_dial_in?: SipDialIn;
+  /** The addresses at which bridges reach the call, by bridge bot user ID. */
+  bridges?: Record<string, BridgeContent>;
+}
+
+export type SipDialIn = "audio" | "video";
+
+export interface BridgeContent {
+  sip?: string[];
 }
 
 /**
@@ -183,6 +196,8 @@ export interface FloorControl {
   setAuditoriumVisibility: (level: number | undefined) => Promise<void>;
   /** Sets who may record, or unsets it to fall back to the state default. */
   setRecordingLevel: (level: number | undefined) => Promise<void>;
+  setSipDialIn: (mode: SipDialIn | undefined) => Promise<void>;
+  setBridge: (userId: string, bridge: BridgeContent) => Promise<void>;
   /** The room's default power level for users, for labelling levels. */
   usersDefault$: Behavior<number>;
 }
@@ -392,12 +407,13 @@ export function createFloorControl(
     const content = content$.peek();
     await send({ ...content, defaults: { ...content.defaults, ...patch } });
   };
-  const setAuditoriumVisibility = async (
-    level: number | undefined,
+  const setField = async <K extends keyof FloorControlContent>(
+    key: K,
+    value: FloorControlContent[K] | undefined,
   ): Promise<void> => {
     const content = { ...content$.peek() };
-    if (level === undefined) delete content.auditorium_visibility;
-    else content.auditorium_visibility = level;
+    if (value === undefined) delete content[key];
+    else content[key] = value;
     await send(content);
   };
   const canRecord$ = read((state) =>
@@ -490,8 +506,12 @@ export function createFloorControl(
       }),
     setDevice,
     setDefaults,
-    setAuditoriumVisibility,
+    setAuditoriumVisibility: async (level) =>
+      setField("auditorium_visibility", level),
     setRecordingLevel,
+    setSipDialIn: async (mode) => setField("sip_dial_in", mode),
+    setBridge: async (userId, bridge) =>
+      setField("bridges", { ...content$.peek().bridges, [userId]: bridge }),
     usersDefault$,
   };
 }

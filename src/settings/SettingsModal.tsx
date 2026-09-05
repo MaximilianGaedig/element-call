@@ -8,7 +8,7 @@ Please see LICENSE in the repository root for full details.
 import { type FC, type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { type MatrixClient } from "matrix-js-sdk";
-import { Button, Root as Form, Separator } from "@vector-im/compound-web";
+import { Button, Root as Form, Separator, Text } from "@vector-im/compound-web";
 import { type Room as LivekitRoom } from "livekit-client";
 
 import { Modal } from "../Modal";
@@ -26,6 +26,7 @@ import {
   developerMode,
 } from "./settings";
 import { PreferencesSettingsTab } from "./PreferencesSettingsTab";
+import { DialInAddresses } from "./DialInAddresses";
 import { Slider } from "../Slider";
 import { DeviceSelection } from "./DeviceSelection";
 import { useTrackProcessor } from "../livekit/TrackProcessorContext";
@@ -47,6 +48,7 @@ type SettingsTab =
   | "preferences"
   | "feedback"
   | "more"
+  | "dial_in"
   | "developer";
 
 interface Props {
@@ -63,6 +65,8 @@ interface Props {
   }[];
   /** Only available while in a call. Used by the developer tab. */
   developerSettingsVm?: ViewModel<DeveloperSettingsSnapshot>;
+  /** SIP addresses for dialling into the call, if a moderator allowed it. */
+  dialIn?: string[];
 }
 
 export const defaultSettingsTab: SettingsTab = "audio";
@@ -76,6 +80,7 @@ export const SettingsModal: FC<Props> = ({
   roomId,
   livekitRooms,
   developerSettingsVm,
+  dialIn,
 }) => {
   const { t } = useTranslation();
 
@@ -233,9 +238,21 @@ export const SettingsModal: FC<Props> = ({
     ),
   };
 
+  const dialInTab: Tab<SettingsTab> = {
+    key: "dial_in",
+    name: t("settings.dial_in.tab_title"),
+    content: (
+      <>
+        <Text>{t("settings.dial_in.introduction")}</Text>
+        <DialInAddresses addresses={dialIn ?? []} />
+      </>
+    ),
+  };
+
   const tabs = [audioTab, videoTab];
   if (widget === null) tabs.push(profileTab);
   tabs.push(preferencesTab);
+  if (dialIn !== undefined) tabs.push(dialInTab);
   if (isRageshakeAvailable || import.meta.env.VITE_PACKAGE === "full") {
     // for full package we want to show the analytics consent checkbox
     // even if rageshake is not available

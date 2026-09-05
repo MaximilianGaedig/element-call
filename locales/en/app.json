@@ -242,6 +242,11 @@
       "speaker": "Speaker",
       "speaker_numbered": "Speaker {{n}}"
     },
+    "dial_in": {
+      "introduction": "Dial one of these addresses from a SIP phone or app to join this call.",
+      "tab_title": "Dial in",
+      "waiting": "Waiting for the bridge to say how to dial in…"
+    },
     "echo_cancellation_label": "Echo cancellation",
     "feedback_tab_body": "If you are experiencing issues or simply would like to provide some feedback, please send us a short description below.",
     "feedback_tab_description_label": "Your feedback",
@@ -256,6 +261,10 @@
       "auditorium_off": "Everyone",
       "blocked_heading": "Blocked participants",
       "defaults_description": "Applies to everyone, moderators included. Individual devices can be unmuted from their tile's menu.",
+      "dial_in_audio": "Audio only",
+      "dial_in_label": "Dial in over SIP…",
+      "dial_in_off": "Not allowed",
+      "dial_in_video": "Audio and video",
       "hidden_heading": "Hidden participants",
       "mute_audio_by_default": "Mute everyone's microphone by default",
       "mute_video_by_default": "Turn off everyone's camera by default",
