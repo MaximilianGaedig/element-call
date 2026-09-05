@@ -938,13 +938,40 @@ export function createCallViewModel$(
     // keepalive request outlives the page. (In widget mode the host client
     // leaves for us.)
     const onPageHide = (): void => {
+      if (!matrixRTCSession.isJoined()) return;
+      const opts = { keepAlive: true };
       const delayId = matrixRTCSession.delayId;
-      if (delayId === undefined || !matrixRTCSession.isJoined()) return;
-      client
-        ._unstable_updateDelayedEvent(delayId, UpdateDelayedEventAction.Send, {
-          keepAlive: true,
-        })
-        .catch((e) => logger.warn("Failed to send leave on page hide", e));
+      if (delayId !== undefined)
+        client
+          ._unstable_updateDelayedEvent(
+            delayId,
+            UpdateDelayedEventAction.Send,
+            opts,
+          )
+          .catch((e) => logger.warn("Failed to send leave on page hide", e));
+      // The delayed leave can have been lost (the SDK may re-send a
+      // membership after a sleep without re-arming it), so also clear the
+      // membership state event directly. Only state-event memberships can be
+      // ended this way: sticky-event sends can't be keepalive.
+      const stateKey = matrixRoom.currentState
+        .getStateEvents(EventType.GroupCallMemberPrefix)
+        .find(
+          (e) =>
+            e.getSender() === userId && e.getContent().device_id === deviceId,
+        )
+        ?.getStateKey();
+      if (stateKey !== undefined)
+        client
+          .sendStateEvent(
+            matrixRoom.roomId,
+            EventType.GroupCallMemberPrefix,
+            {},
+            stateKey,
+            opts,
+          )
+          .catch((e) =>
+            logger.warn("Failed to clear membership on page hide", e),
+          );
     };
     window.addEventListener("pagehide", onPageHide);
     scope.onEnd(() => window.removeEventListener("pagehide", onPageHide));

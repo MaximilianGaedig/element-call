@@ -1684,22 +1684,50 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
     });
   });
 
-  test("closing the page fires our delayed leave with keepalive", () => {
+  test("closing the page fires our delayed leave and clears our membership", () => {
     const updateDelayedEvent = vi.fn().mockResolvedValue({});
+    const sendStateEvent = vi.fn().mockResolvedValue({});
     withCallViewModel(
       { rtcMembers$: constant([localRtcMember]) },
       (vm, rtcSession) => {
         Object.assign(rtcSession.room.client, {
           _unstable_updateDelayedEvent: updateDelayedEvent,
+          sendStateEvent,
         });
-        // Not yet joined: nothing to send
+        // Our membership state event, as the server has it
+        rtcSession.room.currentState.getStateEvents = ((type: string) =>
+          type === "org.matrix.msc3401.call.member"
+            ? [
+                {
+                  getSender: () => localRtcMember.userId,
+                  getContent: () => ({ device_id: localRtcMember.deviceId }),
+                  getStateKey: () => "_@local:example.org_1111_m.call",
+                },
+              ]
+            : []) as typeof rtcSession.room.currentState.getStateEvents;
+        // Not joined: nothing to send
+        rtcSession.joined = false;
         window.dispatchEvent(new Event("pagehide"));
         expect(updateDelayedEvent).not.toHaveBeenCalled();
+        expect(sendStateEvent).not.toHaveBeenCalled();
+        // Joined with no delayed leave armed: the state event is cleared
+        rtcSession.joined = true;
+        window.dispatchEvent(new Event("pagehide"));
+        expect(updateDelayedEvent).not.toHaveBeenCalled();
+        expect(sendStateEvent).toHaveBeenCalledWith(
+          rtcSession.room.roomId,
+          "org.matrix.msc3401.call.member",
+          {},
+          "_@local:example.org_1111_m.call",
+          { keepAlive: true },
+        );
+        // With a delayed leave, that's fired too
         rtcSession.delayId = "delay1";
         window.dispatchEvent(new Event("pagehide"));
         expect(updateDelayedEvent).toHaveBeenCalledWith("delay1", "send", {
           keepAlive: true,
         });
+        expect(sendStateEvent).toHaveBeenCalledTimes(2);
       },
     );
   });
