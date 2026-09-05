@@ -7,5 +7,6 @@ This folder contains documentation for setup, usage, and development of Element 
 - [Global JS controls](./controls.md)
 - [MatrixRTC modes](./matrix_rtc_modes.md)
 - [Floor control (draft MSC)](./floor_control_msc.md)
+- [Call recording (draft MSC)](./call_recording_msc.md)
 - [Self-Hosting](./self_hosting.md)
 - [Developing with linked packages](./linking.md)

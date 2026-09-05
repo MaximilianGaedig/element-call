@@ -31,6 +31,12 @@ the same room.
       "video_muted": false
     },
     "auditorium_visibility": 50,
+    "sip_dial_in": "video",
+    "bridges": {
+      "@sipbridge:example.org": {
+        "sip": ["sip:room-1a2b3c@sip.example.org:5062"]
+      }
+    },
     "devices": {
       "@alice:example.org:DEVICEID": {
         "audio_muted": false
@@ -76,7 +82,49 @@ the same room.
 - `auditorium_visibility` (number, top level): auditorium mode. Only users
   whose power level is at least this are shown as tiles in the call; everyone
   else is still in the call but not displayed. Unset means everyone is shown.
+- `sip_dial_in` (`"audio"` or `"video"`, top level): whether people may dial
+  into the call over SIP, and whether they may bring video when they do.
+  Unset means dial-in is not allowed. This is advisory: it tells clients
+  whether to offer dial-in details, and tells a SIP bridge whether it is
+  welcome, so that inviting a bridge into a room is a moderator's decision
+  rather than something any member can do on a whim. A bridge should refuse
+  to connect callers into a call whose floor control does not allow it.
+- `bridges` (object, top level): the addresses at which the call can be
+  reached through bridges, keyed by the bridge bot's user ID. Each entry may
+  contain `sip`, a list of SIP URIs that dial into this call. Moderators
+  fill this in when they enable dial-in, by asking the bridge (below), so
+  that every client can show the addresses without asking the bridge
+  itself. A future proposal for bridges to advertise the rooms and
+  addresses they bridge in general should replace this section; it lives
+  here for now because the call already has a moderator-owned event to put
+  it in.
 - All fields are optional; a missing event means nothing is controlled.
+
+### Discovering bridged addresses
+
+A client that has enabled dial-in asks the bridge bot for the call's
+addresses with a to-device message of type
+`org.matrix.rtc.bridge_info.request`, sent to all of the bot's devices:
+
+```json
+{
+  "room_id": "!call:example.org"
+}
+```
+
+The bridge replies to all of the sender's devices with
+`org.matrix.rtc.bridge_info`:
+
+```json
+{
+  "room_id": "!call:example.org",
+  "sip": ["sip:room-1a2b3c@sip.example.org:5062"]
+}
+```
+
+The client then records the reply under `bridges` in floor control. The
+bridge must be a member of the room (or invited to it) before it will answer,
+which is how the moderator's invitation doubles as consent.
 
 The event is sent by anyone with sufficient power level to send state events of
 this type, which is the room's default state event power level unless a room
