@@ -70,7 +70,7 @@ rc_message:
   burst_count: 30
 
 app_service_config_files:
-  - /data/cfg/sipbridge-registration.yaml
+  - /appservices/sipbridge-registration.yaml
 
 matrix_rtc:
   transports:

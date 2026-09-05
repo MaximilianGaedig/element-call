@@ -107,7 +107,7 @@ services:
     volumes:
       - ./backend/synapse_tmp:/data:Z
       - ./backend/dev_homeserver.yaml:/data/cfg/homeserver.yaml:Z
-      - ./backend/dev_sipbridge-registration.yaml:/data/cfg/sipbridge-registration.yaml:Z
+      - ./backend/dev_sipbridge-registration.yaml:/appservices/sipbridge-registration.yaml:Z
     networks:
       - ecbackend
 
