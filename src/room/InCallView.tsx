@@ -62,6 +62,7 @@ import {
 import { ReactionsAudioRenderer } from "./ReactionAudioRenderer";
 import { ReactionsOverlay } from "./ReactionsOverlay";
 import { CallEventAudioRenderer } from "./CallEventAudioRenderer";
+import { RecordingIndicator } from "./RecordingIndicator";
 import { matrixRTCMode as matrixRTCModeSetting } from "../settings/settings";
 import { ReactionsReader } from "../reactions/ReactionsReader";
 import { LivekitRoomAudioRenderer } from "../livekit/MatrixAudioRenderer.tsx";
@@ -645,6 +646,11 @@ export const InCallView: FC<InCallViewProps> = ({
       onPointerOut={onPointerOut}
     >
       {header}
+      <RecordingIndicator
+        vm={vm}
+        room={matrixRoom}
+        localUserId={client.getUserId()!}
+      />
       {audioParticipants.map(({ livekitRoom, url, participants }) => (
         <LivekitRoomAudioRenderer
           key={url}

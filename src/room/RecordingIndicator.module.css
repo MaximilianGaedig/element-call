@@ -1,0 +1,55 @@
+/*
+Copyright 2026 Element Creations Ltd.
+
+SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+Please see LICENSE in the repository root for full details.
+*/
+
+.badge {
+  position: absolute;
+  inset-block-start: var(--cpd-space-4x);
+  inset-inline-end: var(--cpd-space-4x);
+  z-index: calc(var(--call-view-header-footer-layer) + 1);
+  inline-size: var(--cpd-space-11x);
+  block-size: var(--cpd-space-11x);
+  border-radius: 50%;
+  background: var(--cpd-color-bg-critical-primary);
+  color: var(--cpd-color-text-on-solid-primary);
+  font: var(--cpd-font-body-xs-semibold);
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.6;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .badge {
+    animation: none;
+  }
+}
+
+.notice {
+  position: absolute;
+  inset-block-start: var(--cpd-space-16x);
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+  z-index: calc(var(--call-view-header-footer-layer) + 1);
+  max-inline-size: calc(100% - var(--cpd-space-8x));
+  display: flex;
+  align-items: center;
+  gap: var(--cpd-space-3x);
+  padding-block: var(--cpd-space-1x);
+  padding-inline: var(--cpd-space-4x) var(--cpd-space-1x);
+  border-radius: var(--cpd-radius-pill-effect);
+  background: var(--cpd-color-alpha-gray-1200);
+  color: var(--cpd-color-text-on-solid-primary);
+  box-shadow: var(--small-drop-shadow);
+}

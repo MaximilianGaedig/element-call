@@ -39,7 +39,7 @@ Please see LICENSE in the repository root for full details.
   r: 9;
 }
 
-@media (prefers-reduced-motion) {
+@media (prefers-reduced-motion: reduce) {
   .recordDot {
     transition: none;
   }

@@ -20,6 +20,10 @@ import declineMp3 from "../sound/call_declined.mp3?url";
 import declineOgg from "../sound/call_declined.ogg?url";
 import timeoutMp3 from "../sound/call_timeout.mp3?url";
 import timeoutOgg from "../sound/call_timeout.ogg?url";
+import recordingStartedMp3 from "../sound/recording_started.mp3";
+import recordingStartedOgg from "../sound/recording_started.ogg";
+import recordingStoppedMp3 from "../sound/recording_stopped.mp3";
+import recordingStoppedOgg from "../sound/recording_stopped.ogg";
 import { useAudioContext } from "../useAudioContext";
 import { prefetchSounds } from "../soundUtils";
 import { useLatest } from "../useLatest";
@@ -49,6 +53,14 @@ export const callEventAudioSounds = prefetchSounds({
   timeout: {
     mp3: timeoutMp3,
     ogg: timeoutOgg,
+  },
+  recordingStarted: {
+    mp3: recordingStartedMp3,
+    ogg: recordingStartedOgg,
+  },
+  recordingStopped: {
+    mp3: recordingStoppedMp3,
+    ogg: recordingStoppedOgg,
   },
 });
 
@@ -92,6 +104,11 @@ export function CallEventAudioRenderer({
   });
   useBehaviorChange(vm.screenShares$, (shares, previous) => {
     if (shares.length > previous.length) play("screenshareStarted");
+  });
+  // Everyone hears when a recording starts and stops, however big the call
+  useBehaviorChange(vm.recording.recording$, (recording, previous) => {
+    if (recording !== null && previous === null) play("recordingStarted");
+    else if (recording === null && previous !== null) play("recordingStopped");
   });
 
   return <></>;

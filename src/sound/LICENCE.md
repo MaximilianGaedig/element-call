@@ -24,3 +24,4 @@ The following sound effects have been originally created by Element.
 - `reactions/rock`
 - `reactions/wave`
 - `reactions/baduntss`
+- `recording_started` and `recording_stopped` (synthesised speech)
