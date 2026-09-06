@@ -148,8 +148,13 @@ services:
       - 5062:5062/udp
       - 5062:5062/tcp
     depends_on:
-      - synapse
-      - nginx
+      # The bridge logs in at startup and exits if the homeserver isn't
+      # answering yet, and Synapse backs off pushing to an appservice that
+      # keeps refusing connections
+      synapse:
+        condition: service_healthy
+      nginx:
+        condition: service_started
     networks:
       - ecbackend
 
