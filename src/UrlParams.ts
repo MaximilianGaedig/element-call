@@ -229,6 +229,13 @@ export interface UrlConfiguration {
   autoLeaveWhenOthersLeft: boolean;
 
   /**
+   * Whether to reconnect automatically after losing the connection, instead
+   * of waiting for someone to press the Reconnect button. For views with
+   * nobody at the controls, such as the bridge's.
+   */
+  autoReconnect: boolean;
+
+  /**
    * If the client should behave like it is awaiting an answer if a notification was sent (wait for call pick up).
    * This is a no-op if not combined with sendNotificationType.
    *
@@ -387,6 +394,7 @@ export const computeUrlParams = (search = "", hash = ""): UrlParams => {
     sendNotificationType: "notification",
     autoLeaveWhenOthersLeft: false,
     waitForCallPickup: false,
+    autoReconnect: false,
   };
   switch (intent) {
     case UserIntent.StartNewCall:
@@ -442,6 +450,7 @@ export const computeUrlParams = (search = "", hash = ""): UrlParams => {
         sendNotificationType: undefined,
         autoLeaveWhenOthersLeft: false,
         waitForCallPickup: false,
+        autoReconnect: false,
       };
   }
 
@@ -496,6 +505,7 @@ export const computeUrlParams = (search = "", hash = ""): UrlParams => {
     ]),
     waitForCallPickup: parser.getFlag("waitForCallPickup"),
     autoLeaveWhenOthersLeft: parser.getFlag("autoLeave"),
+    autoReconnect: parser.getFlag("autoReconnect"),
     noiseSuppression: parser.getFlagParam("noiseSuppression", true),
     echoCancellation: parser.getFlagParam("echoCancellation", true),
   };
