@@ -20,9 +20,10 @@ import {
 } from "../state/TileViewModel.ts";
 import { computed } from "../state/Behavior.ts";
 import { shallowEquals as shallowArrayEquals } from "../utils/array.ts";
-import { type DragCallback, type SlotProps } from "./Grid";
+import { type DragCallback, type SlotProps, useUpdateLayout } from "./Grid";
 import { usedColumns } from "./CallLayout";
 import { useBehavior } from "../useBehavior";
+import { relaxedGrid, useSetting } from "../settings/settings";
 import styles from "./TileGrid.module.css";
 
 interface GridCSSProperties extends CSSProperties {
@@ -65,12 +66,27 @@ interface TileSlotProps {
   Slot: ComponentType<SlotProps<TileViewModel>>;
   tile: GridTileViewModel;
   onDrag: DragCallback;
+  /** Whether the slot should be as narrow as its video (see relaxedGrid). */
+  relaxed: boolean;
 }
 
 // Each slot subscribes to its own tile's size so that enlarging one tile
 // doesn't re-render the whole grid
-const TileSlot: FC<TileSlotProps> = ({ Slot, tile, onDrag }) => {
+const TileSlot: FC<TileSlotProps> = ({ Slot, tile, onDrag, relaxed }) => {
+  useUpdateLayout();
   const enlarged = useBehavior(tile.enlarged$);
+  const aspectRatio = useBehavior(
+    useMemo(
+      () =>
+        computed(() => {
+          const media = tile.media$.value;
+          return media.type === "user" && media.videoEnabled$.value
+            ? media.videoAspectRatio$.value
+            : NaN;
+        }),
+      [tile],
+    ),
+  );
   return (
     <Slot
       className={styles.slot}
@@ -78,6 +94,12 @@ const TileSlot: FC<TileSlotProps> = ({ Slot, tile, onDrag }) => {
       model={tile}
       onDrag={onDrag}
       data-enlarged={enlarged || undefined}
+      // The flex row then packs and centres the hugged tiles itself
+      style={
+        relaxed && aspectRatio > 0
+          ? { width: `min(var(--width), calc(var(--height) * ${aspectRatio}))` }
+          : undefined
+      }
     />
   );
 };
@@ -116,6 +138,7 @@ export const TileGrid: FC<Props> = ({
   onDrag,
 }) => {
   const enlargedCount = enlarged.filter(Boolean).length;
+  const [relaxed] = useSetting(relaxedGrid);
   return (
     <div
       ref={ref}
@@ -139,7 +162,14 @@ export const TileGrid: FC<Props> = ({
       }
     >
       {grid.map((m) => (
-        <TileSlot key={m.id} Slot={Slot} tile={m} onDrag={onDrag(m)} />
+        <TileSlot
+          key={m.id}
+          Slot={Slot}
+          tile={m}
+          onDrag={onDrag(m)}
+          // Only the flexed grid can pack rows; the cell grid has fixed tracks
+          relaxed={relaxed && enlargedCount === 0}
+        />
       ))}
     </div>
   );

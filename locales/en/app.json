@@ -242,6 +242,7 @@
     "feedback_tab_thank_you": "Thanks, we received your feedback!",
     "feedback_tab_title": "Feedback",
     "framerate_label": "Framerate",
+    "hug_video_label": "Shape tiles to fit their video instead of cropping it",
     "moderator": {
       "all_devices": "all devices",
       "auditorium_label": "Auditorium mode: only show tiles from…",
@@ -259,6 +260,7 @@
     "moderator_settings": "Moderator settings",
     "noise_suppression_label": "Noise suppression",
     "opt_in_description": "<0></0><1></1>You may withdraw consent by unchecking this box. If you are currently in a call, this setting will take effect at the end of the call.",
+    "relaxed_grid_label": "Pack each row of tiles tightly rather than lining them up in columns",
     "preferences_tab": {
       "developer_mode_label": "Developer mode",
       "developer_mode_label_description": "Enable developer mode and show developer settings tab.",
@@ -273,7 +275,8 @@
       "show_hand_raised_timer_label": "Show hand raise duration"
     },
     "resolution_label": "Resolution",
-    "screen_share_header": "Screen sharing"
+    "screen_share_header": "Screen sharing",
+    "tiles_header": "Tiles"
   },
   "star_rating_input_label_one": "{{count}} star",
   "star_rating_input_label_other": "{{count}} stars",

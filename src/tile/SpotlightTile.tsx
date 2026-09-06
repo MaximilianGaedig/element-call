@@ -71,6 +71,7 @@ import { Slider } from "../Slider";
 import { type RingingMediaViewModel } from "../state/media/RingingMediaViewModel";
 import { RingingStatus } from "./RingingStatus";
 import { UserMediaMenuItems } from "./UserMediaMenuItems";
+import { hugVideo, useSetting } from "../settings/settings";
 
 interface SpotlightItemBaseProps {
   ref?: Ref<HTMLDivElement>;
@@ -136,6 +137,7 @@ interface SpotlightUserMediaItemProps extends SpotlightMemberMediaItemBaseProps 
   vm: UserMediaViewModel;
   onUnpin: ((vm: UserMediaViewModel) => void) | undefined;
   buttons: ReactNode;
+  hugVideo?: boolean;
 }
 
 const SpotlightUserMediaItem: FC<SpotlightUserMediaItemProps> = ({
@@ -313,6 +315,7 @@ const SpotlightMemberMediaItem: FC<SpotlightMemberMediaItemProps> = ({
   const video = useBehavior(vm.video$);
   const unencryptedWarning = useBehavior(vm.unencryptedWarning$);
   const focusUrl = useBehavior(vm.focusUrl$);
+  const [hug] = useSetting(hugVideo);
 
   const baseProps: SpotlightMemberMediaItemBaseProps &
     RefAttributes<HTMLDivElement> = {
@@ -329,6 +332,7 @@ const SpotlightMemberMediaItem: FC<SpotlightMemberMediaItemProps> = ({
       <SpotlightUserMediaItem
         vm={vm}
         videoFit={tiled ? "cover" : undefined}
+        hugVideo={hug}
         onUnpin={onUnpin}
         buttons={buttons}
         {...baseProps}

@@ -96,6 +96,15 @@ export const duplicateTiles = new Setting("duplicate-tiles", 0);
 
 export const debugTileLayout = new Setting("debug-tile-layout", false);
 
+/** Shrink camera tiles to the shape of their video rather than cropping it. */
+export const hugVideo = new Setting<boolean>("hug-video", false);
+
+/**
+ * With tiles of differing widths (see hugVideo), pack each row of the grid
+ * tightly and centre it, rather than lining the tiles up in columns.
+ */
+export const relaxedGrid = new Setting<boolean>("relaxed-grid", false);
+
 export const showConnectionStats = new Setting<boolean>(
   "show-connection-stats",
   false,

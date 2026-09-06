@@ -42,6 +42,7 @@ import { constant } from "../state/Behavior";
 import { useMergedRefs } from "../useMergedRefs";
 import { useReactionsSender } from "../reactions/useReactionsSender";
 import { useBehavior } from "../useBehavior";
+import { hugVideo, useSetting } from "../settings/settings";
 import { type LocalUserMediaViewModel } from "../state/media/LocalUserMediaViewModel";
 import { type RemoteUserMediaViewModel } from "../state/media/RemoteUserMediaViewModel";
 import { UserMediaMenuItems } from "./UserMediaMenuItems";
@@ -146,6 +147,7 @@ const UserMediaTileInner: FC<UserMediaTileProps & { menu: ReactNode }> = ({
 }) => {
   const { toggleRaisedHand } = useReactionsSender();
   const { t } = useTranslation();
+  const [hug] = useSetting(hugVideo);
   const video = useBehavior(vm.video$);
   const unencryptedWarning = useBehavior(vm.unencryptedWarning$);
   const audioStreamStats = useBehavior(vm.audioStreamStats$);
@@ -243,6 +245,7 @@ const UserMediaTileInner: FC<UserMediaTileProps & { menu: ReactNode }> = ({
       waitingForMedia={waitingForMedia}
       focusUrl={focusUrl}
       setVideoAspectRatio={vm.setVideoAspectRatio}
+      hugVideo={hug}
       audioStreamStats={audioStreamStats}
       videoStreamStats={videoStreamStats}
       rtcBackendIdentity={rtcBackendIdentity}

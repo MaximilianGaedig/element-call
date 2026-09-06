@@ -24,6 +24,8 @@ import {
   soundEffectVolume as soundEffectVolumeSetting,
   backgroundBlur as backgroundBlurSetting,
   developerMode,
+  hugVideo as hugVideoSetting,
+  relaxedGrid as relaxedGridSetting,
 } from "./settings";
 import { PreferencesSettingsTab } from "./PreferencesSettingsTab";
 import { Slider } from "../Slider";
@@ -105,6 +107,9 @@ export const SettingsModal: FC<Props> = ({
       </>
     );
   };
+
+  const [hugVideo, setHugVideo] = useSetting(hugVideoSetting);
+  const [relaxedGrid, setRelaxedGrid] = useSetting(relaxedGridSetting);
 
   const devices = useMediaDevices();
   useEffect(() => {
@@ -197,6 +202,27 @@ export const SettingsModal: FC<Props> = ({
         </Form>
         <Separator />
         <BlurCheckbox />
+        <Separator />
+        <h4>{t("settings.tiles_header")}</h4>
+        <FieldRow>
+          <InputField
+            id="hugVideo"
+            label={t("settings.hug_video_label")}
+            type="checkbox"
+            checked={hugVideo}
+            onChange={(e): void => setHugVideo(e.target.checked)}
+          />
+        </FieldRow>
+        <FieldRow>
+          <InputField
+            id="relaxedGrid"
+            label={t("settings.relaxed_grid_label")}
+            type="checkbox"
+            checked={relaxedGrid}
+            onChange={(e): void => setRelaxedGrid(e.target.checked)}
+            disabled={!hugVideo}
+          />
+        </FieldRow>
       </>
     ),
   };

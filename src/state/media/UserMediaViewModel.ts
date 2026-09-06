@@ -63,6 +63,8 @@ export interface BaseUserMediaViewModel extends BaseMemberMediaViewModel {
   pinned$: Behavior<boolean>;
   audioStreamStats$: Behavior<RtpStreamStats | undefined>;
   videoStreamStats$: Behavior<RtpStreamStats | undefined>;
+  /** The aspect ratio of the video track, NaN until it's known. */
+  videoAspectRatio$: Behavior<number>;
   /**
    * Set the aspect ratio of the video track to determine the orientation.
    */
@@ -146,6 +148,7 @@ export function createBaseUserMedia(
       () => !moderation$.value.audioMuted && audioEnabled$.value,
     ),
     videoEnabled$,
+    videoAspectRatio$,
     videoOrientation$: computed(() =>
       videoAspectRatio$.value > 1 ? "landscape" : "portrait",
     ),
