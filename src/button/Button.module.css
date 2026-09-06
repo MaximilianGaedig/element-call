@@ -44,7 +44,7 @@ Please see LICENSE in the repository root for full details.
 
 /* Waiting for the recorder to confirm: the circle breathes */
 .pending .recordShape {
-  animation: breathe 0.7s ease-in-out infinite;
+  animation: breathe 1s ease-in-out infinite;
 }
 
 @keyframes breathe {
