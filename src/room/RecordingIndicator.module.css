@@ -6,15 +6,9 @@ Please see LICENSE in the repository root for full details.
 */
 
 .badge {
-  position: absolute;
-  /* Centred on the header's 80px nav, like the Invite button, and as tall */
-  inset-block-start: calc(
-    env(safe-area-inset-top) + (80px - var(--cpd-space-9x)) / 2
-  );
-  inset-inline-end: var(--cpd-space-4x);
-  z-index: calc(var(--call-view-header-footer-layer) + 1);
   inline-size: var(--cpd-space-9x);
   block-size: var(--cpd-space-9x);
+  flex-shrink: 0;
   border-radius: 50%;
   background: var(--cpd-color-bg-critical-primary);
   /* As red as the display can manage, with a soft glow */
@@ -26,6 +20,14 @@ Please see LICENSE in the repository root for full details.
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* Without a header to sit in, the badge floats in the corner instead */
+.floating {
+  position: absolute;
+  inset-block-start: calc(env(safe-area-inset-top) + var(--cpd-space-4x));
+  inset-inline-end: var(--cpd-space-4x);
+  z-index: calc(var(--call-view-header-footer-layer) + 1);
 }
 
 /* Until the recorder confirms that it's recording */

@@ -11,7 +11,7 @@ import { expect, test } from "vitest";
 import { type Room } from "matrix-js-sdk";
 import { TooltipProvider } from "@vector-im/compound-web";
 
-import { RecordingIndicator } from "./RecordingIndicator";
+import { RecordingBadge, RecordingNotice } from "./RecordingIndicator";
 import { state } from "../state/Behavior";
 import { type CallViewModel } from "../state/CallViewModel/CallViewModel";
 import { type RecordingState } from "../state/Recording";
@@ -33,7 +33,8 @@ function setup(by: string, localUserId: string, started = true): void {
   const vm = { recording: { recording$ } } as unknown as CallViewModel;
   render(
     <TooltipProvider>
-      <RecordingIndicator vm={vm} room={room} localUserId={localUserId} />
+      <RecordingBadge vm={vm} room={room} />
+      <RecordingNotice vm={vm} room={room} localUserId={localUserId} />
     </TooltipProvider>,
   );
 }
@@ -60,4 +61,7 @@ test("gives the person recording only the badge", () => {
 test("marks the badge busy until the recorder confirms", () => {
   setup("@alice:e", "@alice:e", false);
   expect(screen.getByRole("status")).toHaveAttribute("aria-busy", "true");
+  expect(screen.getByRole("status")).toHaveAccessibleName(
+    "Recording by Alice (@alice:e) is starting",
+  );
 });

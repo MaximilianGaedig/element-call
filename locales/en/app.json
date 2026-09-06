@@ -202,6 +202,7 @@
     "recorder_failed": "The recorder couldn't record the call: {{reason}}",
     "recorder_timeout": "The recorder didn't start recording",
     "start_button_label": "Record call",
+    "starting": "Recording by {{name}} ({{userId}}) is starting",
     "starting_button_label": "Starting recording, press to cancel",
     "stop_button_label": "Stop recording"
   },

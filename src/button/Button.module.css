@@ -36,24 +36,41 @@ Please see LICENSE in the repository root for full details.
   transition: rx 0.3s ease-out;
 }
 
-/* Recording: the circle squares off, like a stop button */
+/* Recording: the circle swells, then pops into a square as it shrinks back */
 .recording .recordShape {
   rx: 2;
+  animation: pop 0.5s ease-out;
 }
 
 /* Waiting for the recorder to confirm: the circle breathes */
 .pending .recordShape {
-  animation: breathe 1.2s ease-in-out infinite;
+  animation: breathe 0.7s ease-in-out infinite;
 }
 
 @keyframes breathe {
   50% {
-    transform: scale(1.25);
+    transform: scale(1.45);
+  }
+}
+
+@keyframes pop {
+  40% {
+    transform: scale(1.5);
+    rx: 6;
+  }
+
+  41% {
+    rx: 2;
+  }
+
+  100% {
+    transform: scale(1);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .recordShape,
+  .recording .recordShape,
   .pending .recordShape {
     transition: none;
     animation: none;

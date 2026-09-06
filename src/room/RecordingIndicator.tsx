@@ -15,56 +15,77 @@ import { type CallViewModel } from "../state/CallViewModel/CallViewModel";
 import { useBehavior } from "../useBehavior";
 import styles from "./RecordingIndicator.module.css";
 
-interface Props {
+interface BadgeProps {
+  vm: CallViewModel;
+  room: Room;
+  /** Float in the corner, for views without a header to sit in */
+  floating?: boolean;
+}
+
+/**
+ * A "REC" light shown for as long as the call is being recorded, grey until
+ * the recorder confirms that it's started. Lives in the header beside the
+ * Invite button, or floats in the corner when there's no header.
+ */
+export const RecordingBadge: FC<BadgeProps> = ({ vm, room, floating }) => {
+  const { t } = useTranslation();
+  const recording = useBehavior(vm.recording.recording$);
+  if (recording === null) return null;
+
+  const name = room.getMember(recording.by)?.rawDisplayName ?? recording.by;
+  return (
+    <Tooltip
+      label={t(
+        recording.started ? "recording.in_progress" : "recording.starting",
+        { name, userId: recording.by },
+      )}
+    >
+      <div
+        className={classNames(styles.badge, {
+          [styles.floating]: floating,
+          [styles.pending]: !recording.started,
+        })}
+        role="status"
+        aria-busy={!recording.started}
+      >
+        {t("recording.badge")}
+      </div>
+    </Tooltip>
+  );
+};
+
+interface NoticeProps {
   vm: CallViewModel;
   room: Room;
   localUserId: string;
 }
 
 /**
- * Tells the user that the call is being recorded: a "REC" badge in the
- * corner for as long as it lasts, and a notice naming who is recording that
- * stays until acknowledged. The person recording gets only the badge.
+ * A notice naming who is recording the call, shown to everyone but them
+ * until acknowledged.
  */
-export const RecordingIndicator: FC<Props> = ({ vm, room, localUserId }) => {
+export const RecordingNotice: FC<NoticeProps> = ({ vm, room, localUserId }) => {
   const { t } = useTranslation();
   const recording = useBehavior(vm.recording.recording$);
   // The recording (by event ID) whose notice has been acknowledged
   const [acknowledged, setAcknowledged] = useState<string | null>(null);
   if (recording === null) return null;
+  if (recording.by === localUserId || acknowledged === recording.eventId)
+    return null;
 
-  const showNotice =
-    recording.by !== localUserId && acknowledged !== recording.eventId;
   const name = room.getMember(recording.by)?.rawDisplayName ?? recording.by;
   return (
-    <>
-      <Tooltip
-        label={t("recording.in_progress", { name, userId: recording.by })}
+    <div className={styles.notice} role="alert">
+      <Text as="span" size="md" weight="semibold">
+        {t("recording.notice", { name })}
+      </Text>
+      <Button
+        kind="secondary"
+        size="md"
+        onClick={() => setAcknowledged(recording.eventId)}
       >
-        <div
-          className={classNames(styles.badge, {
-            [styles.pending]: !recording.started,
-          })}
-          role="status"
-          aria-busy={!recording.started}
-        >
-          {t("recording.badge")}
-        </div>
-      </Tooltip>
-      {showNotice && (
-        <div className={styles.notice} role="alert">
-          <Text as="span" size="md" weight="semibold">
-            {t("recording.notice", { name })}
-          </Text>
-          <Button
-            kind="secondary"
-            size="md"
-            onClick={() => setAcknowledged(recording.eventId)}
-          >
-            {t("recording.acknowledge")}
-          </Button>
-        </div>
-      )}
-    </>
+        {t("recording.acknowledge")}
+      </Button>
+    </div>
   );
 };

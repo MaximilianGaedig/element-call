@@ -131,7 +131,7 @@ test("the recording shows the call's video", async ({ page }) => {
     timeout: 15_000,
   });
   const badge = page.getByRole("status", {
-    name: "This call is being recorded",
+    name: /record/i,
   });
   await expect(badge).toBeVisible();
   await expect(badge).toHaveAttribute("aria-busy", "true");

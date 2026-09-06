@@ -62,7 +62,7 @@ import {
 import { ReactionsAudioRenderer } from "./ReactionAudioRenderer";
 import { ReactionsOverlay } from "./ReactionsOverlay";
 import { CallEventAudioRenderer } from "./CallEventAudioRenderer";
-import { RecordingIndicator } from "./RecordingIndicator";
+import { RecordingBadge, RecordingNotice } from "./RecordingIndicator";
 import { RecordingReadyNotice } from "./RecordingReadyNotice";
 import { RecorderError } from "../state/Recording.ts";
 import { matrixRTCMode as matrixRTCModeSetting } from "../settings/settings";
@@ -399,6 +399,7 @@ export const InCallView: FC<InCallViewProps> = ({
             />
           </LeftNav>
           <RightNav>
+            {!hideLocalTiles && <RecordingBadge vm={vm} room={matrixRoom} />}
             {showControls && onShareClick !== null && (
               <InviteButton className={styles.invite} onClick={onShareClick} />
             )}
@@ -657,8 +658,11 @@ export const InCallView: FC<InCallViewProps> = ({
       {/* An embedder hiding our own tiles is rendering the call for someone
           else, such as the bridge capturing a recording, so keep the
           recording warnings out of its view */}
+      {!hideLocalTiles && headerStyle !== HeaderStyle.Standard && (
+        <RecordingBadge vm={vm} room={matrixRoom} floating />
+      )}
       {!hideLocalTiles && (
-        <RecordingIndicator
+        <RecordingNotice
           vm={vm}
           room={matrixRoom}
           localUserId={client.getUserId()!}
