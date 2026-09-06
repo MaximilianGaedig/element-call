@@ -11,6 +11,7 @@ backend/synapse_tmp/*
 backend/synapse_tmp_othersite/*
 backend/sipbridge_tmp/*
 backend/sipbridge_recordings/*
+backend/sipcaller_tmp/*
 /coverage
 config.json
 

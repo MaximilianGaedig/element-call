@@ -149,6 +149,17 @@ services:
     networks:
       - ecbackend
 
+  # A baresip caller with VP8 video for the playwright sipbridge tests
+  # (playwright/sipbridge/), which run it themselves; `up` never starts it.
+  # It shares the bridge's network namespace so that its media reaches the
+  # bridge's unpublished RTP ports on 127.0.0.1.
+  sipcaller:
+    profiles: [sipbridge, sipcaller]
+    build: ./backend/sipcaller
+    network_mode: "service:sipbridge"
+    volumes:
+      - ./backend/sipcaller_tmp:/out:Z
+
   synapse-1:
     hostname: homeserver-1
     image: ghcr.io/element-hq/synapse:latest

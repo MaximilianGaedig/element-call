@@ -42,6 +42,12 @@ experimental_features:
   msc4354_enabled: true
   # MatrixRTC
   msc4143_enabled: true
+  # Push to-device events (Element Call's E2EE keys), device list changes
+  # and one-time key counts to the sipbridge appservice for its virtual
+  # SIP callers
+  msc2409_to_device_messages_enabled: true
+  msc3202_device_masquerading: true
+  msc3202_transaction_extensions: true
 
 # The maximum allowed duration by which sent events can be delayed, as
 # per MSC4140. Must be a positive value if set.  Defaults to no
@@ -62,6 +68,19 @@ report_stats: false
 # Each ratelimiting configuration is made of two parameters:
 #   - per_second: number of requests a client can send per second.
 #   - burst_count: number of requests a client can send before being throttled.
+
+# The sipbridge bots get invited into every call that records or allows
+# dial-in, which the default invite rate limit stops after a handful
+rc_invites:
+  per_room:
+    per_second: 100
+    burst_count: 100
+  per_user:
+    per_second: 100
+    burst_count: 100
+  per_issuer:
+    per_second: 100
+    burst_count: 100
 
 rc_message:
   # This needs to match at least the heart-beat frequency plus a bit of headroom

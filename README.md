@@ -237,10 +237,9 @@ including federation:
   as `@sipbridge:synapse.m.localhost`, which records calls from the record
   button and bridges SIP callers in as an application service. It is built
   from a checkout next to this repo; see the comments in
-  [docker-compose-dev.yml](./docker-compose-dev.yml). The image uses
-  Debian's WPE WebKit, which is built without WebRTC, so its recordings show
-  the call's tiles without any media; a composite with video needs the
-  custom WebKit build described in the bridge's README.
+  [docker-compose-dev.yml](./docker-compose-dev.yml). Its image needs the
+  bridge's WPE WebKit image (`Dockerfile.wpe` in the bridge repo, hours to
+  build) so that its recordings and SIP callers get real video.
 
 These use a test 'secret' published in this repository, so this must be used
 only for local development and **_never be exposed to the public Internet._**
@@ -307,6 +306,20 @@ The easiest way to develop new test is to use the codegen feature of Playwright:
 
 ```shell
 npx playwright codegen
+```
+
+#### SIP bridge tests
+
+`playwright/sipbridge/` checks that the record button and dial-in work
+against the dev stack's bridge: a baresip caller with VP8 video (the
+`sipcaller` service in `docker-compose-dev.yml`, which the tests run
+themselves) dials the address the moderator settings show, the tests check
+that its orange video reaches the call and the call's video reaches it, and
+that a recording made meanwhile shows the caller. They only run when asked
+for, since they need the `sipbridge` profile up (see [above](#backend)):
+
+```shell
+SIPBRIDGE_TESTS=1 pnpm run test:playwright playwright/sipbridge --project chromium
 ```
 
 This will record your action and write the test code for you. Use the tool bar
