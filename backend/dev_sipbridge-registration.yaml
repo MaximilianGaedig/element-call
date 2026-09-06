@@ -9,7 +9,7 @@ sender_localpart: _sip_bridge
 namespaces:
   users:
     - exclusive: true
-      regex: '@_sip_.*:synapse.m.localhost'
+      regex: "@_sip_.*:synapse.m.localhost"
   aliases: []
   rooms: []
 rate_limited: false

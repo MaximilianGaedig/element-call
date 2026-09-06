@@ -6,18 +6,18 @@
 
 [matrix]
 homeserver = "https://synapse.m.localhost"
-user_id    = "@sipbridge:synapse.m.localhost"
-password   = "sipbridge_password_for_local_dev_only"
+user_id = "@sipbridge:synapse.m.localhost"
+password = "sipbridge_password_for_local_dev_only"
 store_path = "/app/store"
 
 [sip]
-listen      = "0.0.0.0:5062"
+listen = "0.0.0.0:5062"
 # What the dial-in addresses point at: the port is published on the host
 public_host = "localhost"
 # Media only flows within the docker network, since RTP ports aren't
 # published; dial in from a SIP client running in the network, or set
 # this to a reachable address and publish the RTP ports.
-public_ip   = "127.0.0.1"
+public_ip = "127.0.0.1"
 
 [sip.auth]
 enabled = false
