@@ -9,6 +9,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, test } from "vitest";
 import { type Room } from "matrix-js-sdk";
+import { TooltipProvider } from "@vector-im/compound-web";
 
 import { RecordingIndicator } from "./RecordingIndicator";
 import { state } from "../state/Behavior";
@@ -30,7 +31,11 @@ function setup(by: string, localUserId: string, started = true): void {
     started,
   });
   const vm = { recording: { recording$ } } as unknown as CallViewModel;
-  render(<RecordingIndicator vm={vm} room={room} localUserId={localUserId} />);
+  render(
+    <TooltipProvider>
+      <RecordingIndicator vm={vm} room={room} localUserId={localUserId} />
+    </TooltipProvider>,
+  );
 }
 
 test("names who is recording until acknowledged, and keeps the badge", async () => {
@@ -41,6 +46,9 @@ test("names who is recording until acknowledged, and keeps the badge", async () 
   await userEvent.click(screen.getByRole("button", { name: "Got it" }));
   expect(screen.queryByRole("alert")).toBeNull();
   expect(screen.getByRole("status")).toHaveTextContent("REC");
+  expect(screen.getByRole("status")).toHaveAccessibleName(
+    "Call is being recorded by Alice (@alice:e)",
+  );
 });
 
 test("gives the person recording only the badge", () => {

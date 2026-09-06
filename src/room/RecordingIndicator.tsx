@@ -8,7 +8,7 @@ Please see LICENSE in the repository root for full details.
 import { type FC, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { type Room } from "matrix-js-sdk";
-import { Button, Text } from "@vector-im/compound-web";
+import { Button, Text, Tooltip } from "@vector-im/compound-web";
 import classNames from "classnames";
 
 import { type CallViewModel } from "../state/CallViewModel/CallViewModel";
@@ -38,16 +38,19 @@ export const RecordingIndicator: FC<Props> = ({ vm, room, localUserId }) => {
   const name = room.getMember(recording.by)?.rawDisplayName ?? recording.by;
   return (
     <>
-      <div
-        className={classNames(styles.badge, {
-          [styles.pending]: !recording.started,
-        })}
-        role="status"
-        aria-label={t("recording.in_progress")}
-        aria-busy={!recording.started}
+      <Tooltip
+        label={t("recording.in_progress", { name, userId: recording.by })}
       >
-        {t("recording.badge")}
-      </div>
+        <div
+          className={classNames(styles.badge, {
+            [styles.pending]: !recording.started,
+          })}
+          role="status"
+          aria-busy={!recording.started}
+        >
+          {t("recording.badge")}
+        </div>
+      </Tooltip>
       {showNotice && (
         <div className={styles.notice} role="alert">
           <Text as="span" size="md" weight="semibold">

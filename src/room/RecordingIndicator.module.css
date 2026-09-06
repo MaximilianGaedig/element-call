@@ -26,7 +26,6 @@ Please see LICENSE in the repository root for full details.
   display: flex;
   align-items: center;
   justify-content: center;
-  pointer-events: none;
 }
 
 /* Until the recorder confirms that it's recording */

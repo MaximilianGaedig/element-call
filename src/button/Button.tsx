@@ -189,9 +189,11 @@ export const RecordButton: FC<RecordButtonProps> = ({
   ...props
 }) => {
   const { t } = useTranslation();
-  const label = recording
-    ? t("recording.stop_button_label")
-    : t("recording.start_button_label");
+  const label = pending
+    ? t("recording.starting_button_label")
+    : recording
+      ? t("recording.stop_button_label")
+      : t("recording.start_button_label");
   return (
     <Tooltip label={label}>
       <CpdButton

@@ -10,7 +10,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { TooltipProvider } from "@vector-im/compound-web";
 
-import { MicButton, VideoButton } from "./Button";
+import { MicButton, RecordButton, VideoButton } from "./Button";
 
 describe("MicButton", () => {
   test("calls onClick when not busy", async () => {
@@ -109,5 +109,32 @@ describe("VideoButton", () => {
 
     await user.click(button);
     expect(onClick).not.toHaveBeenCalled();
+  });
+});
+
+describe("RecordButton", () => {
+  test("names each state for assistive tech", () => {
+    const { rerender } = render(
+      <TooltipProvider>
+        <RecordButton recording={false} />
+      </TooltipProvider>,
+    );
+    const button = screen.getByRole("switch");
+    expect(button).toHaveAccessibleName("Record call");
+    expect(button).toHaveAttribute("aria-checked", "false");
+    rerender(
+      <TooltipProvider>
+        <RecordButton recording pending />
+      </TooltipProvider>,
+    );
+    expect(button).toHaveAccessibleName("Starting recording, press to cancel");
+    expect(button).toHaveAttribute("aria-busy", "true");
+    rerender(
+      <TooltipProvider>
+        <RecordButton recording />
+      </TooltipProvider>,
+    );
+    expect(button).toHaveAccessibleName("Stop recording");
+    expect(button).toHaveAttribute("aria-checked", "true");
   });
 });
