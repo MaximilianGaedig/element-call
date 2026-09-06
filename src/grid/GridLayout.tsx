@@ -21,7 +21,7 @@ import {
   useEnlargedTiles,
   useVideoAspectRatios,
 } from "./TileGrid";
-import { relaxedGrid, useSetting } from "../settings/settings";
+import { hugVideo, relaxedGrid, useSetting } from "../settings/settings";
 
 /**
  * An implementation of the "grid" layout, in which all participants are shown
@@ -68,15 +68,33 @@ export const makeGridLayout: CallLayout<GridLayoutModel> = ({
     const { width, height: minHeight } = useBehavior(minBounds$);
     const enlarged = useEnlargedTiles(model.grid);
     const cells = cellCount(model.grid.length, enlarged);
-    const { gap, tileWidth, tileHeight, columns } = useMemo(
+    const arrangement = useMemo(
       () => arrangeTiles(width, minHeight, cells),
       [width, minHeight, cells],
     );
+    const { gap, columns } = arrangement;
+    const [hug] = useSetting(hugVideo);
+    const aspectRatios = useVideoAspectRatios(model.grid);
+    // Hugged tiles are no bigger than their videos make them, so shrink the
+    // cells to the widest and tallest of them; a grid of same-shaped videos
+    // then has even gaps rather than slack inside each cell
+    const { tileWidth, tileHeight } = useMemo(() => {
+      const known = aspectRatios.filter((ar) => ar > 0);
+      if (!hug || known.length === 0) return arrangement;
+      const tileHeight = Math.min(
+        arrangement.tileHeight,
+        Math.max(...known.map((ar) => arrangement.tileWidth / ar)),
+      );
+      const tileWidth = Math.min(
+        arrangement.tileWidth,
+        Math.max(...known.map((ar) => tileHeight * ar)),
+      );
+      return { tileWidth, tileHeight };
+    }, [hug, aspectRatios, arrangement]);
     // Rows of one height, each tile as wide as its video's shape makes it,
     // rather than columns. Only the flexed grid can pack rows like that; the
     // cell grid used around enlarged tiles has fixed tracks.
     const [relaxed] = useSetting(relaxedGrid);
-    const aspectRatios = useVideoAspectRatios(model.grid);
     const rows = useMemo(() => {
       if (!relaxed || enlarged.some(Boolean)) return null;
       const ratios = aspectRatios.map((ar) => ar || tileWidth / tileHeight);
