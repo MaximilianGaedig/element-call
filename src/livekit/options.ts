@@ -11,6 +11,7 @@ import {
   type RoomOptions,
   type TrackPublishDefaults,
   type VideoPreset,
+  type VideoResolution,
   VideoPresets,
   VideoPreset as VideoPresetClass,
 } from "livekit-client";
@@ -127,9 +128,16 @@ export function buildLiveKitOptions(
     // optimize publishing bandwidth and CPU for published tracks
     dynacast: true,
 
-    // capture settings
+    // capture settings. Only the height is asked for: given the preset's
+    // width and 16:9 aspect ratio as well, the browser would crop a portrait
+    // camera down to landscape to get closer to them, whereas with just a
+    // height it scales, and the camera's own shape comes through for the
+    // tiles to hug.
     videoCaptureDefaults: {
-      resolution: basePreset.resolution,
+      resolution: {
+        height: basePreset.resolution.height,
+        frameRate: basePreset.resolution.frameRate,
+      } as VideoResolution,
     },
 
     // publish settings

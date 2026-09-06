@@ -8,6 +8,7 @@ Please see LICENSE in the repository root for full details.
 import {
   Room as LivekitRoom,
   type RoomOptions,
+  type VideoResolution,
   type BaseKeyProvider,
   type E2EEManagerOptions,
   type BaseE2EEManager,
@@ -152,14 +153,16 @@ function generateRoomOption({
   let publishDefaults = liveKitOptions.publishDefaults;
 
   if (advancedCamera.getValue()) {
-    const { width, height } = parseResolution(cameraResolution.getValue());
+    const { height } = parseResolution(cameraResolution.getValue());
     const fps = cameraFramerate.getValue();
     const bps = cameraBitrate.getValue();
     const codec = cameraCodec.getValue();
 
+    // Only the height, as with the defaults, so that a portrait camera
+    // isn't cropped to the chosen landscape shape
     videoCaptureDefaults = {
       ...videoCaptureDefaults,
-      resolution: { width, height, frameRate: fps },
+      resolution: { height, frameRate: fps } as VideoResolution,
     };
     publishDefaults = {
       ...publishDefaults,

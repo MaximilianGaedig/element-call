@@ -217,7 +217,7 @@ describe("ECConnectionFactory - Camera quality settings", () => {
     expect(RoomConstructor).toHaveBeenCalledWith(
       expect.objectContaining({
         videoCaptureDefaults: expect.objectContaining({
-          resolution: { width: 1920, height: 1080, frameRate: 60 },
+          resolution: { height: 1080, frameRate: 60 },
         }),
         publishDefaults: expect.objectContaining({
           videoEncoding: { maxBitrate: 4_000_000, maxFramerate: 60 },
