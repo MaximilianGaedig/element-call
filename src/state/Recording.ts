@@ -16,6 +16,7 @@ import {
   type StateEvents,
 } from "matrix-js-sdk";
 import { type EncryptedFile } from "matrix-js-sdk/lib/@types/media";
+import { type CryptoApi } from "matrix-js-sdk/lib/crypto-api";
 import { KnownMembership } from "matrix-js-sdk/lib/types";
 import { logger } from "matrix-js-sdk/lib/logger";
 
@@ -142,6 +143,28 @@ export async function inviteBot(
     );
 }
 
+/**
+ * Makes the crypto stack track the recorder's devices, so that it can
+ * encrypt to them. It only tracks users it shares an encrypted room with,
+ * which the recorder isn't, and has no public way to add one, so this
+ * reaches into the rust crypto's OlmMachine and its outgoing request loop.
+ */
+async function trackUser(crypto: CryptoApi, userId: string): Promise<void> {
+  const { olmMachine, outgoingRequestsManager } = crypto as unknown as {
+    olmMachine?: {
+      userId: { constructor: new (id: string) => unknown };
+      updateTrackedUsers(users: unknown[]): Promise<void>;
+    };
+    outgoingRequestsManager?: { doProcessOutgoingRequests(): Promise<void> };
+  };
+  if (olmMachine === undefined) return;
+  await olmMachine.updateTrackedUsers([
+    new olmMachine.userId.constructor(userId),
+  ]);
+  // Sends the key query that tracking the user asked for
+  await outgoingRequestsManager?.doProcessOutgoingRequests();
+}
+
 /** Sends the call's shared key to every device of the recorder, encrypted. */
 export async function sendSharedKey(
   room: MatrixRoom,
@@ -150,6 +173,7 @@ export async function sendSharedKey(
 ): Promise<void> {
   const crypto = room.client.getCrypto();
   if (crypto === undefined) throw new Error("Encryption isn't available");
+  await trackUser(crypto, recorder);
   const devices = await crypto.getUserDeviceInfo([recorder], true);
   const targets = [...(devices.get(recorder)?.keys() ?? [])].map(
     (deviceId) => ({ userId: recorder, deviceId }),
