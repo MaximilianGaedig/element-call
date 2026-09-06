@@ -17,8 +17,6 @@ import {
   VideoButton,
   ShareScreenButton,
   RecordButton,
-  SettingsButton,
-  ModeratorButton,
   ModeratorIconButton,
   ReactionToggleButton,
   LoudspeakerButton,
@@ -26,6 +24,7 @@ import {
   type ReactionData,
 } from "../button";
 import styles from "./CallFooter.module.css";
+import { MoreButton } from "./MoreButton";
 import {
   MediaMuteAndSwitchButton,
   type MenuOptions,
@@ -173,28 +172,6 @@ export const CallFooter: FC<FooterProps> = ({
 
   const buttons: JSX.Element[] = [];
 
-  if (openSettings !== undefined) {
-    // Add the settings button to the center group so it's visible on small
-    // screens. On larger screens the SettingsIconButton with
-    // showForScreenWidth="wide" in the settingsLogoContainer is used instead.
-    buttons.push(
-      <SettingsButton
-        key="settings"
-        showForScreenWidth="narrow"
-        data-testid="settings-bottom-center"
-        onClick={openSettings}
-      />,
-    );
-    if (openModeratorSettings !== undefined)
-      buttons.push(
-        <ModeratorButton
-          key="moderator"
-          showForScreenWidth="narrow"
-          onClick={openModeratorSettings}
-        />,
-      );
-  }
-
   if ((audioOptions?.length ?? 0) > 0) {
     buttons.push(
       <MediaMuteAndSwitchButton
@@ -309,6 +286,27 @@ export const CallFooter: FC<FooterProps> = ({
   }, [audioOutputSwitcher, buttonSize]);
 
   if (audioOutputButton) buttons.push(audioOutputButton);
+
+  // Narrow footers hide settings, screen sharing, recording and reactions
+  // behind this menu instead (see CallFooter.module.css)
+  buttons.push(
+    <MoreButton
+      key="more"
+      size={buttonSize}
+      className={styles.more}
+      openSettings={openSettings}
+      openModeratorSettings={openModeratorSettings}
+      sharingScreen={sharingScreen}
+      toggleScreenSharing={toggleScreenSharing}
+      recording={recording}
+      toggleRecording={toggleRecording}
+      reactions={
+        reactionIdentifier && reactionData && showModals
+          ? { identifier: reactionIdentifier, reactionData }
+          : undefined
+      }
+    />,
+  );
 
   if (hangup)
     buttons.push(

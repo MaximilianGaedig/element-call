@@ -83,11 +83,12 @@ Please see LICENSE in the repository root for full details.
   }
 }
 
-.settingsOnlyShowNarrow {
-  display: none;
-}
 .settingsOnlyShowWide {
   display: inherit;
+}
+
+.more {
+  display: none;
 }
 
 /*
@@ -99,10 +100,17 @@ Once we exceed 500 we hide everything except the buttons.
     grid-template-areas: "buttons buttons buttons";
   }
 
-  .settingsOnlyShowNarrow {
+  .settingsOnlyShowWide {
+    display: none;
+  }
+
+  /* Five buttons fit; the rest move into the More menu */
+  .more {
     display: inherit;
   }
-  .settingsOnlyShowWide {
+  .shareScreen,
+  .record,
+  .raiseHand {
     display: none;
   }
 
@@ -130,10 +138,6 @@ Once we exceed 500 we hide everything except the buttons.
 }
 
 @media (max-width: 370px) {
-  .shareScreen {
-    display: none;
-  }
-
   /* PIP custom css */
   @media (max-height: 400px) {
     .shareScreen {
@@ -145,20 +149,6 @@ Once we exceed 500 we hide everything except the buttons.
         env(safe-area-inset-bottom) + var(--cpd-space-2x)
       );
     }
-  }
-}
-
-@media (max-width: 320px) {
-  .raiseHand {
-    display: none;
-  }
-}
-
-/* A phone's footer has no room for an eighth button: eight overflow it
-   and widen the layout viewport, throwing off every tap on the page */
-@media (max-width: 500px) {
-  .record {
-    display: none;
   }
 }
 

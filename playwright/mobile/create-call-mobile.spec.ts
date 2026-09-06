@@ -95,8 +95,9 @@ mobileTest(
       ]);
     });
 
-    // Open settings to select earpiece
-    await guestPage.getByRole("button", { name: "Settings" }).click();
+    // Open settings, from the More menu on a phone, to select earpiece
+    await guestPage.getByRole("button", { name: "More" }).click();
+    await guestPage.getByRole("menuitem", { name: "Settings" }).click();
     await guestPage
       .getByRole("radio", { name: "Handset", exact: true })
       .click();

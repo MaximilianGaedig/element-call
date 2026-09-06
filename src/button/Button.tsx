@@ -251,17 +251,16 @@ export const LoudspeakerButton: FC<LoudspeakerButtonProps> = ({
 
 function classNamesForScreenWidth(
   className?: string,
-  forScreenWidth?: "wide" | "narrow",
+  forScreenWidth?: "wide",
 ): string {
   return classNames(className, {
     [callFooterStyles.settingsOnlyShowWide]: forScreenWidth === "wide",
-    [callFooterStyles.settingsOnlyShowNarrow]: forScreenWidth === "narrow",
   });
 }
 
 interface SettingsIconButtonProps extends ComponentPropsWithoutRef<"button"> {
   /** If this buttons should be setup to be used in the app bar */
-  showForScreenWidth?: "wide" | "narrow";
+  showForScreenWidth?: "wide";
   kind?: "secondary" | "primary";
 }
 export const SettingsIconButton: FC<SettingsIconButtonProps> = ({
@@ -302,51 +301,6 @@ export const ModeratorIconButton: FC<SettingsIconButtonProps> = ({
       >
         <AdminIcon aria-hidden />
       </IconButton>
-    </Tooltip>
-  );
-};
-
-interface SettingsButtonProps extends ComponentPropsWithoutRef<"button"> {
-  size?: "md" | "lg";
-  /** If this buttons should be setup to be used in the app bar */
-  showForScreenWidth?: "wide" | "narrow";
-}
-export const SettingsButton: FC<SettingsButtonProps> = ({
-  showForScreenWidth,
-  className,
-  ...props
-}) => {
-  const { t } = useTranslation();
-  return (
-    <Tooltip label={t("common.settings")}>
-      <CpdButton
-        className={classNamesForScreenWidth(className, showForScreenWidth)}
-        iconOnly
-        Icon={
-          platform === "android" ? OverflowVerticalIcon : OverflowHorizontalIcon
-        }
-        kind={"secondary"}
-        {...props}
-      />
-    </Tooltip>
-  );
-};
-
-export const ModeratorButton: FC<SettingsButtonProps> = ({
-  showForScreenWidth,
-  className,
-  ...props
-}) => {
-  const { t } = useTranslation();
-  return (
-    <Tooltip label={t("settings.moderator_settings")}>
-      <CpdButton
-        className={classNamesForScreenWidth(className, showForScreenWidth)}
-        iconOnly
-        Icon={AdminIcon}
-        kind={"secondary"}
-        {...props}
-      />
     </Tooltip>
   );
 };

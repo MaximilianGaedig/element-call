@@ -7,7 +7,7 @@ exports[`LobbyView > renders with AppBar android 1`] = `
   >
     <header>
       <button
-        aria-labelledby="_r_36_"
+        aria-labelledby="_r_2q_"
         class="_icon-button_1215g_8 _primaryButton_221541"
         data-kind="primary"
         role="button"
@@ -102,7 +102,7 @@ exports[`LobbyView > renders with AppBar android 1`] = `
         class="_settingsLogoContainer_20b7b4"
       >
         <button
-          aria-labelledby="_r_3c_"
+          aria-labelledby="_r_30_"
           class="_icon-button_1215g_8 _settingsOnlyShowWide_20b7b4"
           data-kind="secondary"
           data-testid="settings-bottom-left"
@@ -133,32 +133,10 @@ exports[`LobbyView > renders with AppBar android 1`] = `
         class="_buttons_20b7b4"
       >
         <button
-          aria-labelledby="_r_3h_"
-          class="_button_1nw83_8 _settingsOnlyShowNarrow_20b7b4 _has-icon_1nw83_60 _icon-only_1nw83_53"
-          data-kind="secondary"
-          data-size="lg"
-          data-testid="settings-bottom-center"
-          role="button"
-          tabindex="0"
-        >
-          <svg
-            aria-hidden="true"
-            fill="currentColor"
-            height="24"
-            viewBox="0 0 24 24"
-            width="24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M12 20q-.825 0-1.412-.587A1.93 1.93 0 0 1 10 18q0-.824.588-1.413A1.93 1.93 0 0 1 12 16q.825 0 1.412.587Q14 17.176 14 18t-.588 1.413A1.93 1.93 0 0 1 12 20m0-6q-.825 0-1.412-.588A1.93 1.93 0 0 1 10 12q0-.825.588-1.412A1.93 1.93 0 0 1 12 10q.825 0 1.412.588Q14 11.175 14 12t-.588 1.412A1.93 1.93 0 0 1 12 14m0-6q-.825 0-1.412-.588A1.93 1.93 0 0 1 10 6q0-.824.588-1.412A1.93 1.93 0 0 1 12 4q.825 0 1.412.588Q14 5.175 14 6q0 .824-.588 1.412A1.93 1.93 0 0 1 12 8"
-            />
-          </svg>
-        </button>
-        <button
           aria-busy="false"
           aria-checked="false"
           aria-disabled="true"
-          aria-labelledby="_r_3m_"
+          aria-labelledby="_r_35_"
           class="_button_1nw83_8 _has-icon_1nw83_60 _icon-only_1nw83_53"
           data-kind="primary"
           data-size="lg"
@@ -183,7 +161,7 @@ exports[`LobbyView > renders with AppBar android 1`] = `
           aria-busy="false"
           aria-checked="false"
           aria-disabled="true"
-          aria-labelledby="_r_3r_"
+          aria-labelledby="_r_3a_"
           class="_button_1nw83_8 _has-icon_1nw83_60 _icon-only_1nw83_53"
           data-kind="primary"
           data-size="lg"
@@ -205,7 +183,35 @@ exports[`LobbyView > renders with AppBar android 1`] = `
           </svg>
         </button>
         <button
-          aria-labelledby="_r_40_"
+          aria-disabled="false"
+          aria-expanded="false"
+          aria-haspopup="menu"
+          aria-label="More"
+          class="_button_1nw83_8 _more_20b7b4 _has-icon_1nw83_60 _icon-only_1nw83_53"
+          data-kind="secondary"
+          data-size="lg"
+          data-state="closed"
+          data-testid="incall_more"
+          id="radix-_r_3f_"
+          role="button"
+          tabindex="0"
+          type="button"
+        >
+          <svg
+            aria-hidden="true"
+            fill="currentColor"
+            height="24"
+            viewBox="0 0 24 24"
+            width="24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M6 14q-.824 0-1.412-.588A1.93 1.93 0 0 1 4 12q0-.825.588-1.412A1.93 1.93 0 0 1 6 10q.824 0 1.412.588Q8 11.175 8 12t-.588 1.412A1.93 1.93 0 0 1 6 14m6 0q-.825 0-1.412-.588A1.93 1.93 0 0 1 10 12q0-.825.588-1.412A1.93 1.93 0 0 1 12 10q.825 0 1.412.588Q14 11.175 14 12t-.588 1.412A1.93 1.93 0 0 1 12 14m6 0q-.824 0-1.413-.588A1.93 1.93 0 0 1 16 12q0-.825.587-1.412A1.93 1.93 0 0 1 18 10q.824 0 1.413.588Q20 11.175 20 12t-.587 1.412A1.93 1.93 0 0 1 18 14"
+            />
+          </svg>
+        </button>
+        <button
+          aria-labelledby="_r_3h_"
           class="_button_1nw83_8 _has-icon_1nw83_60 _icon-only_1nw83_53 _destructive_1nw83_110"
           data-kind="primary"
           data-size="lg"
@@ -239,7 +245,7 @@ exports[`LobbyView > renders with AppBar ios 1`] = `
   >
     <header>
       <button
-        aria-labelledby="_r_4a_"
+        aria-labelledby="_r_3q_"
         class="_icon-button_1215g_8 _primaryButton_221541"
         data-kind="primary"
         role="button"
@@ -334,7 +340,7 @@ exports[`LobbyView > renders with AppBar ios 1`] = `
         class="_settingsLogoContainer_20b7b4"
       >
         <button
-          aria-labelledby="_r_4g_"
+          aria-labelledby="_r_40_"
           class="_icon-button_1215g_8 _settingsOnlyShowWide_20b7b4"
           data-kind="secondary"
           data-testid="settings-bottom-left"
@@ -365,32 +371,10 @@ exports[`LobbyView > renders with AppBar ios 1`] = `
         class="_buttons_20b7b4"
       >
         <button
-          aria-labelledby="_r_4l_"
-          class="_button_1nw83_8 _settingsOnlyShowNarrow_20b7b4 _has-icon_1nw83_60 _icon-only_1nw83_53"
-          data-kind="secondary"
-          data-size="lg"
-          data-testid="settings-bottom-center"
-          role="button"
-          tabindex="0"
-        >
-          <svg
-            aria-hidden="true"
-            fill="currentColor"
-            height="24"
-            viewBox="0 0 24 24"
-            width="24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M6 14q-.824 0-1.412-.588A1.93 1.93 0 0 1 4 12q0-.825.588-1.412A1.93 1.93 0 0 1 6 10q.824 0 1.412.588Q8 11.175 8 12t-.588 1.412A1.93 1.93 0 0 1 6 14m6 0q-.825 0-1.412-.588A1.93 1.93 0 0 1 10 12q0-.825.588-1.412A1.93 1.93 0 0 1 12 10q.825 0 1.412.588Q14 11.175 14 12t-.588 1.412A1.93 1.93 0 0 1 12 14m6 0q-.824 0-1.413-.588A1.93 1.93 0 0 1 16 12q0-.825.587-1.412A1.93 1.93 0 0 1 18 10q.824 0 1.413.588Q20 11.175 20 12t-.587 1.412A1.93 1.93 0 0 1 18 14"
-            />
-          </svg>
-        </button>
-        <button
           aria-busy="false"
           aria-checked="false"
           aria-disabled="true"
-          aria-labelledby="_r_4q_"
+          aria-labelledby="_r_45_"
           class="_button_1nw83_8 _has-icon_1nw83_60 _icon-only_1nw83_53"
           data-kind="primary"
           data-size="lg"
@@ -415,7 +399,7 @@ exports[`LobbyView > renders with AppBar ios 1`] = `
           aria-busy="false"
           aria-checked="false"
           aria-disabled="true"
-          aria-labelledby="_r_4v_"
+          aria-labelledby="_r_4a_"
           class="_button_1nw83_8 _has-icon_1nw83_60 _icon-only_1nw83_53"
           data-kind="primary"
           data-size="lg"
@@ -437,7 +421,35 @@ exports[`LobbyView > renders with AppBar ios 1`] = `
           </svg>
         </button>
         <button
-          aria-labelledby="_r_54_"
+          aria-disabled="false"
+          aria-expanded="false"
+          aria-haspopup="menu"
+          aria-label="More"
+          class="_button_1nw83_8 _more_20b7b4 _has-icon_1nw83_60 _icon-only_1nw83_53"
+          data-kind="secondary"
+          data-size="lg"
+          data-state="closed"
+          data-testid="incall_more"
+          id="radix-_r_4f_"
+          role="button"
+          tabindex="0"
+          type="button"
+        >
+          <svg
+            aria-hidden="true"
+            fill="currentColor"
+            height="24"
+            viewBox="0 0 24 24"
+            width="24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M6 14q-.824 0-1.412-.588A1.93 1.93 0 0 1 4 12q0-.825.588-1.412A1.93 1.93 0 0 1 6 10q.824 0 1.412.588Q8 11.175 8 12t-.588 1.412A1.93 1.93 0 0 1 6 14m6 0q-.825 0-1.412-.588A1.93 1.93 0 0 1 10 12q0-.825.588-1.412A1.93 1.93 0 0 1 12 10q.825 0 1.412.588Q14 11.175 14 12t-.588 1.412A1.93 1.93 0 0 1 12 14m6 0q-.824 0-1.413-.588A1.93 1.93 0 0 1 16 12q0-.825.587-1.412A1.93 1.93 0 0 1 18 10q.824 0 1.413.588Q20 11.175 20 12t-.587 1.412A1.93 1.93 0 0 1 18 14"
+            />
+          </svg>
+        </button>
+        <button
+          aria-labelledby="_r_4h_"
           class="_button_1nw83_8 _has-icon_1nw83_60 _icon-only_1nw83_53 _destructive_1nw83_110"
           data-kind="primary"
           data-size="lg"
@@ -747,32 +759,10 @@ exports[`LobbyView > renders with header and participant count 1`] = `
         class="_buttons_20b7b4"
       >
         <button
-          aria-labelledby="_r_b_"
-          class="_button_1nw83_8 _settingsOnlyShowNarrow_20b7b4 _has-icon_1nw83_60 _icon-only_1nw83_53"
-          data-kind="secondary"
-          data-size="lg"
-          data-testid="settings-bottom-center"
-          role="button"
-          tabindex="0"
-        >
-          <svg
-            aria-hidden="true"
-            fill="currentColor"
-            height="24"
-            viewBox="0 0 24 24"
-            width="24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M12 20q-.825 0-1.412-.587A1.93 1.93 0 0 1 10 18q0-.824.588-1.413A1.93 1.93 0 0 1 12 16q.825 0 1.412.587Q14 17.176 14 18t-.588 1.413A1.93 1.93 0 0 1 12 20m0-6q-.825 0-1.412-.588A1.93 1.93 0 0 1 10 12q0-.825.588-1.412A1.93 1.93 0 0 1 12 10q.825 0 1.412.588Q14 11.175 14 12t-.588 1.412A1.93 1.93 0 0 1 12 14m0-6q-.825 0-1.412-.588A1.93 1.93 0 0 1 10 6q0-.824.588-1.412A1.93 1.93 0 0 1 12 4q.825 0 1.412.588Q14 5.175 14 6q0 .824-.588 1.412A1.93 1.93 0 0 1 12 8"
-            />
-          </svg>
-        </button>
-        <button
           aria-busy="false"
           aria-checked="false"
           aria-disabled="true"
-          aria-labelledby="_r_g_"
+          aria-labelledby="_r_b_"
           class="_button_1nw83_8 _has-icon_1nw83_60 _icon-only_1nw83_53"
           data-kind="primary"
           data-size="lg"
@@ -797,7 +787,7 @@ exports[`LobbyView > renders with header and participant count 1`] = `
           aria-busy="false"
           aria-checked="false"
           aria-disabled="true"
-          aria-labelledby="_r_l_"
+          aria-labelledby="_r_g_"
           class="_button_1nw83_8 _has-icon_1nw83_60 _icon-only_1nw83_53"
           data-kind="primary"
           data-size="lg"
@@ -819,7 +809,35 @@ exports[`LobbyView > renders with header and participant count 1`] = `
           </svg>
         </button>
         <button
-          aria-labelledby="_r_q_"
+          aria-disabled="false"
+          aria-expanded="false"
+          aria-haspopup="menu"
+          aria-label="More"
+          class="_button_1nw83_8 _more_20b7b4 _has-icon_1nw83_60 _icon-only_1nw83_53"
+          data-kind="secondary"
+          data-size="lg"
+          data-state="closed"
+          data-testid="incall_more"
+          id="radix-_r_l_"
+          role="button"
+          tabindex="0"
+          type="button"
+        >
+          <svg
+            aria-hidden="true"
+            fill="currentColor"
+            height="24"
+            viewBox="0 0 24 24"
+            width="24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M6 14q-.824 0-1.412-.588A1.93 1.93 0 0 1 4 12q0-.825.588-1.412A1.93 1.93 0 0 1 6 10q.824 0 1.412.588Q8 11.175 8 12t-.588 1.412A1.93 1.93 0 0 1 6 14m6 0q-.825 0-1.412-.588A1.93 1.93 0 0 1 10 12q0-.825.588-1.412A1.93 1.93 0 0 1 12 10q.825 0 1.412.588Q14 11.175 14 12t-.588 1.412A1.93 1.93 0 0 1 12 14m6 0q-.824 0-1.413-.588A1.93 1.93 0 0 1 16 12q0-.825.587-1.412A1.93 1.93 0 0 1 18 10q.824 0 1.413.588Q20 11.175 20 12t-.587 1.412A1.93 1.93 0 0 1 18 14"
+            />
+          </svg>
+        </button>
+        <button
+          aria-labelledby="_r_n_"
           class="_button_1nw83_8 _has-icon_1nw83_60 _icon-only_1nw83_53 _destructive_1nw83_110"
           data-kind="primary"
           data-size="lg"

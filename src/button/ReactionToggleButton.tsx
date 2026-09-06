@@ -177,11 +177,20 @@ interface ReactionToggleButtonProps extends ComponentPropsWithoutRef<"button"> {
   /** List of participants raising their hand */
 }
 
-export function ReactionToggleButton({
-  identifier,
-  reactionData: { handsRaised$, reactions$ },
-  ...props
-}: ReactionToggleButtonProps): ReactNode {
+/**
+ * The reactions popup (raise hand and emoji), opened by the reactions button
+ * or from the footer's overflow menu.
+ */
+export function useReactionsPopup(
+  identifier: string,
+  { handsRaised$, reactions$ }: ReactionData,
+): {
+  open: boolean;
+  setOpen: (open: boolean) => void;
+  busy: boolean;
+  isHandRaised: boolean;
+  modal: ReactNode;
+} {
   const { t } = useTranslation();
   const { toggleRaisedHand, sendReaction } = useReactionsSender();
   const [busy, setBusy] = useState(false);
@@ -230,31 +239,54 @@ export function ReactionToggleButton({
     void toggleHand();
   }, [toggleRaisedHand]);
 
+  const modal = (
+    <Modal
+      open={showReactionsMenu}
+      title={t("action.pick_reaction")}
+      hideHeader
+      classNameModal={styles.reactionPopupMenuModal}
+      className={styles.reactionPopupMenuRoot}
+      onDismiss={() => setShowReactionsMenu(false)}
+    >
+      <ReactionPopupMenu
+        errorText={errorText}
+        isHandRaised={isHandRaised}
+        canReact={!busy && !!canReact}
+        sendReaction={(reaction) => void sendRelation(reaction)}
+        toggleRaisedHand={wrappedToggleRaisedHand}
+      />
+    </Modal>
+  );
+
+  return {
+    open: showReactionsMenu,
+    setOpen: setShowReactionsMenu,
+    busy,
+    isHandRaised,
+    modal,
+  };
+}
+
+export function ReactionToggleButton({
+  identifier,
+  reactionData,
+  ...props
+}: ReactionToggleButtonProps): ReactNode {
+  const { open, setOpen, busy, isHandRaised, modal } = useReactionsPopup(
+    identifier,
+    reactionData,
+  );
+
   return (
     <>
       <InnerButton
         disabled={busy}
-        onClick={() => setShowReactionsMenu((show) => !show)}
-        raised={!!isHandRaised}
-        open={showReactionsMenu}
+        onClick={() => setOpen(!open)}
+        raised={isHandRaised}
+        open={open}
         {...props}
       />
-      <Modal
-        open={showReactionsMenu}
-        title={t("action.pick_reaction")}
-        hideHeader
-        classNameModal={styles.reactionPopupMenuModal}
-        className={styles.reactionPopupMenuRoot}
-        onDismiss={() => setShowReactionsMenu(false)}
-      >
-        <ReactionPopupMenu
-          errorText={errorText}
-          isHandRaised={!!isHandRaised}
-          canReact={!busy && !!canReact}
-          sendReaction={(reaction) => void sendRelation(reaction)}
-          toggleRaisedHand={wrappedToggleRaisedHand}
-        />
-      </Modal>
+      {modal}
     </>
   );
 }
