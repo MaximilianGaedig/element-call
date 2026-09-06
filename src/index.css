@@ -18,6 +18,16 @@ Please see LICENSE in the repository root for full details.
 @import url("@vector-im/compound-design-tokens/assets/web/css/compound-design-tokens.css") layer(compound);
 @import url("@vector-im/compound-web/dist/style.css") layer(compound.components);
 
+/* Twemoji, bundled so that environments without a system colour-emoji font
+(notably WPE WebKit on Linux, which the bridge records with) still render
+reactions and other emoji. The file only has emoji glyphs, so text falls
+through to Inter as usual. */
+@font-face {
+  font-family: "Twemoji";
+  font-display: block;
+  src: url("./fonts/Twemoji_Mozilla/TwemojiMozilla-colr.woff2") format("woff2");
+}
+
 :root {
   --font-scale: 1;
   --font-size-micro: calc(10px * var(--font-scale));
@@ -126,13 +136,24 @@ body,
 /* On Android and iOS, prefer native system fonts. The global.css file of
 Compound Web is where these variables ultimately get consumed to set the page's
 font-family. */
+/* Twemoji goes first: WebKit's emoji font matching doesn't reliably reach a
+face buried at the end of the stack. */
+body[data-platform="desktop"] {
+  --cpd-font-family-sans:
+    "Twemoji", Inter, "Inter Fallback: Helvetica Neue",
+    "Inter Fallback: Segoe UI", "Inter Fallback: Roboto",
+    "Inter Fallback: Ubuntu", "Inter Fallback: Fira Sans",
+    "Inter Fallback: Noto Sans", "Inter Fallback: Arial", "Helvetica Neue",
+    "Segoe UI", Roboto, Ubuntu, "Fira Sans", "Noto Sans", Arial, sans-serif;
+}
+
 body[data-platform="android"] {
-  --cpd-font-family-sans: "Roboto", "Noto", "Inter", sans-serif;
+  --cpd-font-family-sans: "Twemoji", "Roboto", "Noto", "Inter", sans-serif;
 }
 
 body[data-platform="ios"] {
   --cpd-font-family-sans:
-    -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+    "Twemoji", -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
 }
 
 @layer compound-legacy {
