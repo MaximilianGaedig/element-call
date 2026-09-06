@@ -28,6 +28,8 @@ import {
 } from "./Behavior.ts";
 import { type FloorControl, RecordingEventType } from "./FloorControl.ts";
 import { type Scope } from "./Scope.ts";
+import { E2eeType } from "../e2ee/e2eeType.ts";
+import { type EncryptionSystem } from "../e2ee/sharedKeyManagement.ts";
 
 // Recording: a state event, keyed by slot, through which users ask a
 // recorder bot to record the call, and by which everyone learns that it's
@@ -38,6 +40,13 @@ export const RecordingStatusEventType = "org.matrix.rtc.recording.status";
 
 export type RecordingMedia = "audio" | "video";
 export type RecordingStreams = "composite" | "separate" | "both";
+
+/**
+ * To-device message handing the recorder the key of a call encrypted with
+ * a key in its URL, which it couldn't get any other way. Sent encrypted,
+ * just before the request. See docs/call_recording_shared_key.md.
+ */
+export const SharedKeyEventType = "io.element.call.shared_key";
 
 /** Empty content, or no recorder, means the call isn't being recorded. */
 export interface RecordingEventContent {
@@ -133,9 +142,33 @@ export async function inviteBot(
     );
 }
 
+/** Sends the call's shared key to every device of the recorder, encrypted. */
+export async function sendSharedKey(
+  room: MatrixRoom,
+  recorder: string,
+  key: string,
+): Promise<void> {
+  const crypto = room.client.getCrypto();
+  if (crypto === undefined) throw new Error("Encryption isn't available");
+  const devices = await crypto.getUserDeviceInfo([recorder], true);
+  const targets = [...(devices.get(recorder)?.keys() ?? [])].map(
+    (deviceId) => ({ userId: recorder, deviceId }),
+  );
+  if (targets.length === 0)
+    throw new Error("The recorder has no devices to send the call's key to");
+  const batch = await crypto.encryptToDeviceMessages(
+    SharedKeyEventType,
+    targets,
+    { room_id: room.roomId, key },
+  );
+  await room.client.queueToDevice(batch);
+}
+
 /**
  * @param recorder The user ID of the bot to ask for recordings, if this
  *   deployment has one.
+ * @param encryptionSystem How the call is encrypted: a recorder can only
+ *   record a call encrypted with a shared key if it's given the key.
  */
 export function createRecording(
   scope: Scope,
@@ -143,6 +176,7 @@ export function createRecording(
   floorControl: FloorControl,
   slotId: string,
   recorder: string | undefined,
+  encryptionSystem: EncryptionSystem,
 ): Recording {
   const event$ = fromEvents(
     scope,
@@ -264,6 +298,8 @@ export function createRecording(
       } else {
         // toggle$ only offers this once a recorder is configured
         await inviteBot(room, recorder!);
+        if (encryptionSystem.kind === E2eeType.SHARED_KEY)
+          await sendSharedKey(room, recorder!, encryptionSystem.secret);
         await send({ recorder: recorder! });
       }
     } catch (e) {

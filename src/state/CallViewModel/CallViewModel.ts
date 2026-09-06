@@ -486,6 +486,7 @@ export function createCallViewModel$(
     floorControl,
     slotId,
     Config.get().recording_bot,
+    options.encryptionSystem,
   );
   const dialIn = createDialIn(
     scope,

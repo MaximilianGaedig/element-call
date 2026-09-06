@@ -113,6 +113,11 @@ reasonable time (Element Call waits 30 seconds), the client that asked
 should clear the event itself, since nothing is being recorded and the
 recorder may not be there to clear it.
 
+Element Call's standalone app encrypts calls with a key in the URL rather
+than in the room; recording those needs the key handed to the recorder,
+which Element Call does with a to-device message of its own, described in
+[call_recording_shared_key.md](./call_recording_shared_key.md).
+
 ## Potential issues
 
 Making the request a state event means the power to send state is the

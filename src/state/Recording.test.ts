@@ -23,6 +23,7 @@ import {
 import { constant } from "./Behavior.ts";
 import { type FloorControl, RecordingEventType } from "./FloorControl.ts";
 import { mockEmitter, testScope } from "../utils/test.ts";
+import { E2eeType } from "../e2ee/e2eeType.ts";
 
 const slot = "m.call#ROOM";
 const bot = "@bot:e";
@@ -70,11 +71,12 @@ function setup(botMembership?: string): {
 }
 
 const canRecord = { canRecord$: constant(true) } as unknown as FloorControl;
+const none = { kind: E2eeType.NONE } as const;
 
 describe("createRecording", () => {
   it("reports the recording from room state", () => {
     const { room, set } = setup();
-    const r = createRecording(testScope(), room, canRecord, slot, bot);
+    const r = createRecording(testScope(), room, canRecord, slot, bot, none);
     expect(r.recording$.value).toBeNull();
     set(event("@alice:e", { recorder: bot, media: "audio" }, "$1"));
     expect(r.recording$.value).toEqual({
@@ -91,7 +93,7 @@ describe("createRecording", () => {
 
   it("invites the recorder before asking it to start, and stops by clearing", async () => {
     const { room, sendStateEvent, set } = setup();
-    const r = createRecording(testScope(), room, canRecord, slot, bot);
+    const r = createRecording(testScope(), room, canRecord, slot, bot, none);
     await r.toggle$.value!();
     expect(sendStateEvent).toHaveBeenNthCalledWith(
       1,
@@ -118,10 +120,46 @@ describe("createRecording", () => {
     expect(sendStateEvent).toHaveBeenCalledTimes(3);
   });
 
+  it("hands the recorder the call's shared key before asking", async () => {
+    const { room, sendStateEvent } = setup();
+    const batch = { batch: [] };
+    const encryptToDeviceMessages = vi.fn().mockResolvedValue(batch);
+    const queueToDevice = vi.fn().mockResolvedValue(undefined);
+    Object.assign(room.client, {
+      queueToDevice,
+      getCrypto: () => ({
+        getUserDeviceInfo: vi
+          .fn()
+          .mockResolvedValue(new Map([[bot, new Map([["DEV1", {}]])]])),
+        encryptToDeviceMessages,
+      }),
+    });
+    const r = createRecording(testScope(), room, canRecord, slot, bot, {
+      kind: E2eeType.SHARED_KEY,
+      secret: "hunter2",
+    });
+    await r.toggle$.value!();
+    expect(encryptToDeviceMessages).toHaveBeenCalledWith(
+      "io.element.call.shared_key",
+      [{ userId: bot, deviceId: "DEV1" }],
+      { room_id: "!room", key: "hunter2" },
+    );
+    expect(queueToDevice).toHaveBeenCalledWith(batch);
+    expect(queueToDevice.mock.invocationCallOrder[0]).toBeLessThan(
+      sendStateEvent.mock.invocationCallOrder[1],
+    );
+    expect(sendStateEvent).toHaveBeenLastCalledWith(
+      "!room",
+      RecordingEventType,
+      { recorder: bot },
+      slot,
+    );
+  });
+
   it("reports a failed request instead of throwing", async () => {
     const { room, sendStateEvent } = setup();
     sendStateEvent.mockRejectedValueOnce(new Error("429"));
-    const r = createRecording(testScope(), room, canRecord, slot, bot);
+    const r = createRecording(testScope(), room, canRecord, slot, bot, none);
     await r.toggle$.value!();
     expect(r.error$.value?.message).toBe("429");
     expect(r.recording$.value).toBeNull();
@@ -129,7 +167,7 @@ describe("createRecording", () => {
 
   it("doesn't invite a recorder that's already in the room", async () => {
     const { room, sendStateEvent } = setup("join");
-    await createRecording(testScope(), room, canRecord, slot, bot).toggle$
+    await createRecording(testScope(), room, canRecord, slot, bot, none).toggle$
       .value!();
     expect(sendStateEvent).toHaveBeenCalledTimes(1);
   });
@@ -137,18 +175,18 @@ describe("createRecording", () => {
   it("offers nothing without a recorder or the power to record", () => {
     const { room } = setup();
     expect(
-      createRecording(testScope(), room, canRecord, slot, undefined).toggle$
-        .value,
+      createRecording(testScope(), room, canRecord, slot, undefined, none)
+        .toggle$.value,
     ).toBeNull();
     const cannot = { canRecord$: constant(false) } as unknown as FloorControl;
     expect(
-      createRecording(testScope(), room, cannot, slot, bot).toggle$.value,
+      createRecording(testScope(), room, cannot, slot, bot, none).toggle$.value,
     ).toBeNull();
   });
 
   it("waits for the recorder to confirm, and reports its failures", () => {
     const { room, set, sendStateEvent } = setup();
-    const r = createRecording(testScope(), room, canRecord, slot, bot);
+    const r = createRecording(testScope(), room, canRecord, slot, bot, none);
     set(event("@alice:e", { recorder: bot }, "$req"));
     expect(r.recording$.value?.started).toBe(false);
     const status = (content: object): void =>
@@ -184,7 +222,7 @@ describe("createRecording", () => {
     vi.useFakeTimers();
     try {
       const { room, set, sendStateEvent } = setup();
-      const r = createRecording(testScope(), room, canRecord, slot, bot);
+      const r = createRecording(testScope(), room, canRecord, slot, bot, none);
       // Somebody else's request isn't ours to give up on
       set(event("@bob:e", { recorder: bot }, "$theirs"));
       vi.advanceTimersByTime(CONFIRM_TIMEOUT_MS);
@@ -207,7 +245,7 @@ describe("createRecording", () => {
 
   it("collects recordings the recorder posts", () => {
     const { room } = setup();
-    const r = createRecording(testScope(), room, canRecord, slot, bot);
+    const r = createRecording(testScope(), room, canRecord, slot, bot, none);
     const upload = (sender: string, content: object, id: string): void =>
       void room.emit(
         RoomEvent.Timeline,
