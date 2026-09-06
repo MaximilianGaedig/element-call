@@ -16,8 +16,15 @@ import {
 } from "matrix-js-sdk";
 import { type EncryptedFile } from "matrix-js-sdk/lib/@types/media";
 import { KnownMembership } from "matrix-js-sdk/lib/types";
+import { logger } from "matrix-js-sdk/lib/logger";
 
-import { type Behavior, computed, fromEvents, state } from "./Behavior.ts";
+import {
+  type Behavior,
+  computed,
+  fromEvents,
+  state,
+  type State,
+} from "./Behavior.ts";
 import { type FloorControl, RecordingEventType } from "./FloorControl.ts";
 import { type Scope } from "./Scope.ts";
 
@@ -84,6 +91,8 @@ export interface Recording {
    * user may not record or no recorder is configured.
    */
   toggle$: Behavior<(() => Promise<void>) | null>;
+  /** Why the last attempt to start or stop failed, until cleared. */
+  error$: State<Error | null>;
 }
 
 /** Invites a bot into the room, unless it's already a member or invited. */
@@ -185,19 +194,28 @@ export function createRecording(
       slotId,
     );
   };
+  // The record button shows the state event, so a failed request would
+  // otherwise just leave it where it was
+  const error$ = state<Error | null>(null);
   const toggle = async (): Promise<void> => {
-    if (recording$.peek() !== null) {
-      await send({});
-      return;
+    try {
+      if (recording$.peek() !== null) {
+        await send({});
+      } else {
+        // toggle$ only offers this once a recorder is configured
+        await inviteBot(room, recorder!);
+        await send({ recorder: recorder! });
+      }
+    } catch (e) {
+      logger.error("Failed to start or stop recording", e);
+      error$.value = e instanceof Error ? e : new Error(String(e));
     }
-    // toggle$ only offers this once a recorder is configured
-    await inviteBot(room, recorder!);
-    await send({ recorder: recorder! });
   };
 
   return {
     recording$,
     uploads$,
+    error$,
     toggle$: computed(() =>
       recorder !== undefined && floorControl.canRecord$.value ? toggle : null,
     ),

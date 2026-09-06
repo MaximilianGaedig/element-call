@@ -111,6 +111,15 @@ describe("createRecording", () => {
     expect(sendStateEvent).toHaveBeenCalledTimes(3);
   });
 
+  it("reports a failed request instead of throwing", async () => {
+    const { room, sendStateEvent } = setup();
+    sendStateEvent.mockRejectedValueOnce(new Error("429"));
+    const r = createRecording(testScope(), room, canRecord, slot, bot);
+    await r.toggle$.value!();
+    expect(r.error$.value?.message).toBe("429");
+    expect(r.recording$.value).toBeNull();
+  });
+
   it("doesn't invite a recorder that's already in the room", async () => {
     const { room, sendStateEvent } = setup("join");
     await createRecording(testScope(), room, canRecord, slot, bot).toggle$

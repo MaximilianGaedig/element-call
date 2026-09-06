@@ -273,6 +273,10 @@ export const InCallView: FC<InCallViewProps> = ({
   const audioParticipants = useBehavior(vm.livekitRoomItems$);
   const participantCount = useBehavior(vm.participantCount$);
   const reconnecting = useBehavior(vm.reconnecting$);
+  const recordingError = useBehavior(vm.recording.error$);
+  const onDismissRecordingError = useCallback(() => {
+    vm.recording.error$.value = null;
+  }, [vm]);
   const layout = useBehavior(vm.layout$);
   const edgeToEdge = useBehavior(vm.edgeToEdge$);
   const overflowing = useBehavior(vm.overflowing$);
@@ -655,6 +659,13 @@ export const InCallView: FC<InCallViewProps> = ({
         localUserId={client.getUserId()!}
       />
       <RecordingReadyNotice vm={vm} client={client} />
+      <Toast
+        open={recordingError !== null}
+        onDismiss={onDismissRecordingError}
+        autoDismiss={5000}
+      >
+        {t("recording.failed")}
+      </Toast>
       {audioParticipants.map(({ livekitRoom, url, participants }) => (
         <LivekitRoomAudioRenderer
           key={url}

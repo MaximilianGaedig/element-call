@@ -8,9 +8,9 @@ Please see LICENSE in the repository root for full details.
 import { type FC, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { type MatrixClient } from "matrix-js-sdk";
-import { type EncryptedFile } from "matrix-js-sdk/lib/@types/media";
 import { Button, Text } from "@vector-im/compound-web";
 import { logger } from "matrix-js-sdk/lib/logger";
+import { decryptAttachment } from "matrix-encrypt-attachment";
 
 import { type CallViewModel } from "../state/CallViewModel/CallViewModel";
 import { type MediaFile, type RecordingUpload } from "../state/Recording";
@@ -43,29 +43,9 @@ async function fetchMedia(
   });
   if (!response.ok) throw new Error(`${url}: ${response.status}`);
   if (file.encrypted === undefined) return response.blob();
-  return decrypt(await response.arrayBuffer(), file.encrypted);
-}
-
-/** Decrypts an encrypted attachment: AES-CTR, with a SHA-256 check */
-async function decrypt(data: ArrayBuffer, file: EncryptedFile): Promise<Blob> {
-  const hash = await crypto.subtle.digest("SHA-256", data);
-  const base64 = btoa(String.fromCharCode(...new Uint8Array(hash)));
-  if (base64.replace(/=+$/, "") !== file.hashes.sha256.replace(/=+$/, ""))
-    throw new Error("Attachment doesn't match its hash");
-  const key = await crypto.subtle.importKey(
-    "jwk",
-    file.key,
-    { name: "AES-CTR" },
-    false,
-    ["decrypt"],
-  );
-  const counter = Uint8Array.from(atob(file.iv), (c) => c.charCodeAt(0));
-  const plain = await crypto.subtle.decrypt(
-    { name: "AES-CTR", counter, length: 64 },
-    key,
-    data,
-  );
-  return new Blob([plain]);
+  return new Blob([
+    await decryptAttachment(await response.arrayBuffer(), file.encrypted),
+  ]);
 }
 
 function useThumbnail(

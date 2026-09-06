@@ -194,6 +194,7 @@
     "acknowledge": "Got it",
     "badge": "REC",
     "download": "Download",
+    "failed": "Couldn't ask the recorder to record the call",
     "in_progress": "This call is being recorded",
     "notice": "{{name}} is recording this call",
     "ready": "Recording ready",
