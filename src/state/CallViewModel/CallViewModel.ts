@@ -810,15 +810,21 @@ export function createCallViewModel$(
   );
 
   /**
-   * The bots in the call: the recorder while it's recording, and the bridges
-   * a moderator has enabled. They join like anyone else, but aren't people.
-   * (The SIP callers a bridge brings in are separate users, so they show.)
+   * The bots in the call: the recorder and bridge this deployment knows, the
+   * recorder named while a recording runs, and the bridges a moderator has
+   * enabled. They join like anyone else, but aren't people. (The SIP callers
+   * a bridge brings in are separate users, so they show.) The configured
+   * ones are hidden even when idle, since a bot's several memberships linger
+   * for a moment after the state naming it is cleared.
    */
   const botUserIds$ = computed(() => {
     const recorder = recording.recording$.value?.recorder;
     return new Set([
       ...Object.keys(floorControl.content$.value.bridges ?? {}),
       ...(recorder === undefined ? [] : [recorder]),
+      ...[Config.get().recording_bot, Config.get().sip_bridge].filter(
+        (id) => id !== undefined,
+      ),
     ]);
   });
   /**

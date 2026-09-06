@@ -32,6 +32,7 @@ import {
   mockRtcMembership,
   testScope,
   exampleTransport,
+  mockConfig,
 } from "../../utils/test.ts";
 import { E2eeType } from "../../e2ee/e2eeType.ts";
 import {
@@ -1770,6 +1771,42 @@ describe("floor control", () => {
         },
       );
     });
+  });
+
+  test("the configured recorder gets no tile even when idle", () => {
+    const config = mockConfig({ recording_bot: daveRtcMember.sender! });
+    try {
+      withTestScheduler(({ expectObservable }) => {
+        withCallViewModel(
+          {
+            remoteParticipants$: constant([
+              aliceParticipant,
+              bobParticipant,
+              daveParticipant,
+            ]),
+            rtcMembers$: constant([
+              localRtcMember,
+              aliceRtcMember,
+              bobRtcMember,
+              daveRtcMember,
+            ]),
+          },
+          (vm) => {
+            expectObservable(summarizeLayout$(vm.layout$), {
+              settled: true,
+            }).toBe("a", {
+              a: {
+                type: "grid",
+                spotlight: undefined,
+                grid: [`${localId}:0`, `${aliceId}:0`, `${bobId}:0`],
+              },
+            });
+          },
+        );
+      });
+    } finally {
+      config.mockRestore();
+    }
   });
 
   test("pins apply to one device, not all of a user's devices", () => {
