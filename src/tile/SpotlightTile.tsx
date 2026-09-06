@@ -585,8 +585,10 @@ const SpotlightItemsLayout: FC<
 > = ({ ref, model: { items, columns, width, height, onMove }, Slot }) => {
   useUpdateLayout();
   // Rows of one height, each tile as wide as its video's shape makes it,
-  // as in the grid layout (see relaxedGrid)
+  // as in the grid layout (see relaxedGrid). Hugged tiles are packed this
+  // way regardless, since fixed cells would leave slack around each of them
   const [relaxed] = useSetting(relaxedGrid);
+  const [hug] = useSetting(hugVideo);
   const aspectRatios = useBehavior(
     useMemo(
       () => computed(() => items.map(videoAspectRatio), shallowArrayEquals),
@@ -594,7 +596,7 @@ const SpotlightItemsLayout: FC<
     ),
   );
   const rows = useMemo(() => {
-    if (!relaxed) return null;
+    if (!relaxed && !hug) return null;
     // A tile without a video takes the shape of a cell of the plain grid
     const cellRatio =
       (width / columns) * (Math.ceil(items.length / columns) / height);
@@ -611,7 +613,7 @@ const SpotlightItemsLayout: FC<
       height: rowHeight,
       widths: ratios.map((ar) => Math.min(rowHeight * ar, width)),
     };
-  }, [relaxed, aspectRatios, width, height, columns, items.length]);
+  }, [relaxed, hug, aspectRatios, width, height, columns, items.length]);
   return (
     <div
       ref={ref}

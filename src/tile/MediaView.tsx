@@ -144,7 +144,9 @@ export const MediaView: FC<Props> = ({
       (soundWaves === undefined ? 0.5 : 0.38),
   );
 
-  const [videoAspectRatio, setOurVideoAspectRatio] = useState<number>(NaN);
+  // Assumed 16:9 until the video shows its shape, so a hugged tile starts
+  // out the shape it will most likely end up
+  const [videoAspectRatio, setOurVideoAspectRatio] = useState<number>(16 / 9);
   const tileAspectRatio = targetWidth / targetHeight;
   const hug = hugVideo && video && videoEnabled && videoAspectRatio > 0;
   // A tile placed by the grid has animated position and size, so hug by
@@ -173,8 +175,9 @@ export const MediaView: FC<Props> = ({
     };
   }
 
-  // Propagate video dimensions
+  // Propagate video dimensions (unknown until the video has metadata)
   const setVideoAspectRatio = (ratio: number) => {
+    if (!(ratio > 0)) return;
     setOurVideoAspectRatio(ratio);
     setTheirVideoAspectRatio?.(ratio);
   };

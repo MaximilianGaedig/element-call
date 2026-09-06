@@ -29,7 +29,7 @@ import {
   useEnlargedTiles,
   useVideoAspectRatios,
 } from "./TileGrid";
-import { relaxedGrid, useSetting } from "../settings/settings";
+import { hugVideo, relaxedGrid, useSetting } from "../settings/settings";
 
 interface LayerCSSProperties extends CSSProperties {
   "--rail-width": string;
@@ -163,14 +163,31 @@ export const makeSpotlightLandscapeLayout: CallLayout<
     // the rest flow around them
     const enlarged = useEnlargedTiles(model.grid);
     const cells = cellCount(model.grid.length, enlarged);
-    const { columns, tileWidth, tileHeight } = useMemo(
+    const arrangement = useMemo(
       () => arrangeRail(railWidth, cells, height),
       [railWidth, cells, height],
     );
+    const { columns } = arrangement;
+    const [hug] = useSetting(hugVideo);
+    const aspectRatios = useVideoAspectRatios(model.grid);
+    // Hugged tiles are no bigger than their videos make them, so shrink the
+    // cells to the widest and tallest of them, as the grid layout does
+    const { tileWidth, tileHeight } = useMemo(() => {
+      const known = aspectRatios.filter((ar) => ar > 0);
+      if (!hug || known.length === 0) return arrangement;
+      const tileHeight = Math.min(
+        arrangement.tileHeight,
+        Math.max(...known.map((ar) => arrangement.tileWidth / ar)),
+      );
+      const tileWidth = Math.min(
+        arrangement.tileWidth,
+        Math.max(...known.map((ar) => tileHeight * ar)),
+      );
+      return { tileWidth, tileHeight };
+    }, [hug, aspectRatios, arrangement]);
     // Rows of one height, each tile as wide as its video's shape makes it,
     // as in the grid layout; the cell grid around enlarged tiles can't pack
     const [relaxed] = useSetting(relaxedGrid);
-    const aspectRatios = useVideoAspectRatios(model.grid);
     const rows = useMemo(() => {
       if (!relaxed || enlarged.some(Boolean)) return null;
       const ratios = aspectRatios.map((ar) => ar || tileWidth / tileHeight);

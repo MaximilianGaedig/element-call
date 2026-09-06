@@ -68,13 +68,16 @@ export function useVideoAspectRatios(grid: GridTileViewModel[]): number[] {
   );
 }
 
-/** The aspect ratio of a media's video, 0 while it has none. */
+/**
+ * The shape of a user's tile: the aspect ratio of their video, or 16:9 (the
+ * common case) until it has shown its shape or while they have none, so that
+ * tiles are laid out right from the outset rather than animating into shape
+ * once the video arrives. 0 for other media, which aren't shaped this way.
+ */
 export function videoAspectRatio(media: MediaViewModel): number {
-  const ratio =
-    media.type === "user" && media.videoEnabled$.value
-      ? media.videoAspectRatio$.value
-      : 0;
-  return ratio > 0 ? ratio : 0;
+  if (media.type !== "user") return 0;
+  const ratio = media.videoAspectRatio$.value;
+  return ratio > 0 ? ratio : 16 / 9;
 }
 
 /**
