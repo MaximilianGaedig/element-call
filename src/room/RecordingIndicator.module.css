@@ -7,13 +7,15 @@ Please see LICENSE in the repository root for full details.
 
 .badge {
   position: absolute;
-  /* Level with the header's Invite button, and as tall as it */
-  inset-block-start: calc(env(safe-area-inset-top) + var(--cpd-space-5-5x));
+  /* Centred on the header's 80px nav, like the Invite button, and as tall */
+  inset-block-start: calc(
+    env(safe-area-inset-top) + (80px - var(--cpd-space-9x)) / 2
+  );
   inset-inline-end: var(--cpd-space-4x);
   z-index: calc(var(--call-view-header-footer-layer) + 1);
+  inline-size: var(--cpd-space-9x);
   block-size: var(--cpd-space-9x);
-  padding-inline: var(--cpd-space-4x);
-  border-radius: var(--cpd-radius-pill-effect);
+  border-radius: 50%;
   background: var(--cpd-color-bg-critical-primary);
   /* As red as the display can manage, with a soft glow */
   background: color(display-p3 1 0 0);
