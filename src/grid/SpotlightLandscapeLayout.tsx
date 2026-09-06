@@ -15,7 +15,7 @@ import {
 import classNames from "classnames";
 import { Resizable } from "re-resizable";
 
-import { type CallLayout } from "./CallLayout";
+import { type CallLayout, fitRowHeight } from "./CallLayout";
 import { type SpotlightLandscapeLayout as SpotlightLandscapeLayoutModel } from "../state/layout-types.ts";
 import styles from "./SpotlightLandscapeLayout.module.css";
 import { useUpdateLayout, useVisibleTiles } from "./Grid";
@@ -23,7 +23,13 @@ import { type MediaViewModel } from "../state/media/MediaViewModel.ts";
 import { type Behavior } from "../state/Behavior.ts";
 import { useBehavior } from "../useBehavior.ts";
 import { useReorderTiles } from "./reorder.ts";
-import { TileGrid, cellCount, useEnlargedTiles } from "./TileGrid";
+import {
+  TileGrid,
+  cellCount,
+  useEnlargedTiles,
+  useVideoAspectRatios,
+} from "./TileGrid";
+import { relaxedGrid, useSetting } from "../settings/settings";
 
 interface LayerCSSProperties extends CSSProperties {
   "--rail-width": string;
@@ -161,6 +167,36 @@ export const makeSpotlightLandscapeLayout: CallLayout<
       () => arrangeRail(railWidth, cells, height),
       [railWidth, cells, height],
     );
+    // Rows of one height, each tile as wide as its video's shape makes it,
+    // as in the grid layout; the cell grid around enlarged tiles can't pack
+    const [relaxed] = useSetting(relaxedGrid);
+    const aspectRatios = useVideoAspectRatios(model.grid);
+    const rows = useMemo(() => {
+      if (!relaxed || enlarged.some(Boolean)) return null;
+      const ratios = aspectRatios.map((ar) => ar || tileWidth / tileHeight);
+      // fitRowHeight pads its bounds by a gap on every side; the rail has none
+      const fit = fitRowHeight(
+        railWidth + 2 * railGap,
+        height + 2 * railGap,
+        railGap,
+        ratios,
+      );
+      // No taller than the tallest tile needs at the rail's full width, so
+      // that a lone tile doesn't get a slot the height of the page
+      const rowHeight = Math.min(fit, ...ratios.map((ar) => railWidth / ar));
+      return {
+        height: rowHeight,
+        widths: ratios.map((ar) => Math.min(rowHeight * ar, railWidth)),
+      };
+    }, [
+      relaxed,
+      enlarged,
+      aspectRatios,
+      railWidth,
+      height,
+      tileWidth,
+      tileHeight,
+    ]);
 
     return (
       <div ref={ref} className={styles.layer} style={layerStyle(railWidth)}>
@@ -170,7 +206,8 @@ export const makeSpotlightLandscapeLayout: CallLayout<
           enlarged={enlarged}
           gap={railGap}
           tileWidth={tileWidth}
-          tileHeight={tileHeight}
+          tileHeight={rows?.height ?? tileHeight}
+          widths={rows?.widths}
           columns={columns}
           Slot={Slot}
           onDrag={onDragTile}

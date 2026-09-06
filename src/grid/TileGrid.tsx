@@ -19,6 +19,7 @@ import {
   type TileViewModel,
 } from "../state/TileViewModel.ts";
 import { computed } from "../state/Behavior.ts";
+import { type MediaViewModel } from "../state/media/MediaViewModel.ts";
 import { shallowEquals as shallowArrayEquals } from "../utils/array.ts";
 import { type DragCallback, type SlotProps } from "./Grid";
 import { usedColumns } from "./CallLayout";
@@ -58,19 +59,22 @@ export function useVideoAspectRatios(grid: GridTileViewModel[]): number[] {
   return useBehavior(
     useMemo(
       () =>
-        computed(() => {
-          return grid.map((tile) => {
-            const media = tile.media$.value;
-            const ratio =
-              media.type === "user" && media.videoEnabled$.value
-                ? media.videoAspectRatio$.value
-                : 0;
-            return ratio > 0 ? ratio : 0;
-          });
-        }, shallowArrayEquals),
+        computed(
+          () => grid.map((tile) => videoAspectRatio(tile.media$.value)),
+          shallowArrayEquals,
+        ),
       [grid],
     ),
   );
+}
+
+/** The aspect ratio of a media's video, 0 while it has none. */
+export function videoAspectRatio(media: MediaViewModel): number {
+  const ratio =
+    media.type === "user" && media.videoEnabled$.value
+      ? media.videoAspectRatio$.value
+      : 0;
+  return ratio > 0 ? ratio : 0;
 }
 
 /**

@@ -71,7 +71,10 @@ import { Slider } from "../Slider";
 import { type RingingMediaViewModel } from "../state/media/RingingMediaViewModel";
 import { RingingStatus } from "./RingingStatus";
 import { UserMediaMenuItems } from "./UserMediaMenuItems";
-import { hugVideo, useSetting } from "../settings/settings";
+import { hugVideo, relaxedGrid, useSetting } from "../settings/settings";
+import { fitRowHeight } from "../grid/CallLayout";
+import { videoAspectRatio } from "../grid/TileGrid";
+import { shallowEquals as shallowArrayEquals } from "../utils/array";
 
 interface SpotlightItemBaseProps {
   ref?: Ref<HTMLDivElement>;
@@ -566,28 +569,67 @@ const SpotlightItemsContext = createContext<SpotlightItemsContext | null>(null);
 interface SpotlightItemsModel {
   items: MediaViewModel[];
   columns: number;
+  /** The size of the space the items are laid out in. */
+  width: number;
+  height: number;
   onMove: ((media: MediaViewModel, to: MediaViewModel) => void) | undefined;
 }
+
+const itemGap = 8; // Must match the gap in the CSS
 
 // When the spotlight shows several media as tiles, they're laid out by the
 // same Grid as the call's tiles, so that they can be dragged and rearranged
 // with exactly the same behaviour: this is its layout of slots...
 const SpotlightItemsLayout: FC<
   LayoutProps<SpotlightItemsModel, MediaViewModel, HTMLDivElement>
-> = ({ ref, model: { items, columns, onMove }, Slot }) => {
+> = ({ ref, model: { items, columns, width, height, onMove }, Slot }) => {
   useUpdateLayout();
+  // Rows of one height, each tile as wide as its video's shape makes it,
+  // as in the grid layout (see relaxedGrid)
+  const [relaxed] = useSetting(relaxedGrid);
+  const aspectRatios = useBehavior(
+    useMemo(
+      () => computed(() => items.map(videoAspectRatio), shallowArrayEquals),
+      [items],
+    ),
+  );
+  const rows = useMemo(() => {
+    if (!relaxed) return null;
+    const cellRatio =
+      (width / columns) * (Math.ceil(items.length / columns) / height);
+    const ratios = aspectRatios.map((ar) => ar || cellRatio);
+    // fitRowHeight pads its bounds by a gap on every side; we have none
+    const fit = fitRowHeight(
+      width + 2 * itemGap,
+      height + 2 * itemGap,
+      itemGap,
+      ratios,
+    );
+    const rowHeight = Math.min(fit, ...ratios.map((ar) => width / ar));
+    return {
+      height: rowHeight,
+      widths: ratios.map((ar) => Math.min(rowHeight * ar, width)),
+    };
+  }, [relaxed, aspectRatios, width, height, columns, items.length]);
   return (
     <div
       ref={ref}
       className={styles.itemsLayout}
-      style={{ "--tiled-columns": columns } as CSSProperties}
+      data-relaxed={rows !== null || undefined}
+      style={
+        {
+          "--tiled-columns": columns,
+          "--height": rows && `${Math.floor(rows.height)}px`,
+        } as CSSProperties
+      }
     >
-      {items.map((vm) => (
+      {items.map((vm, i) => (
         <Slot
           key={vm.id}
           id={vm.id}
           model={vm}
           className={styles.itemSlot}
+          style={rows ? { width: Math.floor(rows.widths[i]) } : undefined}
           onDrag={
             onMove &&
             (({ over }): void => {
@@ -792,8 +834,14 @@ export const SpotlightTile: FC<Props> = ({
     ],
   );
   const itemsModel = useMemo<SpotlightItemsModel>(
-    () => ({ items: media, columns, onMove }),
-    [media, columns, onMove],
+    () => ({
+      items: media,
+      columns,
+      width: targetWidth,
+      height: targetHeight,
+      onMove,
+    }),
+    [media, columns, targetWidth, targetHeight, onMove],
   );
 
   return (

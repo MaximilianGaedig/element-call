@@ -48,6 +48,18 @@ Please see LICENSE in the repository root for full details.
   min-inline-size: 0;
 }
 
+/* Loosely packed: rows of one height that the flex row packs and centres */
+.itemsLayout[data-relaxed] {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: center;
+}
+
+.itemsLayout[data-relaxed] > .itemSlot {
+  block-size: var(--height);
+}
+
 .itemsGrid .item {
   position: absolute;
   inset-block-start: 0;
