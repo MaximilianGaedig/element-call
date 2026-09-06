@@ -42,8 +42,11 @@ test("Start a new call then leave and show the feedback screen", async ({
 
   // Resize the window to resemble a small mobile phone
   await page.setViewportSize({ width: 350, height: 660 });
-  // We should still be able to send reactions at this screen size
-  await expect(page.getByRole("button", { name: "Reactions" })).toBeVisible();
+  // We should still be able to send reactions at this screen size, from
+  // the More menu
+  await page.getByRole("button", { name: "More" }).click();
+  await expect(page.getByRole("menuitem", { name: "Reactions" })).toBeVisible();
+  await page.keyboard.press("Escape");
 
   // leave the call
   await page.getByTestId("incall_leave").click();
