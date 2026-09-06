@@ -154,6 +154,14 @@ Once we exceed 500 we hide everything except the buttons.
   }
 }
 
+/* A phone's footer has no room for an eighth button: eight overflow it
+   and widen the layout viewport, throwing off every tap on the page */
+@media (max-width: 500px) {
+  .record {
+    display: none;
+  }
+}
+
 @media (min-width: 800px) {
   .buttons {
     gap: var(--cpd-space-4x);

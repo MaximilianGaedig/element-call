@@ -271,6 +271,7 @@ export const CallFooter: FC<FooterProps> = ({
       <RecordButton
         size={buttonSize}
         key="record"
+        className={styles.record}
         recording={recording}
         onClick={toggleRecording}
         data-testid="incall_record"
