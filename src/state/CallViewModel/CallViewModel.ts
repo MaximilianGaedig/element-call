@@ -746,6 +746,7 @@ export function createCallViewModel$(
       const moderation$ = floorControl.moderation$(mediaId, userId);
       return createWrappedUserMedia(scope, {
         id: `${mediaId}:${dup}`,
+        duplicate: dup > 0,
         micGain$,
         userId,
         rtcBackendIdentity: rtcId,

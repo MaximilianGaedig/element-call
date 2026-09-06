@@ -54,6 +54,11 @@ interface WrappedUserMediaInputs extends Omit<
   participant: TaggedParticipant;
   mediaDevices: MediaDevices;
   pretendToBeDisconnected$: Behavior<boolean>;
+  /**
+   * An extra copy of the tile (the developer setting), which duplicates the
+   * camera feed but not the screen share.
+   */
+  duplicate?: boolean;
 }
 
 export function createWrappedUserMedia(
@@ -62,6 +67,7 @@ export function createWrappedUserMedia(
     participant,
     mediaDevices,
     pretendToBeDisconnected$,
+    duplicate = false,
     ...inputs
   }: WrappedUserMediaInputs,
 ): WrappedUserMediaViewModel {
@@ -96,7 +102,9 @@ export function createWrappedUserMedia(
     `${inputs.id} screenShares$`,
     screenShareEnabled$,
     (enabled) =>
-      enabled ? [{ keys: ["screen-share"] as const, data: undefined }] : [],
+      enabled && !duplicate
+        ? [{ keys: ["screen-share"] as const, data: undefined }]
+        : [],
     (scope, _data$, key) => {
       const id = `${inputs.id}:${key}`;
       return participant.type === "local"
