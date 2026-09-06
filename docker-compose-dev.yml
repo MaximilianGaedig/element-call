@@ -116,6 +116,8 @@ services:
   # matrix-rust-sdk next to this repo:
   #   git clone https://github.com/element-hq/matrixrtc-sip-bridge ../matrixrtc-sip-bridge
   #   git clone -b matthew/as https://github.com/element-hq/matrix-rust-sdk-private ../matrix-rust-sdk-private
+  # The build pulls the bridge's WPE WebKit from ghcr.io (a private package:
+  # `docker login ghcr.io` with a token that can read packages first).
   # Start it with `docker compose -f docker-compose-dev.yml --profile sipbridge up`.
   sipbridge:
     profiles: [sipbridge]

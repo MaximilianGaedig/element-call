@@ -237,9 +237,9 @@ including federation:
   as `@sipbridge:synapse.m.localhost`, which records calls from the record
   button and bridges SIP callers in as an application service. It is built
   from a checkout next to this repo; see the comments in
-  [docker-compose-dev.yml](./docker-compose-dev.yml). Its image needs the
-  bridge's WPE WebKit image (`Dockerfile.wpe` in the bridge repo, hours to
-  build) so that its recordings and SIP callers get real video.
+  [docker-compose-dev.yml](./docker-compose-dev.yml). Its build pulls the
+  bridge's WPE WebKit image from GitHub's registry, a private package, so
+  `docker login ghcr.io` with a token that can read packages first.
 
 These use a test 'secret' published in this repository, so this must be used
 only for local development and **_never be exposed to the public Internet._**
