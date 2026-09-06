@@ -215,8 +215,8 @@ export interface UrlConfiguration {
   /**
    * Hides the tiles of the local device: the local camera tile, and any
    * other membership from this device (a "+publish" twin used to publish
-   * media). For embedders that render the call for someone who shouldn't
-   * see themselves, such as a SIP bridge.
+   * media), and the recording badge and notice. For embedders that render
+   * the call for someone who shouldn't see themselves, such as a SIP bridge.
    */
   hideLocalTiles: boolean;
   /**

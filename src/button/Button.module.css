@@ -35,8 +35,9 @@ Please see LICENSE in the repository root for full details.
   transition: r 0.3s ease-out;
 }
 
+/* On the red button the whole icon goes white */
 .recording .recordDot {
-  r: 9;
+  fill: currentColor;
 }
 
 /* Waiting for the recorder to confirm: the dot breathes, between its idle

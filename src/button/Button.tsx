@@ -165,16 +165,18 @@ export const ShareScreenButton: FC<ShareScreenButtonProps> = ({
   );
 };
 
+// Drawn on a 20-unit grid, the size the button renders it at, so the
+// circles land on whole pixels and the dot sits dead centre
 const RecordIcon: FC<SVGAttributes<SVGElement>> = (props) => (
-  <svg viewBox="0 0 24 24" fill="none" {...props}>
-    <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
-    <circle className={styles.recordDot} cx="12" cy="12" r="4" />
+  <svg viewBox="0 0 20 20" fill="none" {...props}>
+    <circle cx="10" cy="10" r="8" stroke="currentColor" strokeWidth="2" />
+    <circle className={styles.recordDot} cx="10" cy="10" r="4" />
   </svg>
 );
 
 interface RecordButtonProps extends ComponentPropsWithoutRef<"button"> {
   size?: "md" | "lg";
-  /** Whether the call is being recorded, which fills the dot */
+  /** Whether the call is being recorded, which fills the button red */
   recording: boolean;
   /** Whether we're waiting for the recorder to confirm, which pulses the dot */
   pending?: boolean;
@@ -195,7 +197,8 @@ export const RecordButton: FC<RecordButtonProps> = ({
       <CpdButton
         iconOnly
         Icon={RecordIcon}
-        kind="secondary"
+        kind={recording && !pending ? "primary" : "secondary"}
+        destructive={recording && !pending}
         role="switch"
         aria-checked={recording}
         aria-busy={pending}

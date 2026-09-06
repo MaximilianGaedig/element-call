@@ -255,7 +255,7 @@ export const InCallView: FC<InCallViewProps> = ({
   // Merge the refs so they can attach to the same element
   const containerRef = useMergedRefs(containerRef1, containerRef2);
 
-  const { showControls, header: headerStyle } = useUrlParams();
+  const { showControls, header: headerStyle, hideLocalTiles } = useUrlParams();
 
   const muteAllAudio = useBehavior(muteAllAudio$);
   const toggleAudio = useBehavior(muteStates.audio.toggle$);
@@ -654,11 +654,16 @@ export const InCallView: FC<InCallViewProps> = ({
       onPointerOut={onPointerOut}
     >
       {header}
-      <RecordingIndicator
-        vm={vm}
-        room={matrixRoom}
-        localUserId={client.getUserId()!}
-      />
+      {/* An embedder hiding our own tiles is rendering the call for someone
+          else, such as the bridge capturing a recording, so keep the
+          recording warnings out of its view */}
+      {!hideLocalTiles && (
+        <RecordingIndicator
+          vm={vm}
+          room={matrixRoom}
+          localUserId={client.getUserId()!}
+        />
+      )}
       <RecordingReadyNotice vm={vm} client={client} />
       {/* Long enough to read, short enough not to cover the call; the
           button itself stays as it was, so the user can just try again */}

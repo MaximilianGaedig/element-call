@@ -7,12 +7,13 @@ Please see LICENSE in the repository root for full details.
 
 .badge {
   position: absolute;
-  inset-block-start: var(--cpd-space-4x);
+  /* Level with the header's Invite button, and as tall as it */
+  inset-block-start: calc(env(safe-area-inset-top) + var(--cpd-space-5-5x));
   inset-inline-end: var(--cpd-space-4x);
   z-index: calc(var(--call-view-header-footer-layer) + 1);
-  inline-size: var(--cpd-space-11x);
-  block-size: var(--cpd-space-11x);
-  border-radius: 50%;
+  block-size: var(--cpd-space-9x);
+  padding-inline: var(--cpd-space-4x);
+  border-radius: var(--cpd-radius-pill-effect);
   background: var(--cpd-color-bg-critical-primary);
   color: var(--cpd-color-text-on-solid-primary);
   font: var(--cpd-font-body-xs-semibold);
@@ -21,25 +22,11 @@ Please see LICENSE in the repository root for full details.
   align-items: center;
   justify-content: center;
   pointer-events: none;
-  animation: pulse 2s ease-in-out infinite;
 }
 
 /* Until the recorder confirms that it's recording */
 .pending {
   background: var(--cpd-color-alpha-gray-1200);
-  animation: none;
-}
-
-@keyframes pulse {
-  50% {
-    opacity: 0.6;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .badge {
-    animation: none;
-  }
 }
 
 .notice {
