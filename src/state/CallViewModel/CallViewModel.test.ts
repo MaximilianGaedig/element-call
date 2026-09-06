@@ -1809,6 +1809,64 @@ describe("floor control", () => {
     }
   });
 
+  test("a device publishing through a +publish twin gets one tile", () => {
+    const twinRtcMember = mockRtcMembership(aliceUserId, "AAAA+publish");
+    const twinId = `${aliceUserId}:AAAA+publish`;
+    const twinParticipant = mockRemoteParticipant({ identity: twinId });
+    withTestScheduler(({ expectObservable }) => {
+      withCallViewModel(
+        {
+          remoteParticipants$: constant([
+            aliceParticipant,
+            twinParticipant,
+            bobParticipant,
+          ]),
+          rtcMembers$: constant([
+            localRtcMember,
+            aliceRtcMember,
+            twinRtcMember,
+            bobRtcMember,
+          ]),
+        },
+        (vm) => {
+          expectObservable(summarizeLayout$(vm.layout$), {
+            settled: true,
+          }).toBe("a", {
+            a: {
+              type: "grid",
+              spotlight: undefined,
+              grid: [`${localId}:0`, `${twinId}:0`, `${bobId}:0`],
+            },
+          });
+        },
+      );
+    });
+  });
+
+  test("hideLocalTiles hides our own tiles", () => {
+    window.history.replaceState(null, "", "?hideLocalTiles=true");
+    withTestScheduler(({ expectObservable }) => {
+      withCallViewModel(
+        {
+          remoteParticipants$: constant([aliceParticipant, bobParticipant]),
+          rtcMembers$: constant([localRtcMember, aliceRtcMember, bobRtcMember]),
+        },
+        (vm) => {
+          expectObservable(summarizeLayout$(vm.layout$), {
+            settled: true,
+          }).toBe("a", {
+            a: {
+              type: "grid",
+              spotlight: undefined,
+              grid: [`${aliceId}:0`, `${bobId}:0`],
+            },
+          });
+        },
+      );
+    });
+    window.history.replaceState(null, "", "?");
+  });
+
   test("pins apply to one device, not all of a user's devices", () => {
     withTestScheduler(({ schedule, expectObservable }) => {
       withCallViewModel(

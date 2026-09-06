@@ -281,6 +281,8 @@ export interface CallViewModel {
    *    multiple devices.
    */
   participantCount$: Behavior<number>;
+  /** How many members have a tile; the rest are bots or hidden. */
+  visibleMemberCount$: Behavior<number>;
   /**
    * Whether the call has grown large enough that MatrixRTC has stopped rotating the media
    * encryption key. While this is true the key in use is still shared with new joiners, but no new
@@ -414,6 +416,13 @@ export interface CallViewModel {
 // Throughout this class and related code we must distinguish between MatrixRTC
 // state and LiveKit state. We use the common terminology of room "members", RTC
 // "memberships", and LiveKit "participants".
+/** Suffix of a second membership a device publishes media through. */
+const PUBLISH_SUFFIX = "+publish";
+const baseDeviceId = (deviceId: string): string =>
+  deviceId.endsWith(PUBLISH_SUFFIX)
+    ? deviceId.slice(0, -PUBLISH_SUFFIX.length)
+    : deviceId;
+
 export function createCallViewModel$(
   scope: Scope,
   // A call is permanently tied to a single Matrix room
@@ -491,11 +500,29 @@ export function createCallViewModel$(
   // at all: no tiles, no media, no connection to their SFU. Everything below
   // derives from this list, so filtering here is enough, and a block being
   // lifted brings them back exactly as if they'd just joined.
+  // A device that also publishes through a second, "+publish" membership
+  // (as a SIP bridge does) has its media there, so its plain membership
+  // would be an empty tile; and an embedder rendering the call for someone
+  // who shouldn't see themselves can hide everything from this device.
   const allMemberships$ = createMemberships$(scope, matrixRTCSession);
   const memberships$ = computed<CallMembership[]>(() => {
     const content = floorControl.content$.value;
-    return allMemberships$.value.filter(
-      (m) => !isBlocked(content, m.userId, m.deviceId),
+    const all = allMemberships$.value;
+    const publishingTwins = new Set(
+      all
+        .filter((m) => m.deviceId.endsWith(PUBLISH_SUFFIX))
+        .map((m) => `${m.userId}:${baseDeviceId(m.deviceId)}`),
+    );
+    const { hideLocalTiles } = getUrlParams();
+    return all.filter(
+      (m) =>
+        !isBlocked(content, m.userId, m.deviceId) &&
+        !publishingTwins.has(`${m.userId}:${m.deviceId}`) &&
+        !(
+          hideLocalTiles &&
+          m.userId === userId &&
+          baseDeviceId(m.deviceId) === deviceId
+        ),
     );
   }, shallowArrayEquals);
   // Our own device honours a moderator's audio mute by not publishing. A
@@ -829,14 +856,15 @@ export function createCallViewModel$(
   });
   /**
    * The user media we want tiles for. Auditorium mode hides the tiles of
-   * users below a power level, bots get no tile; we always see ourselves.
+   * users below a power level, bots get no tile, and we see ourselves unless
+   * the embedder asked not to (hideLocalTiles).
    */
   const userMedia$ = computed<WrappedUserMediaViewModel[]>(
     () =>
-      allUserMedia$.value.filter(
-        (m) =>
-          m.local ||
-          (!m.moderation$.value.hidden && !botUserIds$.value.has(m.userId)),
+      allUserMedia$.value.filter((m) =>
+        m.local
+          ? !getUrlParams().hideLocalTiles
+          : !m.moderation$.value.hidden && !botUserIds$.value.has(m.userId),
       ),
     shallowArrayEquals,
   );
@@ -892,6 +920,7 @@ export function createCallViewModel$(
    *    multiple devices.
    */
   const participantCount$ = computed(() => matrixLivekitMembers$.value.length);
+  const visibleMemberCount$ = computed(() => userMedia$.value.length);
 
   const keyRotationSuppressed$ = createKeyRotationSuppressed$(
     scope,
@@ -1593,6 +1622,7 @@ export function createCallViewModel$(
     fatalError$,
     allConnections$,
     participantCount$: participantCount$,
+    visibleMemberCount$,
     keyRotationSuppressed$: keyRotationSuppressed$,
     handsRaised$: handsRaised$,
     reactions$: reactions$,

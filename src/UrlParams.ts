@@ -213,6 +213,13 @@ export interface UrlConfiguration {
    */
   skipLobby: boolean;
   /**
+   * Hides the tiles of the local device: the local camera tile, and any
+   * other membership from this device (a "+publish" twin used to publish
+   * media). For embedders that render the call for someone who shouldn't
+   * see themselves, such as a SIP bridge.
+   */
+  hideLocalTiles: boolean;
+  /**
    * Setting this flag makes element call show the lobby after leaving a call.
    * This is useful for video rooms.
    */
@@ -383,6 +390,7 @@ export const computeUrlParams = (search = "", hash = ""): UrlParams => {
     perParticipantE2EE: true,
     controlledAudioDevices: platform === "desktop" ? false : true,
     skipLobby: true,
+    hideLocalTiles: false,
     returnToLobby: false,
     sendNotificationType: "notification",
     autoLeaveWhenOthersLeft: false,
@@ -438,6 +446,7 @@ export const computeUrlParams = (search = "", hash = ""): UrlParams => {
         perParticipantE2EE: false,
         controlledAudioDevices: false,
         skipLobby: false,
+        hideLocalTiles: false,
         returnToLobby: false,
         sendNotificationType: undefined,
         autoLeaveWhenOthersLeft: false,
@@ -487,6 +496,7 @@ export const computeUrlParams = (search = "", hash = ""): UrlParams => {
     perParticipantE2EE: parser.getFlag("perParticipantE2EE"),
     controlledAudioDevices: parser.getFlag("controlledAudioDevices"),
     skipLobby: isWidget ? parser.getFlag("skipLobby") : false,
+    hideLocalTiles: parser.getFlag("hideLocalTiles"),
     // In SPA mode the user should always exit to the home screen when hanging
     // up, rather than being sent back to the lobby
     returnToLobby: isWidget ? parser.getFlag("returnToLobby") : false,

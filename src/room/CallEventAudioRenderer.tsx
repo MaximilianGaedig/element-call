@@ -86,9 +86,10 @@ export function CallEventAudioRenderer({
   const play = (sound: CallEventSounds): void =>
     void audioEngineRef.current?.playSound(sound);
 
-  // People joining and leaving, at most once every THROTTLE_SOUND_EFFECT_MS
+  // People joining and leaving, at most once every THROTTLE_SOUND_EFFECT_MS.
+  // Only those with a tile: bots and hidden members come and go silently.
   const lastPresenceSound = useRef(-Infinity);
-  useBehaviorChange(vm.participantCount$, (count, previous) => {
+  useBehaviorChange(vm.visibleMemberCount$, (count, previous) => {
     if (count > MAX_PARTICIPANT_COUNT_FOR_SOUND) return;
     // Avoid doubling up on any auto-leave sounds (e.g. the decline sound),
     // which are handled elsewhere
