@@ -1740,6 +1740,38 @@ describe("floor control", () => {
     });
   });
 
+  test("a bridge bot gets no tile", () => {
+    withTestScheduler(({ expectObservable }) => {
+      withCallViewModel(
+        {
+          remoteParticipants$: constant([
+            aliceParticipant,
+            bobParticipant,
+            daveParticipant,
+          ]),
+          rtcMembers$: constant([
+            localRtcMember,
+            aliceRtcMember,
+            bobRtcMember,
+            daveRtcMember,
+          ]),
+          floorControl: { bridges: { [daveRtcMember.sender!]: {} } },
+        },
+        (vm) => {
+          expectObservable(summarizeLayout$(vm.layout$), {
+            settled: true,
+          }).toBe("a", {
+            a: {
+              type: "grid",
+              spotlight: undefined,
+              grid: [`${localId}:0`, `${aliceId}:0`, `${bobId}:0`],
+            },
+          });
+        },
+      );
+    });
+  });
+
   test("pins apply to one device, not all of a user's devices", () => {
     withTestScheduler(({ schedule, expectObservable }) => {
       withCallViewModel(

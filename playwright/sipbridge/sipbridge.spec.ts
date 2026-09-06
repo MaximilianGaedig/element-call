@@ -135,10 +135,13 @@ test("the recording shows the call's video", async ({ page }) => {
   });
   await expect(badge).toBeVisible();
   await expect(badge).toHaveAttribute("aria-busy", "true");
-  // The recorder joins the call and confirms that it's recording
-  await expect(page.getByTestId("videoTile")).toHaveCount(2, {
-    timeout: 90_000,
-  });
+  // The recorder joins the call, counted but without a tile of its own,
+  // and confirms that it's recording
+  await expect(page.getByTestId("roomHeader_participants_count")).toHaveText(
+    "2",
+    { timeout: 90_000 },
+  );
+  await expect(page.getByTestId("videoTile")).toHaveCount(1);
   await expect(badge).toHaveAttribute("aria-busy", "false", {
     timeout: 30_000,
   });

@@ -810,12 +810,28 @@ export function createCallViewModel$(
   );
 
   /**
+   * The bots in the call: the recorder while it's recording, and the bridges
+   * a moderator has enabled. They join like anyone else, but aren't people.
+   * (The SIP callers a bridge brings in are separate users, so they show.)
+   */
+  const botUserIds$ = computed(() => {
+    const recorder = recording.recording$.value?.recorder;
+    return new Set([
+      ...Object.keys(floorControl.content$.value.bridges ?? {}),
+      ...(recorder === undefined ? [] : [recorder]),
+    ]);
+  });
+  /**
    * The user media we want tiles for. Auditorium mode hides the tiles of
-   * users below a power level; we always see ourselves.
+   * users below a power level, bots get no tile; we always see ourselves.
    */
   const userMedia$ = computed<WrappedUserMediaViewModel[]>(
     () =>
-      allUserMedia$.value.filter((m) => m.local || !m.moderation$.value.hidden),
+      allUserMedia$.value.filter(
+        (m) =>
+          m.local ||
+          (!m.moderation$.value.hidden && !botUserIds$.value.has(m.userId)),
+      ),
     shallowArrayEquals,
   );
 
