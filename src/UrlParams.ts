@@ -215,10 +215,15 @@ export interface UrlConfiguration {
   /**
    * Hides the tiles of the local device: the local camera tile, and any
    * other membership from this device (a "+publish" twin used to publish
-   * media), and the recording badge and notice. For embedders that render
-   * the call for someone who shouldn't see themselves, such as a SIP bridge.
+   * media). For embedders that render the call for someone who shouldn't
+   * see themselves, such as a SIP bridge.
    */
   hideLocalTiles: boolean;
+  /**
+   * Hides the badge and notice that warn that the call is being recorded.
+   * For the recorder itself, whose view is the recording.
+   */
+  hideRecordingWarnings: boolean;
   /**
    * Setting this flag makes element call show the lobby after leaving a call.
    * This is useful for video rooms.
@@ -391,6 +396,7 @@ export const computeUrlParams = (search = "", hash = ""): UrlParams => {
     controlledAudioDevices: platform === "desktop" ? false : true,
     skipLobby: true,
     hideLocalTiles: false,
+    hideRecordingWarnings: false,
     returnToLobby: false,
     sendNotificationType: "notification",
     autoLeaveWhenOthersLeft: false,
@@ -447,6 +453,7 @@ export const computeUrlParams = (search = "", hash = ""): UrlParams => {
         controlledAudioDevices: false,
         skipLobby: false,
         hideLocalTiles: false,
+        hideRecordingWarnings: false,
         returnToLobby: false,
         sendNotificationType: undefined,
         autoLeaveWhenOthersLeft: false,
@@ -497,6 +504,7 @@ export const computeUrlParams = (search = "", hash = ""): UrlParams => {
     controlledAudioDevices: parser.getFlag("controlledAudioDevices"),
     skipLobby: isWidget ? parser.getFlag("skipLobby") : false,
     hideLocalTiles: parser.getFlag("hideLocalTiles"),
+    hideRecordingWarnings: parser.getFlag("hideRecordingWarnings"),
     // In SPA mode the user should always exit to the home screen when hanging
     // up, rather than being sent back to the lobby
     returnToLobby: isWidget ? parser.getFlag("returnToLobby") : false,

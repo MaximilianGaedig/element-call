@@ -255,7 +255,11 @@ export const InCallView: FC<InCallViewProps> = ({
   // Merge the refs so they can attach to the same element
   const containerRef = useMergedRefs(containerRef1, containerRef2);
 
-  const { showControls, header: headerStyle, hideLocalTiles } = useUrlParams();
+  const {
+    showControls,
+    header: headerStyle,
+    hideRecordingWarnings,
+  } = useUrlParams();
 
   const muteAllAudio = useBehavior(muteAllAudio$);
   const toggleAudio = useBehavior(muteStates.audio.toggle$);
@@ -399,7 +403,9 @@ export const InCallView: FC<InCallViewProps> = ({
             />
           </LeftNav>
           <RightNav>
-            {!hideLocalTiles && <RecordingBadge vm={vm} room={matrixRoom} />}
+            {!hideRecordingWarnings && (
+              <RecordingBadge vm={vm} room={matrixRoom} />
+            )}
             {showControls && onShareClick !== null && (
               <InviteButton className={styles.invite} onClick={onShareClick} />
             )}
@@ -655,13 +661,11 @@ export const InCallView: FC<InCallViewProps> = ({
       onPointerOut={onPointerOut}
     >
       {header}
-      {/* An embedder hiding our own tiles is rendering the call for someone
-          else, such as the bridge capturing a recording, so keep the
-          recording warnings out of its view */}
-      {!hideLocalTiles && headerStyle !== HeaderStyle.Standard && (
+      {/* The recorder's own view is the recording, so it hides these */}
+      {!hideRecordingWarnings && headerStyle !== HeaderStyle.Standard && (
         <RecordingBadge vm={vm} room={matrixRoom} floating />
       )}
-      {!hideLocalTiles && (
+      {!hideRecordingWarnings && (
         <RecordingNotice
           vm={vm}
           room={matrixRoom}
