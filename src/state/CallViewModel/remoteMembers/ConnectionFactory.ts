@@ -32,6 +32,7 @@ import { getLiveKitOptions } from "../../../livekit/options.ts";
 import {
   advancedCamera,
   cameraResolution,
+  cameraAspectRatio,
   cameraFramerate,
   cameraBitrate,
   cameraCodec,
@@ -159,10 +160,12 @@ function generateRoomOption({
     const codec = cameraCodec.getValue();
 
     // Only the height, as with the defaults, so that a portrait camera
-    // isn't cropped to the chosen landscape shape
+    // isn't cropped to the chosen landscape shape, unless a shape is asked for
+    const [w, h] = cameraAspectRatio.getValue().split(":").map(Number);
+    const aspectRatio = w > 0 && h > 0 ? w / h : undefined;
     videoCaptureDefaults = {
       ...videoCaptureDefaults,
-      resolution: { height, frameRate: fps } as VideoResolution,
+      resolution: { height, frameRate: fps, aspectRatio } as VideoResolution,
     };
     publishDefaults = {
       ...publishDefaults,
