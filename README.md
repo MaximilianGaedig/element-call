@@ -317,10 +317,11 @@ npx playwright codegen
 `playwright/sipbridge/` checks that the record button and dial-in work
 against the dev stack's bridge: a baresip caller with VP8 video (the
 `sipcaller` service in `docker-compose-dev.yml`, which the tests run
-themselves) dials the address the moderator settings show, the tests check
-that its orange video reaches the call and the call's video reaches it, and
-that a recording made meanwhile shows the caller. They only run when asked
-for, since they need the `sipbridge` profile up (see [above](#backend)):
+themselves) dials the address the moderator settings show, and the tests
+check that its orange video reaches the call and the call's video reaches
+it; a second test records a call and checks that the recording the bot
+posts shows the call's video. They only run when asked for, since they
+need the `sipbridge` profile up (see [above](#backend)):
 
 ```shell
 SIPBRIDGE_TESTS=1 pnpm run test:playwright playwright/sipbridge --project chromium
