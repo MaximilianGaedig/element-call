@@ -170,3 +170,44 @@ test("the recording shows the call's video", async ({ page }) => {
   // And the bridge kept a copy of the recording
   expect(recordingsSince(started)).toHaveLength(1);
 });
+
+test("the recording shows a screen share", async ({ page }) => {
+  const name = `share-${Date.now()}`;
+  const started = Date.now();
+  const { roomId } = await createCallRoom(name);
+  await joinCall(page, roomId);
+  // The fake screen share is the same green as the fake camera, so turn the
+  // camera off: any green in the recording is then the screen share
+  await page.getByTestId("incall_videomute").click();
+  await expect(page.getByTestId("videoTile").locator("video")).toHaveCount(0);
+
+  const record = page.getByTestId("incall_record");
+  await record.click();
+  await page.getByTestId("record_confirm").click();
+  await expect(record).toHaveAttribute("aria-busy", "false", {
+    timeout: 90_000,
+  });
+  await page.getByTestId("incall_screenshare").click();
+  await expect(
+    page.locator('video[data-lk-source="screen_share"]'),
+  ).toBeVisible();
+  await page.waitForTimeout(15_000);
+
+  await record.click();
+  await expect(record).toHaveAttribute("aria-checked", "false", {
+    timeout: 15_000,
+  });
+
+  // The thumbnail is a frame from the middle of the recording, by which time
+  // the share fills the spotlight
+  const notice = page
+    .getByRole("status")
+    .filter({ hasText: "Recording ready" });
+  await expect(notice).toBeVisible({ timeout: 180_000 });
+  const thumbnail = notice.locator("img");
+  await expect(thumbnail).toBeVisible({ timeout: 30_000 });
+  await expect
+    .poll(async () => (await measure(thumbnail)).green, { timeout: 15_000 })
+    .toBeGreaterThan(0.1);
+  expect(recordingsSince(started)).toHaveLength(1);
+});
