@@ -138,6 +138,7 @@ describe("createRecording", () => {
         RoomEvent.Timeline,
         {
           getSender: () => sender,
+          getType: () => "m.room.message",
           getContent: () => content,
           getId: () => id,
         } as unknown as MatrixEvent,
@@ -158,13 +159,40 @@ describe("createRecording", () => {
       },
       "$2",
     );
+    // An encrypted upload, which only shows up once decrypted
+    const encrypted = { url: "mxc://e/enc", key: {}, iv: "", hashes: {} };
+    let decrypted: ((event: MatrixEvent) => void) | undefined;
+    const event = {
+      getSender: () => bot,
+      getType: () => "m.room.encrypted",
+      getContent: () => ({
+        msgtype: "m.video",
+        body: "secret.webm",
+        file: encrypted,
+        info: { thumbnail_file: encrypted },
+      }),
+      getId: () => "$3",
+      once: (_name: string, f: (event: MatrixEvent) => void) => {
+        decrypted = f;
+      },
+    } as unknown as MatrixEvent;
+    room.emit(RoomEvent.Timeline, event, room, false, false, null!);
+    expect(r.uploads$.value).toHaveLength(1);
+    decrypted!(event);
     expect(r.uploads$.value).toEqual([
       {
         eventId: "$2",
         msgtype: "m.video",
         body: "call.webm",
-        url: "mxc://e/v",
-        thumbnailUrl: "mxc://e/t",
+        file: { url: "mxc://e/v" },
+        thumbnail: { url: "mxc://e/t" },
+      },
+      {
+        eventId: "$3",
+        msgtype: "m.video",
+        body: "secret.webm",
+        file: { url: "mxc://e/enc", encrypted },
+        thumbnail: { url: "mxc://e/enc", encrypted },
       },
     ]);
   });

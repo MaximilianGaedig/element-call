@@ -8,11 +8,13 @@ Please see LICENSE in the repository root for full details.
 import {
   EventType,
   type MatrixEvent,
+  MatrixEventEvent,
   type Room as MatrixRoom,
   RoomEvent,
   RoomStateEvent,
   type StateEvents,
 } from "matrix-js-sdk";
+import { type EncryptedFile } from "matrix-js-sdk/lib/@types/media";
 import { KnownMembership } from "matrix-js-sdk/lib/types";
 
 import { type Behavior, computed, fromEvents, state } from "./Behavior.ts";
@@ -44,16 +46,32 @@ export interface RecordingState {
   eventId: string;
 }
 
+/** Where a piece of media is, and how to decrypt it if it's encrypted */
+export interface MediaFile {
+  /** mxc URL */
+  url: string;
+  /** The key, IV and hash, when the room is encrypted */
+  encrypted?: EncryptedFile;
+}
+
 /** A finished recording the recorder has posted into the room. */
 export interface RecordingUpload {
   eventId: string;
   msgtype: "m.video" | "m.audio";
   /** The file name */
   body: string;
-  /** mxc URL of the file */
-  url: string;
-  /** mxc URL of a thumbnail, if there is one */
-  thumbnailUrl: string | undefined;
+  file: MediaFile;
+  /** A thumbnail, if there is one */
+  thumbnail: MediaFile | undefined;
+}
+
+function mediaFile(
+  encrypted: EncryptedFile | undefined,
+  url: string | undefined,
+): MediaFile | undefined {
+  if (encrypted?.url) return { url: encrypted.url, encrypted };
+  if (url) return { url };
+  return undefined;
 }
 
 export interface Recording {
@@ -125,15 +143,11 @@ export function createRecording(
   // messages; in the standalone app there's no timeline to see them in, so
   // collect them as they arrive
   const uploads$ = state<RecordingUpload[]>([]);
-  const onTimeline = (
-    event: MatrixEvent,
-    _room: unknown,
-    toStart?: boolean,
-  ): void => {
-    if (toStart || event.getSender() !== recorder) return;
+  const onUpload = (event: MatrixEvent): void => {
     const content = event.getContent();
     const msgtype = content.msgtype;
-    if ((msgtype !== "m.video" && msgtype !== "m.audio") || !content.url)
+    const file = mediaFile(content.file, content.url);
+    if ((msgtype !== "m.video" && msgtype !== "m.audio") || file === undefined)
       return;
     uploads$.value = [
       ...uploads$.value,
@@ -141,10 +155,24 @@ export function createRecording(
         eventId: event.getId()!,
         msgtype,
         body: content.body ?? "",
-        url: content.url,
-        thumbnailUrl: content.info?.thumbnail_url,
+        file,
+        thumbnail: mediaFile(
+          content.info?.thumbnail_file,
+          content.info?.thumbnail_url,
+        ),
       },
     ];
+  };
+  const onTimeline = (
+    event: MatrixEvent,
+    _room: unknown,
+    toStart?: boolean,
+  ): void => {
+    if (toStart || event.getSender() !== recorder) return;
+    // In encrypted rooms the event arrives before it's decrypted
+    if (event.getType() === EventType.RoomMessageEncrypted)
+      event.once(MatrixEventEvent.Decrypted, onUpload);
+    else onUpload(event);
   };
   room.on(RoomEvent.Timeline, onTimeline);
   scope.onEnd(() => room.off(RoomEvent.Timeline, onTimeline));
