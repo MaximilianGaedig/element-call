@@ -165,20 +165,20 @@ export const ShareScreenButton: FC<ShareScreenButtonProps> = ({
   );
 };
 
-// Drawn on a 20-unit grid, the size the button renders it at, so the
-// circles land on whole pixels and the dot sits dead centre
+// A red circle that pulses while the recorder starts up and squares off
+// once it's recording, like a tape deck's record and stop buttons. Drawn on
+// a 20-unit grid, the size the button renders it at, so it stays crisp.
 const RecordIcon: FC<SVGAttributes<SVGElement>> = (props) => (
   <svg viewBox="0 0 20 20" fill="none" {...props}>
-    <circle cx="10" cy="10" r="8" stroke="currentColor" strokeWidth="2" />
-    <circle className={styles.recordDot} cx="10" cy="10" r="4" />
+    <rect className={styles.recordShape} x="4" y="4" width="12" height="12" />
   </svg>
 );
 
 interface RecordButtonProps extends ComponentPropsWithoutRef<"button"> {
   size?: "md" | "lg";
-  /** Whether the call is being recorded, which fills the button red */
+  /** Whether the call is being recorded, which squares off the red circle */
   recording: boolean;
-  /** Whether we're waiting for the recorder to confirm, which pulses the dot */
+  /** Whether we're waiting for the recorder to confirm, which pulses it */
   pending?: boolean;
 }
 
@@ -197,8 +197,7 @@ export const RecordButton: FC<RecordButtonProps> = ({
       <CpdButton
         iconOnly
         Icon={RecordIcon}
-        kind={recording && !pending ? "primary" : "secondary"}
-        destructive={recording && !pending}
+        kind="secondary"
         role="switch"
         aria-checked={recording}
         aria-busy={pending}

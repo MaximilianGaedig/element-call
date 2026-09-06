@@ -15,6 +15,9 @@ Please see LICENSE in the repository root for full details.
   padding-inline: var(--cpd-space-4x);
   border-radius: var(--cpd-radius-pill-effect);
   background: var(--cpd-color-bg-critical-primary);
+  /* As red as the display can manage, with a soft glow */
+  background: color(display-p3 1 0 0);
+  box-shadow: 0 0 12px 2px rgb(255 0 0 / 40%);
   color: var(--cpd-color-text-on-solid-primary);
   font: var(--cpd-font-body-xs-semibold);
   letter-spacing: 0.05em;
@@ -27,6 +30,7 @@ Please see LICENSE in the repository root for full details.
 /* Until the recorder confirms that it's recording */
 .pending {
   background: var(--cpd-color-alpha-gray-1200);
+  box-shadow: none;
 }
 
 .notice {

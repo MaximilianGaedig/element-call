@@ -28,34 +28,33 @@ Please see LICENSE in the repository root for full details.
   pointer-events: none;
 }
 
-/* While recording the dot grows to the ring's radius (9, as RecordIcon
-   draws it), filling the ring */
-.recordDot {
+.recordShape {
   fill: var(--cpd-color-icon-critical-primary);
-  transition: r 0.3s ease-out;
+  rx: 6;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: rx 0.3s ease-out;
 }
 
-/* On the red button the whole icon goes white */
-.recording .recordDot {
-  fill: currentColor;
+/* Recording: the circle squares off, like a stop button */
+.recording .recordShape {
+  rx: 2;
 }
 
-/* Waiting for the recorder to confirm: the dot breathes, between its idle
-   size and the full one it gets once recording */
-.pending .recordDot {
-  r: 6;
-  animation: breathe 1.6s ease-in-out infinite;
+/* Waiting for the recorder to confirm: the circle breathes */
+.pending .recordShape {
+  animation: breathe 1.2s ease-in-out infinite;
 }
 
 @keyframes breathe {
   50% {
-    opacity: 0.3;
+    transform: scale(1.25);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .recordDot,
-  .pending .recordDot {
+  .recordShape,
+  .pending .recordShape {
     transition: none;
     animation: none;
   }
