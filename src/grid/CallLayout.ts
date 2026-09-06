@@ -153,3 +153,45 @@ export function arrangeTiles(
 
   return { tileWidth, tileHeight, gap, columns };
 }
+
+/**
+ * For rows of tiles that all share one height while their widths follow
+ * their videos' shapes (see the relaxedGrid setting): the tallest height at
+ * which the tiles, packed into rows in order with the given gap, still fit
+ * the bounds. Tiles are packed the way a wrapping flex row packs them, so
+ * the result matches what the browser lays out.
+ */
+export function fitRowHeight(
+  width: number,
+  minHeight: number,
+  gap: number,
+  aspectRatios: readonly number[],
+): number {
+  const maxWidth = width - 2 * gap;
+  const rowsAt = (h: number): number => {
+    let rows = 1;
+    let x = gap;
+    for (const ar of aspectRatios) {
+      const w = Math.min(h * ar, maxWidth);
+      if (x > gap && x + w + gap > width) {
+        rows++;
+        x = gap;
+      }
+      x += w + gap;
+    }
+    return rows;
+  };
+  const fits = (h: number): boolean => {
+    const rows = rowsAt(h);
+    return rows * h + (rows + 1) * gap <= minHeight;
+  };
+  // ponytail: bisection to the pixel, fine for a few dozen tiles
+  let lo = 0;
+  let hi = minHeight - 2 * gap;
+  while (hi - lo > 0.5) {
+    const mid = (lo + hi) / 2;
+    if (fits(mid)) lo = mid;
+    else hi = mid;
+  }
+  return lo;
+}

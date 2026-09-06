@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { afterEach, expect, test, vi } from "vitest";
+import { expect, test, vi } from "vitest";
 import { render } from "@testing-library/react";
 import { type FC } from "react";
 
@@ -13,45 +13,36 @@ import { TileGrid } from "./TileGrid";
 import { type SlotProps } from "./Grid";
 import { GridTileViewModel, type GridTileMedia } from "../state/TileViewModel";
 import { constant } from "../state/Behavior";
-import { relaxedGrid } from "../settings/settings";
 
-vi.mock("./Grid", () => ({ useUpdateLayout: () => {} }));
+vi.mock("./Grid", () => ({}));
 
 const Slot: FC<SlotProps<unknown>> = ({ id, style }) => (
   <div data-testid={id} style={style} />
 );
 
-const portrait = new GridTileViewModel(
+const tile = new GridTileViewModel(
   constant({
     type: "user",
-    videoEnabled$: constant(true),
-    videoAspectRatio$: constant(0.5),
     moderation$: constant({ pinned: false }),
   } as Partial<GridTileMedia> as GridTileMedia),
 );
 
-afterEach(() => relaxedGrid.setValue(false));
-
 test.each([
-  ["lines tiles up in columns", false, ""],
-  [
-    "packs rows when relaxed",
-    true,
-    "min(var(--width), calc(var(--height) * 0.5))",
-  ],
-])("%s", (_, relaxed, width) => {
-  relaxedGrid.setValue(relaxed);
+  ["sizes slots by the grid", undefined, ""],
+  ["sizes slots by the layout's widths", [123], "123px"],
+])("%s", (_, widths, width) => {
   const { getByTestId } = render(
     <TileGrid
-      grid={[portrait]}
+      grid={[tile]}
       enlarged={[false]}
       gap={20}
       tileWidth={300}
       tileHeight={200}
       columns={1}
+      widths={widths}
       Slot={Slot}
       onDrag={() => () => {}}
     />,
   );
-  expect(getByTestId(portrait.id).style.width).toBe(width);
+  expect(getByTestId(tile.id).style.width).toBe(width);
 });

@@ -10,12 +10,18 @@ import classNames from "classnames";
 
 import { type GridLayout as GridLayoutModel } from "../state/layout-types.ts";
 import styles from "./GridLayout.module.css";
-import { type CallLayout, arrangeTiles } from "./CallLayout";
+import { type CallLayout, arrangeTiles, fitRowHeight } from "./CallLayout";
 import { type DragCallback, useUpdateLayout, useVisibleTiles } from "./Grid";
 import { useBehavior } from "../useBehavior";
 import { useReorderTiles } from "./reorder.ts";
 import { droppedPosition, floatingClass, floatingStyle } from "./floating.ts";
-import { TileGrid, cellCount, useEnlargedTiles } from "./TileGrid";
+import {
+  TileGrid,
+  cellCount,
+  useEnlargedTiles,
+  useVideoAspectRatios,
+} from "./TileGrid";
+import { relaxedGrid, useSetting } from "../settings/settings";
 
 /**
  * An implementation of the "grid" layout, in which all participants are shown
@@ -66,6 +72,29 @@ export const makeGridLayout: CallLayout<GridLayoutModel> = ({
       () => arrangeTiles(width, minHeight, cells),
       [width, minHeight, cells],
     );
+    // Rows of one height, each tile as wide as its video's shape makes it,
+    // rather than columns. Only the flexed grid can pack rows like that; the
+    // cell grid used around enlarged tiles has fixed tracks.
+    const [relaxed] = useSetting(relaxedGrid);
+    const aspectRatios = useVideoAspectRatios(model.grid);
+    const rows = useMemo(() => {
+      if (!relaxed || enlarged.some(Boolean)) return null;
+      const ratios = aspectRatios.map((ar) => ar || tileWidth / tileHeight);
+      const height = fitRowHeight(width, minHeight, gap, ratios);
+      return {
+        height,
+        widths: ratios.map((ar) => Math.min(height * ar, width - 2 * gap)),
+      };
+    }, [
+      relaxed,
+      enlarged,
+      aspectRatios,
+      width,
+      minHeight,
+      gap,
+      tileWidth,
+      tileHeight,
+    ]);
 
     return (
       <TileGrid
@@ -76,7 +105,8 @@ export const makeGridLayout: CallLayout<GridLayoutModel> = ({
         enlarged={enlarged}
         gap={gap}
         tileWidth={tileWidth}
-        tileHeight={tileHeight}
+        tileHeight={rows?.height ?? tileHeight}
+        widths={rows?.widths}
         columns={columns}
         Slot={Slot}
         onDrag={onDragTile}

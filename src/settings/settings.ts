@@ -100,8 +100,9 @@ export const debugTileLayout = new Setting("debug-tile-layout", false);
 export const hugVideo = new Setting<boolean>("hug-video", false);
 
 /**
- * With tiles of differing widths (see hugVideo), pack each row of the grid
- * tightly and centre it, rather than lining the tiles up in columns.
+ * With tiles of differing shapes (see hugVideo), lay the grid out as rows of
+ * one height, each tile as wide as its video makes it, packed and centred,
+ * rather than lining the tiles up in columns.
  */
 export const relaxedGrid = new Setting<boolean>("relaxed-grid", false);
 
