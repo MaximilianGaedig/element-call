@@ -7,10 +7,16 @@ Please see LICENSE in the repository root for full details.
 
 import { type FC, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, Text } from "@vector-im/compound-web";
+import {
+  Button,
+  CheckboxControl,
+  InlineField,
+  Label,
+  Root as Form,
+  Text,
+} from "@vector-im/compound-web";
 
 import { Modal } from "../Modal";
-import { FieldRow, InputField } from "../input/Input";
 import { type RecordingOptions } from "../state/Recording";
 import styles from "./RecordModal.module.css";
 
@@ -35,15 +41,19 @@ export const RecordModal: FC<Props> = ({ open, onDismiss, onStart }) => {
       onDismiss={onDismiss}
     >
       <Text>{t("recording.confirm_body")}</Text>
-      <FieldRow>
-        <InputField
-          id="recordAudioOnly"
-          type="checkbox"
-          label={t("recording.audio_only")}
-          checked={audioOnly}
-          onChange={(e) => setAudioOnly(e.target.checked)}
-        />
-      </FieldRow>
+      <Form>
+        <InlineField
+          name="audioOnly"
+          control={
+            <CheckboxControl
+              checked={audioOnly}
+              onChange={(e) => setAudioOnly(e.target.checked)}
+            />
+          }
+        >
+          <Label>{t("recording.audio_only")}</Label>
+        </InlineField>
+      </Form>
       <div className={styles.buttons}>
         <Button kind="secondary" onClick={onDismiss}>
           {t("action.cancel")}
