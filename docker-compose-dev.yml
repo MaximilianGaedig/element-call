@@ -112,15 +112,17 @@ services:
       - ecbackend
 
   # Records calls and bridges SIP callers in; see backend/dev_sipbridge.toml.
-  # Built from a checkout of matrixrtc-sip-bridge and its patched
-  # matrix-rust-sdk next to this repo:
+  # Pulled from ghcr.io (a private package: `docker login ghcr.io` with a
+  # token that can read packages first); the tag is the bridge commit.
+  # Start it with `docker compose -f docker-compose-dev.yml --profile sipbridge up`.
+  # To run local bridge changes instead, `up --build` builds it from a
+  # checkout of matrixrtc-sip-bridge and its patched matrix-rust-sdk next to
+  # this repo:
   #   git clone https://github.com/element-hq/matrixrtc-sip-bridge ../matrixrtc-sip-bridge
   #   git clone -b matthew/as https://github.com/element-hq/matrix-rust-sdk-private ../matrix-rust-sdk-private
-  # The build pulls the bridge's WPE WebKit from ghcr.io (a private package:
-  # `docker login ghcr.io` with a token that can read packages first).
-  # Start it with `docker compose -f docker-compose-dev.yml --profile sipbridge up`.
   sipbridge:
     profiles: [sipbridge]
+    image: ghcr.io/element-hq/matrixrtc-sip-bridge:6a31dd6
     build:
       context: ../matrixrtc-sip-bridge
       additional_contexts:

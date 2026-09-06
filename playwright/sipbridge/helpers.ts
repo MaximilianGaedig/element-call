@@ -138,7 +138,9 @@ const measurePixels = (source: HTMLImageElement | HTMLVideoElement): Pixels => {
   for (let i = 0; i < data.length; i += 4) {
     const [r, g, b] = [data[i], data[i + 1], data[i + 2]];
     if (r > 180 && g > 70 && g < 180 && b < 90) orange++;
-    if (g > 90 && r < g - 60 && b < g - 60) green++;
+    // The fake camera is a bright green shape moving over dark green, so
+    // count both shades, by ratio rather than brightness
+    if (g > 50 && r < g * 0.6 && b < g * 0.6) green++;
   }
   return { orange: orange / (w * h), green: green / (w * h) };
 };

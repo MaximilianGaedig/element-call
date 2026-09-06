@@ -235,11 +235,15 @@ including federation:
 
 - Optionally (`--profile sipbridge`) a [matrixrtc-sip-bridge](https://github.com/element-hq/matrixrtc-sip-bridge)
   as `@sipbridge:synapse.m.localhost`, which records calls from the record
-  button and bridges SIP callers in as an application service. It is built
-  from a checkout next to this repo; see the comments in
-  [docker-compose-dev.yml](./docker-compose-dev.yml). Its build pulls the
-  bridge's WPE WebKit image from GitHub's registry, a private package, so
-  `docker login ghcr.io` with a token that can read packages first.
+  button and bridges SIP callers in as an application service. It is pulled
+  from `ghcr.io/element-hq/matrixrtc-sip-bridge` (tagged by bridge commit,
+  built for arm64 and amd64), a private package, so `docker login ghcr.io`
+  with a token that can read packages first; to run local bridge changes,
+  build it from a checkout next to this repo as described in the comments
+  in [docker-compose-dev.yml](./docker-compose-dev.yml). That build pulls
+  the bridge's WPE WebKit from `ghcr.io/element-hq/matrixrtc-wpe-webkit`
+  (tagged by WebKit commit), another private package, rather than building
+  WebKit itself.
 
 These use a test 'secret' published in this repository, so this must be used
 only for local development and **_never be exposed to the public Internet._**
