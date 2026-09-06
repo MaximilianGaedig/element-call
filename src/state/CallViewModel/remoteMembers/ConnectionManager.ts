@@ -126,9 +126,18 @@ export function createConnectionManager$({
   const localAndRemoteTransports$ = computed<
     (LivekitTransportConfig | LocalTransportWithSFUConfig)[]
   >(() => {
-    // Combine local and remote transports into one transport array
+    // Combine local and remote transports into one transport array. Until
+    // the local transport is known, hold the remote ones back: a remote at
+    // the same URL would otherwise get a subscribe-only connection (keyed
+    // without an SFU config) that is torn down and replaced the moment the
+    // local transport resolves, racing the fresh connection with a
+    // different LiveKit identity for the same user.
     const localTransport = localTransport$.value;
-    const localTransportAsArray = localTransport ? [localTransport] : [];
+    if (localTransport === null) {
+      logger.debug("local transport not yet known; deferring remote ones");
+      return [];
+    }
+    const localTransportAsArray = [localTransport];
     const dedupedRemote = removeDuplicateTransports(remoteTransports$.value);
     const remoteWithoutLocal = dedupedRemote.filter(
       (transport) =>
