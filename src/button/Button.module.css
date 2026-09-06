@@ -42,6 +42,11 @@ Please see LICENSE in the repository root for full details.
   animation: pop 0.5s ease-out;
 }
 
+/* Stopped: the square swells, then pops back into a circle as it shrinks */
+.stopped .recordShape {
+  animation: unpop 0.5s ease-out;
+}
+
 /* Waiting for the recorder to confirm: the circle breathes */
 .pending .recordShape {
   animation: breathe 1s ease-in-out infinite;
@@ -68,9 +73,25 @@ Please see LICENSE in the repository root for full details.
   }
 }
 
+@keyframes unpop {
+  40% {
+    transform: scale(1.5);
+    rx: 2;
+  }
+
+  41% {
+    rx: 6;
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .recordShape,
   .recording .recordShape,
+  .stopped .recordShape,
   .pending .recordShape {
     transition: none;
     animation: none;

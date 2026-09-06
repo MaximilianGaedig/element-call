@@ -30,10 +30,31 @@ Please see LICENSE in the repository root for full details.
   z-index: calc(var(--call-view-header-footer-layer) + 1);
 }
 
-/* Until the recorder confirms that it's recording */
+/* Until the recorder confirms that it's recording, the light flashes on and
+   off from dark like a bulb, at the record button's pace */
 .pending {
-  background: var(--cpd-color-alpha-gray-1200);
-  box-shadow: none;
+  animation: flash 1s ease-in-out infinite;
+}
+
+@keyframes flash {
+  0%,
+  100% {
+    background: rgb(64 64 64);
+    box-shadow: none;
+  }
+
+  50% {
+    background: color(display-p3 1 0 0);
+    box-shadow: 0 0 12px 2px rgb(255 0 0 / 40%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pending {
+    animation: none;
+    background: rgb(64 64 64);
+    box-shadow: none;
+  }
 }
 
 .notice {

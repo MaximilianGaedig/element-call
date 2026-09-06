@@ -10,6 +10,7 @@ import {
   type FC,
   type ReactNode,
   type SVGAttributes,
+  useState,
 } from "react";
 import classNames from "classnames";
 import { useTranslation } from "react-i18next";
@@ -189,6 +190,14 @@ export const RecordButton: FC<RecordButtonProps> = ({
   ...props
 }) => {
   const { t } = useTranslation();
+  const active = recording && !pending;
+  // Remember a stop so the square can pop back into a circle
+  const [wasActive, setWasActive] = useState(active);
+  const [stopped, setStopped] = useState(false);
+  if (active !== wasActive) {
+    setWasActive(active);
+    setStopped(!active);
+  }
   const label = pending
     ? t("recording.starting_button_label")
     : recording
@@ -204,7 +213,8 @@ export const RecordButton: FC<RecordButtonProps> = ({
         aria-checked={recording}
         aria-busy={pending}
         className={classNames(className, {
-          [styles.recording]: recording && !pending,
+          [styles.recording]: active,
+          [styles.stopped]: stopped && !recording,
           [styles.pending]: pending,
         })}
         {...props}
