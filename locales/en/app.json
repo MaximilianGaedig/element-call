@@ -4,6 +4,7 @@
   },
   "action": {
     "blur_background": "Blur background",
+    "cancel": "Cancel",
     "close": "Close",
     "copy_link": "Copy link",
     "edit": "Edit",
@@ -193,7 +194,11 @@
   "recaptcha_ssla_caption": "This site is protected by ReCAPTCHA and the Google <2>Privacy Policy</2> and <6>Terms of Service</6> apply.<9></9>By clicking \"Register\", you agree to our <12>Software and Services License Agreement (SSLA)</12>",
   "recording": {
     "acknowledge": "Got it",
+    "audio_only": "Record audio only",
     "badge": "REC",
+    "confirm_body": "Everyone in the call will be told that you're recording it, and the recording will be posted to the room when it's done.",
+    "confirm_button": "Start recording",
+    "confirm_title": "Record this call?",
     "download": "Download",
     "failed": "Couldn't ask the recorder to record the call",
     "in_progress": "Call is being recorded by {{name}} ({{userId}})",

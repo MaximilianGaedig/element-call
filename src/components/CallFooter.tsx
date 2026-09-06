@@ -6,7 +6,7 @@ Please see LICENSE in the repository root for full details.
 */
 
 import { useTranslation } from "react-i18next";
-import { type FC, type JSX, type Ref, useMemo } from "react";
+import { type FC, type JSX, type Ref, useMemo, useState } from "react";
 import classNames from "classnames";
 
 import LogoMark from "../icons/LogoMark.svg?react";
@@ -25,6 +25,8 @@ import {
 } from "../button";
 import styles from "./CallFooter.module.css";
 import { MoreButton } from "./MoreButton";
+import { RecordModal } from "./RecordModal";
+import { type RecordingOptions } from "../state/Recording";
 import {
   MediaMuteAndSwitchButton,
   type MenuOptions,
@@ -62,7 +64,7 @@ export interface FooterActions {
   toggleBlur: (() => void) | undefined;
   toggleScreenSharing: (() => void) | undefined;
   /** Starts or stops recording; also controls if the record button is visible */
-  toggleRecording: (() => void) | undefined;
+  toggleRecording: ((options?: RecordingOptions) => void) | undefined;
   /** Also controls if the settings button is visible */
   openSettings: (() => void) | undefined;
   /** Set for moderators, who get a choice of settings from the button */
@@ -154,6 +156,18 @@ export const CallFooter: FC<FooterProps> = ({
   const recording = useBehavior(vm.recording$);
   const recordingPending = useBehavior(vm.recordingPending$);
   const toggleRecording = useBehavior(vm.toggleRecording$);
+  // Starting a recording warns the whole room, so it's confirmed first
+  const [recordModalOpen, setRecordModalOpen] = useState(false);
+  const onRecordClick = useMemo(
+    () =>
+      toggleRecording === undefined
+        ? undefined
+        : (): void => {
+            if (recording) toggleRecording();
+            else setRecordModalOpen(true);
+          },
+    [toggleRecording, recording],
+  );
   const reactionIdentifier = useBehavior(vm.reactionIdentifier$);
   const reactionData = useBehavior(vm.reactionData$);
   const audioOutputSwitcher = useBehavior(vm.audioOutputSwitcher$);
@@ -254,7 +268,7 @@ export const CallFooter: FC<FooterProps> = ({
         className={styles.record}
         recording={recording}
         pending={recordingPending}
-        onClick={toggleRecording}
+        onClick={onRecordClick}
         data-testid="incall_record"
       />,
     );
@@ -299,7 +313,7 @@ export const CallFooter: FC<FooterProps> = ({
       sharingScreen={sharingScreen}
       toggleScreenSharing={toggleScreenSharing}
       recording={recording}
-      toggleRecording={toggleRecording}
+      toggleRecording={onRecordClick}
       reactions={
         reactionIdentifier && reactionData && showModals
           ? { identifier: reactionIdentifier, reactionData }
@@ -367,6 +381,16 @@ export const CallFooter: FC<FooterProps> = ({
       {!hideControls && <div className={styles.buttons}>{buttons}</div>}
       {!hideControls && layoutSwitchVm && (
         <LayoutSwitch vm={layoutSwitchVm} className={styles.layout} />
+      )}
+      {toggleRecording !== undefined && (
+        <RecordModal
+          open={recordModalOpen}
+          onDismiss={() => setRecordModalOpen(false)}
+          onStart={(options) => {
+            setRecordModalOpen(false);
+            toggleRecording(options);
+          }}
+        />
       )}
     </div>
   );

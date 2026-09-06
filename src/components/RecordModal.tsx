@@ -1,0 +1,62 @@
+/*
+Copyright 2026 Element Creations Ltd.
+
+SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+Please see LICENSE in the repository root for full details.
+*/
+
+import { type FC, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Button, Text } from "@vector-im/compound-web";
+
+import { Modal } from "../Modal";
+import { FieldRow, InputField } from "../input/Input";
+import { type RecordingOptions } from "../state/Recording";
+import styles from "./RecordModal.module.css";
+
+interface Props {
+  open: boolean;
+  onDismiss: () => void;
+  /** Called with how to record when the user confirms. */
+  onStart: (options: RecordingOptions) => void;
+}
+
+/**
+ * Asks the user to confirm that they want to record the call, since it
+ * warns everyone in it, and whether to record audio only.
+ */
+export const RecordModal: FC<Props> = ({ open, onDismiss, onStart }) => {
+  const { t } = useTranslation();
+  const [audioOnly, setAudioOnly] = useState(false);
+  return (
+    <Modal
+      title={t("recording.confirm_title")}
+      open={open}
+      onDismiss={onDismiss}
+    >
+      <Text>{t("recording.confirm_body")}</Text>
+      <FieldRow>
+        <InputField
+          id="recordAudioOnly"
+          type="checkbox"
+          label={t("recording.audio_only")}
+          checked={audioOnly}
+          onChange={(e) => setAudioOnly(e.target.checked)}
+        />
+      </FieldRow>
+      <div className={styles.buttons}>
+        <Button kind="secondary" onClick={onDismiss}>
+          {t("action.cancel")}
+        </Button>
+        <Button
+          kind="primary"
+          destructive
+          onClick={() => onStart({ audioOnly })}
+          data-testid="record_confirm"
+        >
+          {t("recording.confirm_button")}
+        </Button>
+      </div>
+    </Modal>
+  );
+};

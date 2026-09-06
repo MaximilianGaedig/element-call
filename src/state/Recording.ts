@@ -91,6 +91,12 @@ export interface MediaFile {
   encrypted?: EncryptedFile;
 }
 
+/** How to record, when starting. */
+export interface RecordingOptions {
+  /** Ask for the call's audio only, rather than a video composite. */
+  audioOnly?: boolean;
+}
+
 /** A finished recording the recorder has posted into the room. */
 export interface RecordingUpload {
   eventId: string;
@@ -120,7 +126,7 @@ export interface Recording {
    * Starts a recording, or stops the one in progress. Null if the local
    * user may not record or no recorder is configured.
    */
-  toggle$: Behavior<(() => Promise<void>) | null>;
+  toggle$: Behavior<((options?: RecordingOptions) => Promise<void>) | null>;
   /** Why the last attempt to start or stop failed, until cleared. */
   error$: State<Error | null>;
 }
@@ -315,7 +321,7 @@ export function createRecording(
     );
     return (): void => clearTimeout(timer);
   });
-  const toggle = async (): Promise<void> => {
+  const toggle = async (options?: RecordingOptions): Promise<void> => {
     try {
       if (recording$.peek() !== null) {
         await send({});
@@ -324,7 +330,10 @@ export function createRecording(
         await inviteBot(room, recorder!);
         if (encryptionSystem.kind === E2eeType.SHARED_KEY)
           await sendSharedKey(room, recorder!, encryptionSystem.secret);
-        await send({ recorder: recorder! });
+        await send({
+          recorder: recorder!,
+          ...(options?.audioOnly ? { media: "audio" } : {}),
+        });
       }
     } catch (e) {
       logger.error("Failed to start or stop recording", e);

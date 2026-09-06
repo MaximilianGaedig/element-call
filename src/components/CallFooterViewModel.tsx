@@ -15,6 +15,7 @@ import {
   debugTileLayout as debugTileLayoutSetting,
 } from "../settings/settings";
 import { type Behavior, computed, constant } from "../state/Behavior";
+import { type RecordingOptions } from "../state/Recording";
 import { type MuteStates } from "../state/MuteStates";
 import { createStaticViewModel, type ViewModel } from "../state/ViewModel";
 import { getUrlParams, HeaderStyle } from "../UrlParams";
@@ -166,7 +167,9 @@ export function createCallFooterViewModel(
     ),
     toggleRecording$: computed(() => {
       const toggle = callModel.recording.toggle$.value;
-      return toggle === null ? undefined : (): void => void toggle();
+      return toggle === null
+        ? undefined
+        : (options?: RecordingOptions): void => void toggle(options);
     }),
     audioOutputSwitcher$: computed(
       () => callModel.audioOutputSwitcher$.value ?? undefined,

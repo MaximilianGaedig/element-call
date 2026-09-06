@@ -156,6 +156,18 @@ describe("createRecording", () => {
     );
   });
 
+  it("asks for audio only when told to", async () => {
+    const { room, sendStateEvent } = setup("join");
+    const r = createRecording(testScope(), room, canRecord, slot, bot, none);
+    await r.toggle$.value!({ audioOnly: true });
+    expect(sendStateEvent).toHaveBeenLastCalledWith(
+      "!room",
+      RecordingEventType,
+      { recorder: bot, media: "audio" },
+      slot,
+    );
+  });
+
   it("reports a failed request instead of throwing", async () => {
     const { room, sendStateEvent } = setup();
     sendStateEvent.mockRejectedValueOnce(new Error("429"));

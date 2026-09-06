@@ -69,6 +69,7 @@ test("a SIP caller with video joins the call", async ({ page }) => {
     const started = Date.now();
     const record = page.getByTestId("incall_record");
     await record.click();
+    await page.getByTestId("record_confirm").click();
     await expect(record).toHaveAttribute("aria-checked", "true", {
       timeout: 60_000,
     });
@@ -127,6 +128,7 @@ test("the recording shows the call's video", async ({ page }) => {
   const record = page.getByTestId("incall_record");
   await expect(record).toHaveAttribute("aria-checked", "false");
   await record.click();
+  await page.getByTestId("record_confirm").click();
   await expect(record).toHaveAttribute("aria-checked", "true", {
     timeout: 15_000,
   });
