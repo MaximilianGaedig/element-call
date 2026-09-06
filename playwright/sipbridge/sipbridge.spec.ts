@@ -62,6 +62,48 @@ test("a SIP caller with video joins the call", async ({ page }) => {
         { timeout: 60_000, intervals: [5_000] },
       )
       .toBeGreaterThan(0.1);
+
+    // Recording meanwhile: the recording shows the caller too, and the
+    // caller keeps seeing the call. The bot's keys for everyone take a
+    // few seconds after it joins, and the thumbnail is the middle frame
+    const started = Date.now();
+    const record = page.getByTestId("incall_record");
+    await record.click();
+    await expect(record).toHaveAttribute("aria-checked", "true", {
+      timeout: 60_000,
+    });
+    // The recorder confirms once its widget has joined the call
+    await expect(record).toHaveAttribute("aria-busy", "false", {
+      timeout: 90_000,
+    });
+    await page.waitForTimeout(20_000);
+    await record.click();
+    await expect(record).toHaveAttribute("aria-checked", "false", {
+      timeout: 15_000,
+    });
+    const notice = page
+      .getByRole("status")
+      .filter({ hasText: "Recording ready" });
+    await expect(notice).toBeVisible({ timeout: 180_000 });
+    const thumbnail = notice.locator("img");
+    await expect(thumbnail).toBeVisible({ timeout: 30_000 });
+    await expect
+      .poll(
+        async () => {
+          const { green, orange } = await measure(thumbnail);
+          return Math.min(green, orange);
+        },
+        { timeout: 15_000 },
+      )
+      .toBeGreaterThan(0.1);
+    expect(recordingsSince(started)).toHaveLength(1);
+    await expect
+      .poll(
+        async () =>
+          (await measureImage(page, caller.snapshot(), "image/png")).green,
+        { timeout: 60_000, intervals: [5_000] },
+      )
+      .toBeGreaterThan(0.1);
   } finally {
     caller.hangup();
   }
@@ -70,8 +112,6 @@ test("a SIP caller with video joins the call", async ({ page }) => {
   });
 });
 
-// The bridge can't record while a SIP video caller is in the room (they
-// share its one WebKit video pipeline), so this records a call without one.
 test("the recording shows the call's video", async ({ page }) => {
   const name = `rec-${Date.now()}`;
   const started = Date.now();
