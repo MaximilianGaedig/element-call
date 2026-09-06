@@ -9,6 +9,8 @@ Please see LICENSE in the repository root for full details.
   block-size: 100%;
   inline-size: 100%;
   display: flex;
+  /* So a lone item can size itself against us in container units */
+  container-type: size;
   border-radius: var(--cpd-space-6x);
   box-shadow: var(--draggable-shadow);
   contain: strict;
@@ -57,6 +59,14 @@ Please see LICENSE in the repository root for full details.
   height: 100%;
   flex-basis: 100%;
   flex-shrink: 0;
+  /* A lone screen share takes the largest box of its video's shape that fits,
+  rather than letterboxing the video */
+  &[data-hug="true"]:only-child {
+    flex-basis: auto;
+    inline-size: min(100cqw, calc(100cqh * var(--video-aspect-ratio)));
+    block-size: min(100cqh, calc(100cqw / var(--video-aspect-ratio)));
+    margin: auto;
+  }
   /* The item rounds its own corners (and so does its video) rather than
   relying on the container to clip it, which composited video can escape */
   --media-view-border-radius: var(--cpd-space-6x);

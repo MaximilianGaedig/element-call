@@ -435,6 +435,7 @@ const ScreenShareTile: FC<ScreenShareTileProps> = ({
       onDoubleClick={onToggleEnlarged}
       video={video ?? undefined}
       videoFit="contain"
+      hugVideo
       userId={vm.userId}
       videoEnabled={videoEnabled}
       unencryptedWarning={unencryptedWarning}

@@ -6,7 +6,7 @@ Please see LICENSE in the repository root for full details.
 */
 
 import { type TrackReferenceOrPlaceholder } from "@livekit/components-core";
-import { animated } from "@react-spring/web";
+import { animated, type SpringValue, to } from "@react-spring/web";
 import {
   type FC,
   type ComponentProps,
@@ -48,6 +48,12 @@ interface Props extends ComponentProps<typeof animated.div> {
    * chooses a smart default based on the aspect ratios of the tile and video.
    */
   videoFit?: "cover" | "contain";
+  /**
+   * Shrink the tile to the video's own aspect ratio within the space it was
+   * given, rather than letterboxing the video inside it. For screen shares,
+   * whose shape is anyone's guess and can change at any moment.
+   */
+  hugVideo?: boolean;
   mirror: boolean;
   soundWaves?: boolean;
   userId: string;
@@ -99,6 +105,7 @@ export const MediaView: FC<Props> = ({
   targetHeight,
   video,
   videoFit,
+  hugVideo = false,
   mirror,
   soundWaves,
   userId,
@@ -139,6 +146,32 @@ export const MediaView: FC<Props> = ({
 
   const [videoAspectRatio, setOurVideoAspectRatio] = useState<number>(NaN);
   const tileAspectRatio = targetWidth / targetHeight;
+  const hug = hugVideo && video && videoEnabled && videoAspectRatio > 0;
+  // A tile placed by the grid has animated position and size, so hug by
+  // interpolating those; one filling a flex container hugs with CSS instead
+  let hugStyle: ComponentProps<typeof animated.div>["style"];
+  if (hug && style?.width !== undefined && style.height !== undefined) {
+    // The grid animates these as numbers
+    const {
+      x = 0,
+      y = 0,
+      width,
+      height,
+    } = style as {
+      x?: number | SpringValue<number>;
+      y?: number | SpringValue<number>;
+      width: number | SpringValue<number>;
+      height: number | SpringValue<number>;
+    };
+    const w = to([width, height], (w, h) => Math.min(w, h * videoAspectRatio));
+    const h = to([width, height], (w, h) => Math.min(h, w / videoAspectRatio));
+    hugStyle = {
+      width: w,
+      height: h,
+      x: to([x, width, w], (x, full, w) => x + (full - w) / 2),
+      y: to([y, height, h], (y, full, h) => y + (full - h) / 2),
+    };
+  }
 
   // Propagate video dimensions
   const setVideoAspectRatio = (ratio: number) => {
@@ -187,7 +220,16 @@ export const MediaView: FC<Props> = ({
       className={classNames(styles.media, className, {
         [styles.mirror]: mirror,
       })}
-      style={style}
+      // A container can shape a tile it sizes itself to the video (see
+      // --video-aspect-ratio); tiles the grid places are shaped above
+      data-hug={hug && hugStyle === undefined ? "true" : undefined}
+      style={
+        {
+          ...style,
+          ...hugStyle,
+          "--video-aspect-ratio": hug ? videoAspectRatio : undefined,
+        } as ComponentProps<typeof animated.div>["style"]
+      }
       ref={ref}
       data-testid="videoTile"
       data-video-enabled={video && videoEnabled}

@@ -250,6 +250,7 @@ const SpotlightScreenShareItem: FC<SpotlightScreenShareItemProps> = ({
   return (
     <MediaView
       videoFit="contain"
+      hugVideo
       mirror={false}
       primaryButton={buttons}
       {...props}
