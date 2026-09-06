@@ -134,11 +134,15 @@ test("the recording shows the call's video", async ({ page }) => {
     name: "This call is being recorded",
   });
   await expect(badge).toBeVisible();
-  // The recorder joins the call
+  await expect(badge).toHaveAttribute("aria-busy", "true");
+  // The recorder joins the call and confirms that it's recording
   await expect(page.getByTestId("videoTile")).toHaveCount(2, {
     timeout: 90_000,
   });
-  await page.waitForTimeout(20_000);
+  await expect(badge).toHaveAttribute("aria-busy", "false", {
+    timeout: 30_000,
+  });
+  await page.waitForTimeout(15_000);
 
   await record.click();
   await expect(record).toHaveAttribute("aria-checked", "false", {

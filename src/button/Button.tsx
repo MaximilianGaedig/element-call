@@ -176,10 +176,13 @@ interface RecordButtonProps extends ComponentPropsWithoutRef<"button"> {
   size?: "md" | "lg";
   /** Whether the call is being recorded, which fills the dot */
   recording: boolean;
+  /** Whether we're waiting for the recorder to confirm, which pulses the dot */
+  pending?: boolean;
 }
 
 export const RecordButton: FC<RecordButtonProps> = ({
   recording,
+  pending = false,
   className,
   ...props
 }) => {
@@ -195,7 +198,11 @@ export const RecordButton: FC<RecordButtonProps> = ({
         kind="secondary"
         role="switch"
         aria-checked={recording}
-        className={classNames(className, { [styles.recording]: recording })}
+        aria-busy={pending}
+        className={classNames(className, {
+          [styles.recording]: recording && !pending,
+          [styles.pending]: pending,
+        })}
         {...props}
       />
     </Tooltip>

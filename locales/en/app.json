@@ -198,6 +198,8 @@
     "in_progress": "This call is being recorded",
     "notice": "{{name}} is recording this call",
     "ready": "Recording ready",
+    "recorder_failed": "The recorder couldn't record the call: {{reason}}",
+    "recorder_timeout": "The recorder didn't start recording",
     "start_button_label": "Record call",
     "stop_button_label": "Stop recording"
   },

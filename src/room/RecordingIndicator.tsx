@@ -9,6 +9,7 @@ import { type FC, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { type Room } from "matrix-js-sdk";
 import { Button, Text } from "@vector-im/compound-web";
+import classNames from "classnames";
 
 import { type CallViewModel } from "../state/CallViewModel/CallViewModel";
 import { useBehavior } from "../useBehavior";
@@ -38,9 +39,12 @@ export const RecordingIndicator: FC<Props> = ({ vm, room, localUserId }) => {
   return (
     <>
       <div
-        className={styles.badge}
+        className={classNames(styles.badge, {
+          [styles.pending]: !recording.started,
+        })}
         role="status"
         aria-label={t("recording.in_progress")}
+        aria-busy={!recording.started}
       >
         {t("recording.badge")}
       </div>

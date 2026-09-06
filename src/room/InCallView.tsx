@@ -64,6 +64,7 @@ import { ReactionsOverlay } from "./ReactionsOverlay";
 import { CallEventAudioRenderer } from "./CallEventAudioRenderer";
 import { RecordingIndicator } from "./RecordingIndicator";
 import { RecordingReadyNotice } from "./RecordingReadyNotice";
+import { RecorderError } from "../state/Recording.ts";
 import { matrixRTCMode as matrixRTCModeSetting } from "../settings/settings";
 import { ReactionsReader } from "../reactions/ReactionsReader";
 import { LivekitRoomAudioRenderer } from "../livekit/MatrixAudioRenderer.tsx";
@@ -666,7 +667,11 @@ export const InCallView: FC<InCallViewProps> = ({
         onDismiss={onDismissRecordingError}
         autoDismiss={5000}
       >
-        {t("recording.failed")}
+        {recordingError instanceof RecorderError
+          ? recordingError.reason === undefined
+            ? t("recording.recorder_timeout")
+            : t("recording.recorder_failed", { reason: recordingError.reason })
+          : t("recording.failed")}
       </Toast>
       {audioParticipants.map(({ livekitRoom, url, participants }) => (
         <LivekitRoomAudioRenderer

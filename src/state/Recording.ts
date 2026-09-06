@@ -9,6 +9,7 @@ import {
   EventType,
   type MatrixEvent,
   MatrixEventEvent,
+  RelationType,
   type Room as MatrixRoom,
   RoomEvent,
   RoomStateEvent,
@@ -32,6 +33,9 @@ import { type Scope } from "./Scope.ts";
 // recorder bot to record the call, and by which everyone learns that it's
 // being recorded. See docs/call_recording_msc.md.
 
+/** The recorder's answer to a request, related to it by reference. */
+export const RecordingStatusEventType = "org.matrix.rtc.recording.status";
+
 export type RecordingMedia = "audio" | "video";
 export type RecordingStreams = "composite" | "separate" | "both";
 
@@ -51,7 +55,19 @@ export interface RecordingState {
   streams: RecordingStreams;
   /** The event that started it, for telling recordings apart. */
   eventId: string;
+  /** Whether the recorder has confirmed that it's recording. */
+  started: boolean;
 }
+
+/** The recorder said it couldn't record, or didn't answer in time. */
+export class RecorderError extends Error {
+  public constructor(public readonly reason?: string) {
+    super(reason ?? "The recorder didn't confirm the recording");
+  }
+}
+
+/** How long whoever asked waits for the recorder to confirm before giving up. */
+export const CONFIRM_TIMEOUT_MS = 30_000;
 
 /** Where a piece of media is, and how to decrypt it if it's encrypted */
 export interface MediaFile {
@@ -134,6 +150,8 @@ export function createRecording(
     ],
     (room) => room.currentState.getStateEvents(RecordingEventType, slotId),
   );
+  // Requests the recorder has confirmed, by event ID
+  const started$ = state<Set<string>>(new Set());
   const recording$ = computed<RecordingState | null>(() => {
     const event = event$.value;
     const content = event?.getContent() as RecordingEventContent | undefined;
@@ -144,9 +162,13 @@ export function createRecording(
           media: content.media ?? "video",
           streams: content.streams ?? "composite",
           eventId: event.getId()!,
+          started: started$.value.has(event.getId()!),
         }
       : null;
   });
+  // The record button shows the state event, so a failed request would
+  // otherwise just leave it where it was
+  const error$ = state<Error | null>(null);
 
   // The recorder posts finished recordings into the room as media
   // messages; in the standalone app there's no timeline to see them in, so
@@ -172,6 +194,22 @@ export function createRecording(
       },
     ];
   };
+  const onStatus = (event: MatrixEvent): void => {
+    const relation = event.getRelation();
+    const request = relation?.event_id;
+    if (relation?.rel_type !== RelationType.Reference || request === undefined)
+      return;
+    const { status, reason } = event.getContent();
+    if (status === "started") {
+      started$.value = new Set(started$.value).add(request);
+    } else if (status === "failed" && request === recording$.peek()?.eventId) {
+      giveUp(new RecorderError(reason));
+    }
+  };
+  const onRecorderEvent = (event: MatrixEvent): void => {
+    if (event.getType() === RecordingStatusEventType) onStatus(event);
+    else onUpload(event);
+  };
   const onTimeline = (
     event: MatrixEvent,
     _room: unknown,
@@ -180,8 +218,8 @@ export function createRecording(
     if (toStart || event.getSender() !== recorder) return;
     // In encrypted rooms the event arrives before it's decrypted
     if (event.getType() === EventType.RoomMessageEncrypted)
-      event.once(MatrixEventEvent.Decrypted, onUpload);
-    else onUpload(event);
+      event.once(MatrixEventEvent.Decrypted, onRecorderEvent);
+    else onRecorderEvent(event);
   };
   room.on(RoomEvent.Timeline, onTimeline);
   scope.onEnd(() => room.off(RoomEvent.Timeline, onTimeline));
@@ -194,9 +232,27 @@ export function createRecording(
       slotId,
     );
   };
-  // The record button shows the state event, so a failed request would
-  // otherwise just leave it where it was
-  const error$ = state<Error | null>(null);
+  // Nothing is being recorded, so whoever asked clears the request (the
+  // recorder should too, but it may be the one that's gone)
+  const giveUp = (error: RecorderError): void => {
+    error$.value = error;
+    if (recording$.peek()?.by === room.client.getUserId())
+      send({}).catch((e) => logger.error("Failed to clear recording", e));
+  };
+  scope.effect(() => {
+    const current = recording$.value;
+    if (
+      current === null ||
+      current.started ||
+      current.by !== room.client.getUserId()
+    )
+      return;
+    const timer = setTimeout(
+      () => giveUp(new RecorderError()),
+      CONFIRM_TIMEOUT_MS,
+    );
+    return (): void => clearTimeout(timer);
+  });
   const toggle = async (): Promise<void> => {
     try {
       if (recording$.peek() !== null) {

@@ -13,7 +13,13 @@ import {
   RoomStateEvent,
 } from "matrix-js-sdk";
 
-import { createRecording, type RecordingEventContent } from "./Recording.ts";
+import {
+  CONFIRM_TIMEOUT_MS,
+  createRecording,
+  RecorderError,
+  type RecordingEventContent,
+  RecordingStatusEventType,
+} from "./Recording.ts";
 import { constant } from "./Behavior.ts";
 import { type FloorControl, RecordingEventType } from "./FloorControl.ts";
 import { mockEmitter, testScope } from "../utils/test.ts";
@@ -43,7 +49,7 @@ function setup(botMembership?: string): {
   const room = {
     ...mockEmitter(),
     roomId: "!room",
-    client: { sendStateEvent },
+    client: { sendStateEvent, getUserId: () => "@alice:e" },
     currentState: {
       getStateEvents: (type: string, key: string) =>
         type === RecordingEventType && key === slot ? current : null,
@@ -77,6 +83,7 @@ describe("createRecording", () => {
       media: "audio",
       streams: "composite",
       eventId: "$1",
+      started: false,
     });
     set(event("@alice:e", {}, "$2"));
     expect(r.recording$.value).toBeNull();
@@ -137,6 +144,65 @@ describe("createRecording", () => {
     expect(
       createRecording(testScope(), room, cannot, slot, bot).toggle$.value,
     ).toBeNull();
+  });
+
+  it("waits for the recorder to confirm, and reports its failures", () => {
+    const { room, set, sendStateEvent } = setup();
+    const r = createRecording(testScope(), room, canRecord, slot, bot);
+    set(event("@alice:e", { recorder: bot }, "$req"));
+    expect(r.recording$.value?.started).toBe(false);
+    const status = (content: object): void =>
+      void room.emit(
+        RoomEvent.Timeline,
+        {
+          getSender: () => bot,
+          getType: () => RecordingStatusEventType,
+          getContent: () => content,
+          getRelation: () => ({ rel_type: "m.reference", event_id: "$req" }),
+          getId: () => "$status",
+        } as unknown as MatrixEvent,
+        room,
+        false,
+        false,
+        null!,
+      );
+    status({ status: "failed", reason: "no call" });
+    expect(r.error$.value).toBeInstanceOf(RecorderError);
+    expect(r.error$.value?.message).toBe("no call");
+    // We asked, so we clear the request
+    expect(sendStateEvent).toHaveBeenCalledWith(
+      "!room",
+      RecordingEventType,
+      {},
+      slot,
+    );
+    status({ status: "started" });
+    expect(r.recording$.value?.started).toBe(true);
+  });
+
+  it("gives up if the recorder doesn't confirm in time", () => {
+    vi.useFakeTimers();
+    try {
+      const { room, set, sendStateEvent } = setup();
+      const r = createRecording(testScope(), room, canRecord, slot, bot);
+      // Somebody else's request isn't ours to give up on
+      set(event("@bob:e", { recorder: bot }, "$theirs"));
+      vi.advanceTimersByTime(CONFIRM_TIMEOUT_MS);
+      expect(sendStateEvent).not.toHaveBeenCalled();
+      set(event("@alice:e", { recorder: bot }, "$ours"));
+      vi.advanceTimersByTime(CONFIRM_TIMEOUT_MS - 1);
+      expect(sendStateEvent).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(1);
+      expect(r.error$.value).toBeInstanceOf(RecorderError);
+      expect(sendStateEvent).toHaveBeenCalledWith(
+        "!room",
+        RecordingEventType,
+        {},
+        slot,
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("collects recordings the recorder posts", () => {

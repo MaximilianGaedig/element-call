@@ -39,8 +39,22 @@ Please see LICENSE in the repository root for full details.
   r: 9;
 }
 
+/* Waiting for the recorder to confirm: the dot breathes at half size */
+.pending .recordDot {
+  r: 6;
+  animation: breathe 1.6s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  50% {
+    opacity: 0.3;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .recordDot {
+  .recordDot,
+  .pending .recordDot {
     transition: none;
+    animation: none;
   }
 }

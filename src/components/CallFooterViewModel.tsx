@@ -161,6 +161,9 @@ export function createCallFooterViewModel(
     sharingScreen$: callModel.sharingScreen$,
     toggleScreenSharing$: constant(callModel.toggleScreenSharing ?? undefined),
     recording$: computed(() => callModel.recording.recording$.value !== null),
+    recordingPending$: computed(
+      () => callModel.recording.recording$.value?.started === false,
+    ),
     toggleRecording$: computed(() => {
       const toggle = callModel.recording.toggle$.value;
       return toggle === null ? undefined : (): void => void toggle();
@@ -222,6 +225,7 @@ export function createLobbyFooterViewModel(
       toggleScreenSharing: undefined,
       toggleRecording: undefined,
       recording: false,
+      recordingPending: false,
       audioEnabled: undefined,
       audioBusy: false,
       audioMutedByModerator: false,

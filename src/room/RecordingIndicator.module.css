@@ -24,6 +24,12 @@ Please see LICENSE in the repository root for full details.
   animation: pulse 2s ease-in-out infinite;
 }
 
+/* Until the recorder confirms that it's recording */
+.pending {
+  background: var(--cpd-color-alpha-gray-1200);
+  animation: none;
+}
+
 @keyframes pulse {
   50% {
     opacity: 0.6;

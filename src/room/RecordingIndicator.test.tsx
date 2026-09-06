@@ -20,13 +20,14 @@ const room = {
     id === "@alice:e" ? { rawDisplayName: "Alice" } : null,
 } as unknown as Room;
 
-function setup(by: string, localUserId: string): void {
+function setup(by: string, localUserId: string, started = true): void {
   const recording$ = state<RecordingState | null>({
     by,
     recorder: "@bot:e",
     media: "video",
     streams: "composite",
     eventId: "$1",
+    started,
   });
   const vm = { recording: { recording$ } } as unknown as CallViewModel;
   render(<RecordingIndicator vm={vm} room={room} localUserId={localUserId} />);
@@ -46,4 +47,9 @@ test("gives the person recording only the badge", () => {
   setup("@alice:e", "@alice:e");
   expect(screen.queryByRole("alert")).toBeNull();
   expect(screen.getByRole("status")).toBeInTheDocument();
+});
+
+test("marks the badge busy until the recorder confirms", () => {
+  setup("@alice:e", "@alice:e", false);
+  expect(screen.getByRole("status")).toHaveAttribute("aria-busy", "true");
 });

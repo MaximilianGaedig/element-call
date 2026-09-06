@@ -59,16 +59,35 @@ senders below it, which the auth rules already prevent for state events.
 
 On seeing the event name it as `recorder`, the recorder joins the slot's
 call (as a member, so that it receives media keys like anyone else) and
-starts recording. It should acknowledge with an `m.notice` if it can't, for
-example because the requested `media` or `streams` are not supported, so
-that the user finds out.
+starts recording. Joining takes a while, and can fail, so it tells the room
+when it is actually recording with an `org.matrix.rtc.recording.status`
+event that references the request:
+
+```json
+{
+  "type": "org.matrix.rtc.recording.status",
+  "content": {
+    "m.relates_to": { "rel_type": "m.reference", "event_id": "$request" },
+    "status": "started"
+  }
+}
+```
+
+- `status`: `started` once media is being recorded, or `failed` if it can't
+  record, for example because the requested `media` or `streams` are not
+  supported. A `failed` status should carry a human-readable `reason`, and
+  the recorder should clear the state event, since nothing is being
+  recorded. It may also send an `m.notice` so that the reason is seen in
+  the timeline.
 
 When the event is cleared, or the call ends, it stops recording and posts
 the result into the room: the file as an `m.video` or `m.audio` message, or
-a link to it as `m.text`, so that the recording is where the call was.
-Where the recorder stopped on its own (the call ended, or it failed), it
-should clear the event itself so that clients don't go on warning about a
-recording that is over; it therefore needs the power to send it.
+a link to it as `m.text`, so that the recording is where the call was. That
+message references the request the same way, so that clients can tell
+which recording it is. Where the recorder stopped on its own (the call
+ended, or it failed), it should clear the event itself so that clients
+don't go on warning about a recording that is over; it therefore needs the
+power to send it.
 
 A recorder should not record anything it can't tell the room about: if it
 can't send the events, it shouldn't record.
@@ -81,12 +100,18 @@ state for its slot to know whether the call is being recorded. A
 cleared. Clients must make this obvious for as long as it lasts: a
 persistent indicator, a notice naming who is recording that stays until the
 user has acknowledged it, and an audible alert when the recording starts and
-stops, so that nobody is recorded without knowing.
+stops, so that nobody is recorded without knowing. The indicator should
+show whether the recorder has confirmed with a `started` status yet, since
+until then nothing is being recorded, and a `failed` status should be shown
+to the user who asked.
 
 A client offering a record button invites the recorder into the room if it
 isn't a member already, then sets the event; pressing it again clears it.
 Which recorder to invite is a deployment matter (Element Call reads it from
-its config).
+its config). If the recorder answers `failed`, or doesn't answer within a
+reasonable time (Element Call waits 30 seconds), the client that asked
+should clear the event itself, since nothing is being recorded and the
+recorder may not be there to clear it.
 
 ## Potential issues
 
@@ -94,6 +119,12 @@ Making the request a state event means the power to send state is the
 floor for who can record, unless the room lowers the event's level
 explicitly; a room that wants everyone to be able to record has to set it.
 It also means a recorder that stops on its own needs that power to say so.
+
+The status and result events reference a state event, which relations
+aren't usually used with; clients that render references (reply previews,
+say) may show nothing useful for the target. A reference rather than a
+reply was chosen for that reason: replies carry fallbacks meant for
+messages.
 
 An earlier draft used a timeline event with an `m.text` fallback of
 `!record start`, so that chat-driven bots kept working; that was dropped in

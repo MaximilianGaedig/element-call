@@ -97,6 +97,8 @@ export interface FooterState {
 
   sharingScreen: boolean;
   recording: boolean;
+  /** Whether the recorder has yet to confirm that it's recording */
+  recordingPending: boolean;
 
   /** Also controls if the audio output button is visible */
   audioOutputSwitcher: AudioOutputSwitcher | undefined;
@@ -151,6 +153,7 @@ export const CallFooter: FC<FooterProps> = ({
   const sharingScreen = useBehavior(vm.sharingScreen$);
   const toggleScreenSharing = useBehavior(vm.toggleScreenSharing$);
   const recording = useBehavior(vm.recording$);
+  const recordingPending = useBehavior(vm.recordingPending$);
   const toggleRecording = useBehavior(vm.toggleRecording$);
   const reactionIdentifier = useBehavior(vm.reactionIdentifier$);
   const reactionData = useBehavior(vm.reactionData$);
@@ -273,6 +276,7 @@ export const CallFooter: FC<FooterProps> = ({
         key="record"
         className={styles.record}
         recording={recording}
+        pending={recordingPending}
         onClick={toggleRecording}
         data-testid="incall_record"
       />,

@@ -125,6 +125,7 @@ export const Default: Story = {
     toggleScreenSharing: fn(),
     toggleRecording: fn(),
     recording: false,
+    recordingPending: false,
     toggleBlur: fn(),
     videoBlurEnabled: true,
     hangup: fn(),
