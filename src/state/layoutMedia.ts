@@ -119,6 +119,12 @@ export interface LayoutMediaInputs {
   grid: OrderedMember<UserMediaViewModel>[];
   pip: UserMediaViewModel | undefined;
   desktop: boolean;
+  /**
+   * Set when the embedder has hidden the controls (showControls=false), so the
+   * view is being captured or displayed rather than used: the bridge recording
+   * a call, or rendering it for a SIP caller.
+   */
+  kiosk: boolean;
 }
 
 /**
@@ -134,8 +140,18 @@ export function computeLayoutMedia({
   grid,
   pip,
   desktop,
+  kiosk,
 }: LayoutMediaInputs): LayoutMedia {
   const hasScreenShare = spotlight.some((vm) => vm.type === "screen share");
+  // A kiosk showing a single person fills the window with them, rather than
+  // framing them as a grid of one
+  if (kiosk && !hasScreenShare && grid.length === 1)
+    return {
+      type: "spotlight-expanded",
+      edgeToEdge: true,
+      spotlight: [grid[0].media],
+      pip: undefined,
+    };
   // In the grid layout, screen shares are tiles like any other (enlarged, see
   // GridTileViewModel) rather than a small floating spotlight. They're ordered
   // as presenting members, which the grid ordering keeps on screen ahead of

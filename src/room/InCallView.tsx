@@ -364,8 +364,9 @@ export const InCallView: FC<InCallViewProps> = ({
     }
     case HeaderStyle.None:
       // Cosmetic header to fill out space while still affecting the bounds of
-      // the grid
-      header = showHeader && (
+      // the grid. A kiosk (showControls=false) has no footer either, so it
+      // goes without to keep the grid centred.
+      header = showHeader && showControls && (
         <div
           className={classNames(styles.header, styles.filler)}
           ref={headerRef}

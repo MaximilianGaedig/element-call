@@ -142,7 +142,7 @@ export function arrangeTiles(
   }
 
   let tileWidth = (width - (columns + 1) * gap) / columns;
-  let tileHeight = (minHeight - (rows - 1) * gap) / rows;
+  let tileHeight = (minHeight - (rows + 1) * gap) / rows;
 
   // Impose a minimum and maximum aspect ratio on the tiles
   const tileAspectRatio = tileWidth / tileHeight;

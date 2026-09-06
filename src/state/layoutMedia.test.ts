@@ -178,6 +178,7 @@ describe("computeLayoutMedia", () => {
     grid: [local, alice, bob].map(member),
     pip: local,
     desktop: false,
+    kiosk: false,
   };
   const layout = (
     overrides: Partial<LayoutMediaInputs>,
@@ -194,6 +195,24 @@ describe("computeLayoutMedia", () => {
       type: "grid",
       grid: [{ media: screenShare }, ...base.grid],
     });
+  });
+
+  it("fills a kiosk with its only member", () => {
+    const solo = { grid: [member(alice)], spotlight: [alice], pip: undefined };
+    expect(layout({ ...solo, kiosk: true })).toEqual({
+      type: "spotlight-expanded",
+      edgeToEdge: true,
+      spotlight: [alice],
+      pip: undefined,
+    });
+    // But not with a screen share, or company
+    expect(
+      layout({ ...solo, kiosk: true, spotlight: [screenShare] }),
+    ).toMatchObject({ type: "grid" });
+    expect(layout({ ...solo, kiosk: true, grid: base.grid })).toMatchObject({
+      type: "grid",
+    });
+    expect(layout(solo)).toMatchObject({ type: "grid" });
   });
 
   it("switches between landscape and expanded spotlight", () => {

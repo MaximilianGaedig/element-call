@@ -1084,6 +1084,7 @@ export function createCallViewModel$(
       grid: gridMembers$.value,
       pip: spotlightPip$.value,
       desktop: platform === "desktop",
+      kiosk: !getUrlParams().showControls,
     }),
   );
 
@@ -1150,7 +1151,9 @@ export function createCallViewModel$(
   });
 
   const toggleSpotlightExpanded$ = computed<(() => void) | null>(() => {
-    if (windowMode$.value !== "normal") return null;
+    // Nobody is there to press it in a kiosk, and it would be captured
+    if (windowMode$.value !== "normal" || !getUrlParams().showControls)
+      return null;
     const { type } = layoutMedia$.value;
     return type === "spotlight-landscape" || type === "spotlight-expanded"
       ? toggleSpotlightExpanded
