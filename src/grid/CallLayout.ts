@@ -50,6 +50,8 @@ export interface GridArrangement {
   tileHeight: number;
   gap: number;
   columns: number;
+  /** The height of a tile at the smallest size the grid lets tiles get */
+  minTileHeight: number;
 }
 
 /**
@@ -151,7 +153,13 @@ export function arrangeTiles(
   else if (tileAspectRatio < tileMinAspectRatio)
     tileHeight = tileWidth / tileMinAspectRatio;
 
-  return { tileWidth, tileHeight, gap, columns };
+  return {
+    tileWidth,
+    tileHeight,
+    gap,
+    columns,
+    minTileHeight: Math.sqrt(tileArea / tileMinAspectRatio),
+  };
 }
 
 export interface Rect {

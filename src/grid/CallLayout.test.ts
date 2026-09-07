@@ -7,7 +7,7 @@ Please see LICENSE in the repository root for full details.
 
 import { expect, test } from "vitest";
 
-import { packRows, type Rect, usedColumns } from "./CallLayout";
+import { arrangeTiles, packRows, type Rect, usedColumns } from "./CallLayout";
 
 test("a grid with nothing enlarged uses all its columns", () => {
   expect(usedColumns([false, false, false], 3)).toBe(3);
@@ -175,4 +175,11 @@ test("packed tiles never overlap", () => {
       for (let j = i + 1; j < n; j++)
         expect(overlaps(rects[i], rects[j]), `${t}: ${i} and ${j}`).toBe(false);
   }
+});
+
+test("a few tiles get cells above the minimum size, many get the minimum", () => {
+  const few = arrangeTiles(1280, 720, 4);
+  expect(few.tileHeight).toBeGreaterThan(few.minTileHeight);
+  const many = arrangeTiles(1280, 720, 40);
+  expect(many.tileHeight).toBeLessThanOrEqual(many.minTileHeight * 1.1);
 });
