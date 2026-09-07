@@ -19,6 +19,14 @@ Please see LICENSE in the repository root for full details.
   padding-right: calc(env(safe-area-inset-right) + var(--cpd-space-6x));
   padding-block: var(--cpd-space-10x)
     calc(env(safe-area-inset-bottom) + var(--cpd-space-10x));
+  /* Tiles scroll beneath the footer, and must still be grabbed and dropped
+  there: only the controls themselves catch the pointer, not the bar or the
+  areas around them */
+  pointer-events: none;
+}
+
+.footer > * > * {
+  pointer-events: auto;
 }
 
 .footer.hidden {
@@ -35,7 +43,6 @@ Please see LICENSE in the repository root for full details.
 .footer.overlay.hidden {
   display: grid;
   opacity: 0;
-  pointer-events: none;
   /* Switch to position: absolute so the footer takes up no space in the layout
     when hidden. */
   position: absolute;
@@ -43,9 +50,16 @@ Please see LICENSE in the repository root for full details.
   inset-inline: 0;
 }
 
+.footer.overlay.hidden > * > * {
+  pointer-events: none;
+}
+
 .footer.overlay:has(:focus-visible) {
   opacity: 1;
-  pointer-events: initial;
+}
+
+.footer.overlay:has(:focus-visible) > * > * {
+  pointer-events: auto;
 }
 
 .settingsLogoContainer {
