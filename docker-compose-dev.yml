@@ -61,11 +61,21 @@ services:
       - 7881:7881/tcp
       - 7882:7882/tcp
       - 50100-50200:50100-50200/udp
+      # TURN, and the ports its relays hand out (see backend/dev_livekit.yaml)
+      - 3478:3478/udp
+      - 30000-30100:30000-30100/udp
     volumes:
       - ./backend/dev_tls_m.localhost.crt:/local_cert.pem:Z
       - ./backend/dev_livekit.yaml:/etc/livekit.yaml:Z
     environment:
       - SSL_CERT_FILE=/local_cert.pem
+      # The address the SFU advertises for its ICE candidates and TURN server.
+      # Browsers on the host can't reach the container's own IP, only ports
+      # Docker forwards, and Firefox won't use loopback for ICE at all, so
+      # set LIVEKIT_NODE_IP to one of the host's own IPs for Firefox: the one
+      # on its default route, since Firefox binds only to that until the page
+      # is capturing (with a Tailscale exit node, the Tailscale IP)
+      - NODE_IP=${LIVEKIT_NODE_IP:-127.0.0.1}
     networks:
       - ecbackend
 

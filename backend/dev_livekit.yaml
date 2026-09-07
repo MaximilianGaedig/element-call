@@ -6,14 +6,14 @@ rtc:
   port_range_start: 50100
   port_range_end: 50200
   use_external_ip: false
+# TURN over UDP, so that a browser whose host candidates the SFU can't reach
+# (Firefox hides them behind mDNS until the page is capturing) still connects
 turn:
-  enabled: false
+  enabled: true
   domain: localhost
-  cert_file: ""
-  key_file: ""
-  tls_port: 5349
-  udp_port: 443
-  external_tls: true
+  udp_port: 3478
+  relay_range_start: 30000
+  relay_range_end: 30100
 keys:
   devkey: secret
 room:
