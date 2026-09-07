@@ -100,8 +100,8 @@ export const debugTileLayout = new Setting("debug-tile-layout", false);
 export const hugVideo = new Setting<boolean>("hug-video", false);
 
 /**
- * Crop camera video to fill its tile (when the two are of a similar shape)
- * rather than letterboxing it. Moot while tiles hug their video.
+ * Crop camera video to fill its tile rather than letterboxing it. Moot while
+ * tiles hug their video.
  */
 export const cropVideo = new Setting<boolean>("crop-video", true);
 

@@ -48,7 +48,11 @@ interface Props extends ComponentProps<typeof animated.div> {
    * How to fit the video content inside the tile. When undefined, MediaView
    * chooses a smart default based on the aspect ratios of the tile and video.
    */
-  videoFit?: "cover" | "contain";
+  /**
+   * How the video fills the tile: cover, contain, "auto" for cover only when
+   * the two are of a similar shape, or (unset) the user's crop setting.
+   */
+  videoFit?: "cover" | "contain" | "auto";
   /**
    * Shrink the tile to the video's own aspect ratio within the space it was
    * given, rather than letterboxing the video inside it. For screen shares,
@@ -242,11 +246,10 @@ export const MediaView: FC<Props> = ({
       data-video-enabled={video && videoEnabled}
       // Screen shares always ask to be contained; camera video is shown
       // whole unless the user would rather it were cropped to fill the tile
-      // (when the two are of a similar shape; a portrait video cropped to a
-      // landscape tile would lose too much)
       data-video-fit={
-        videoFit ??
-        (crop ? autoVideoFit(videoAspectRatio, tileAspectRatio) : "contain")
+        videoFit === "auto"
+          ? autoVideoFit(videoAspectRatio, tileAspectRatio)
+          : (videoFit ?? (crop ? "cover" : "contain"))
       }
       data-background={background}
       {...props}

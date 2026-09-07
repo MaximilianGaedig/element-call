@@ -97,7 +97,7 @@ interface SpotlightMemberMediaItemBaseProps extends SpotlightItemBaseProps {
   video: TrackReferenceOrPlaceholder | undefined;
   unencryptedWarning: boolean;
   focusUrl: string | undefined;
-  videoFit?: "cover" | "contain";
+  videoFit?: "cover" | "contain" | "auto";
 }
 
 interface SpotlightUserMediaItemBaseProps extends SpotlightMemberMediaItemBaseProps {
@@ -329,12 +329,15 @@ const SpotlightMemberMediaItem: FC<SpotlightMemberMediaItemProps> = ({
   };
 
   // Tiled cells are often a different shape from the video, and letterboxing
-  // several of them looks like a wall of black bars, so fill the cell instead
+  // several of them looks like a wall of black bars, so fill the cell instead.
+  // A lone spotlight is big enough that cropping a video of the other
+  // orientation to it would lose most of it, so that's cropped only when the
+  // shapes are similar
   if (vm.type === "user")
     return (
       <SpotlightUserMediaItem
         vm={vm}
-        videoFit={tiled ? "cover" : undefined}
+        videoFit={tiled ? "cover" : "auto"}
         hugVideo={hug}
         onUnpin={onUnpin}
         buttons={buttons}
