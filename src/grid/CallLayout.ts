@@ -166,7 +166,8 @@ export interface Rect {
  * as wide as its shape makes it, at the largest row height at which they all
  * fit within the bounds (which have gaps only between tiles). Portrait tiles
  * span two rows so that they get about the area of a landscape one rather
- * than being squeezed to a single row's height. Rows are centred, unless
+ * than being squeezed to a single row's height, and enlarged tiles span
+ * twice as many rows as they otherwise would. Rows are centred, unless
  * they run past the bounds: rows are never shorter than minRowHeight, so a
  * scrolling layout can keep its tiles a usable size.
  */
@@ -176,8 +177,11 @@ export function packRows(
   gap: number,
   aspectRatios: readonly number[],
   minRowHeight = 0,
+  enlarged: readonly boolean[] = [],
 ): Rect[] {
-  const spans = aspectRatios.map((ar) => (ar < 1 ? 2 : 1));
+  const spans = aspectRatios.map(
+    (ar, i) => (ar < 1 ? 2 : 1) * (enlarged[i] ? 2 : 1),
+  );
   // Placement at a given row height: each tile goes in the first row, and
   // then the leftmost spot, where it fits, so that the gaps beside a portrait
   // tile in its second row are filled by the tiles after it

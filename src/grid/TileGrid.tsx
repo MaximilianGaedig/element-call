@@ -172,7 +172,7 @@ export const TileGrid: FC<Props> = ({
       // With nothing enlarged, tiles are flexed so that a partial last row is
       // centred. Otherwise they're placed on a grid so that they can flow
       // around the enlarged ones.
-      data-cells={enlargedCount > 0 || undefined}
+      data-cells={(enlargedCount > 0 && rects === undefined) || undefined}
       data-packed={rects !== undefined || undefined}
       style={
         {

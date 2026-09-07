@@ -92,11 +92,10 @@ export const makeGridLayout: CallLayout<GridLayoutModel> = ({
       return { tileWidth, tileHeight };
     }, [hug, aspectRatios, arrangement]);
     // Rows of one height, each tile as wide as its video's shape makes it,
-    // rather than columns. Only the flexed grid can pack rows like that; the
-    // cell grid used around enlarged tiles has fixed tracks.
+    // rather than columns; enlarged tiles take two rows
     const [relaxed] = useSetting(relaxedGrid);
     const rows = useMemo(() => {
-      if (!hug || !relaxed || enlarged.some(Boolean)) return null;
+      if (!hug || !relaxed) return null;
       const ratios = aspectRatios.map((ar) => ar || tileWidth / tileHeight);
       // The grid keeps a gap's padding on every side, and its tiles no
       // smaller than the cells they'd otherwise get, scrolling if need be
@@ -106,6 +105,7 @@ export const makeGridLayout: CallLayout<GridLayoutModel> = ({
         gap,
         ratios,
         tileHeight,
+        enlarged,
       ).map((r) => ({ ...r, x: r.x + gap, y: r.y + gap }));
     }, [
       hug,

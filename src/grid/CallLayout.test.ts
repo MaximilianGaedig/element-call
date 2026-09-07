@@ -94,3 +94,11 @@ test("rows keep a minimum height and run past the bounds instead", () => {
   expect(rows[0].y).toBe(0);
   expect(rows[3].y).toBeCloseTo(510, 0);
 });
+
+test("an enlarged tile spans twice the rows", () => {
+  const wide = 16 / 9;
+  const [big, small] = packRows(2000, 460, 20, [wide, wide], 0, [true, false]);
+  expect(big.height).toBeCloseTo(460, -1);
+  expect(small.height).toBeCloseTo(220, -1);
+  expect(small.x).toBeGreaterThan(big.x + big.width);
+});

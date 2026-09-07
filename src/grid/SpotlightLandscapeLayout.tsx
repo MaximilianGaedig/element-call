@@ -186,13 +186,13 @@ export const makeSpotlightLandscapeLayout: CallLayout<
       return { tileWidth, tileHeight };
     }, [hug, aspectRatios, arrangement]);
     // Rows of one height, each tile as wide as its video's shape makes it,
-    // as in the grid layout; the cell grid around enlarged tiles can't pack
+    // as in the grid layout
     const [relaxed] = useSetting(relaxedGrid);
     const rows = useMemo(() => {
-      if (!hug || !relaxed || enlarged.some(Boolean)) return null;
+      if (!hug || !relaxed) return null;
       const ratios = aspectRatios.map((ar) => ar || tileWidth / tileHeight);
       // Tiles no smaller than the rail's cells, scrolling if need be
-      return packRows(railWidth, height, railGap, ratios, tileHeight);
+      return packRows(railWidth, height, railGap, ratios, tileHeight, enlarged);
     }, [
       hug,
       relaxed,
