@@ -192,7 +192,13 @@ export const makeSpotlightLandscapeLayout: CallLayout<
       if (!hug || !relaxed) return null;
       const ratios = aspectRatios.map((ar) => ar || tileWidth / tileHeight);
       // Tiles no smaller than the rail's cells, scrolling if need be
-      return packRows(railWidth, height, railGap, ratios, tileHeight, enlarged);
+      return packRows(
+        { width: railWidth, height },
+        railGap,
+        ratios,
+        tileHeight,
+        enlarged,
+      );
     }, [
       hug,
       relaxed,

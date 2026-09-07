@@ -608,7 +608,7 @@ const SpotlightItemsLayout: FC<
       (width / columns) * (Math.ceil(items.length / columns) / height),
     );
     const ratios = aspectRatios.map((ar) => ar || cellRatio);
-    return packRows(width, height, itemGap, ratios);
+    return packRows({ width, height }, itemGap, ratios);
   }, [relaxed, hug, aspectRatios, width, height, columns, items.length]);
   return (
     <div

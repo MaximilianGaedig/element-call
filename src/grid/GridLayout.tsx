@@ -100,8 +100,7 @@ export const makeGridLayout: CallLayout<GridLayoutModel> = ({
       // The grid keeps a gap's padding on every side, and its tiles no
       // smaller than the cells they'd otherwise get, scrolling if need be
       return packRows(
-        width - 2 * gap,
-        minHeight - 2 * gap,
+        { width: width - 2 * gap, height: minHeight - 2 * gap },
         gap,
         ratios,
         tileHeight,

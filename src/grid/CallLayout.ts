@@ -172,13 +172,18 @@ export interface Rect {
  * scrolling layout can keep its tiles a usable size.
  */
 export function packRows(
-  width: number,
-  height: number,
+  bounds: { width: number; height: number },
   gap: number,
-  aspectRatios: readonly number[],
+  ratios: readonly number[],
   minRowHeight = 0,
   enlarged: readonly boolean[] = [],
 ): Rect[] {
+  // A layout without bounds yet may pass NaN, or substitute 0/0 for an
+  // unknown shape; a NaN width never fits anywhere, so placement would loop
+  // for ever
+  const width = bounds.width > 0 ? bounds.width : 0;
+  const height = bounds.height > 0 ? bounds.height : 0;
+  const aspectRatios = ratios.map((ar) => (ar > 0 && ar < Infinity ? ar : 1));
   const spans = aspectRatios.map(
     (ar, i) => (ar < 1 ? 2 : 1) * (enlarged[i] ? 2 : 1),
   );

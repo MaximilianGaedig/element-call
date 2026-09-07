@@ -40,13 +40,18 @@ test("rows of one height fit their bounds", () => {
   // Four 16:9 tiles in a 960x460 box with 20px gaps go two to a row, and
   // the rows' height is limited by the box: 2h + 20 <= 460
   const wide = 16 / 9;
-  const rows = packRows(960, 460, 20, [wide, wide, wide, wide]);
+  const rows = packRows({ width: 960, height: 460 }, 20, [
+    wide,
+    wide,
+    wide,
+    wide,
+  ]);
   for (const r of rows) expect(r.height).toBeCloseTo(220, 0);
   expect(rows[0].y).toBeCloseTo(0, 0);
   expect(rows[2].y).toBeCloseTo(240, 0);
   // Three 16:9 tiles in a box with room for one row are limited by the
   // width instead: 3 * 16h/9 + 2 * 20 <= 960, and are centred
-  const row = packRows(960, 260, 20, [wide, wide, wide]);
+  const row = packRows({ width: 960, height: 260 }, 20, [wide, wide, wide]);
   expect(row[0].height).toBeCloseTo(172, 0);
   expect(row[0].x).toBeCloseTo(0, -1);
   expect(row[0].y).toBeCloseTo(44, 0);
@@ -57,7 +62,7 @@ test("a portrait tile spans two rows", () => {
   // 220px tall as above and the portrait one 460px, with the second row of
   // landscape tiles flowing beneath the first, not beneath the portrait one
   const wide = 16 / 9;
-  const [tall, a, , c] = packRows(1200, 460, 20, [
+  const [tall, a, , c] = packRows({ width: 1200, height: 460 }, 20, [
     9 / 16,
     wide,
     wide,
@@ -73,7 +78,7 @@ test("a portrait tile spans two rows", () => {
   expect(a.x).toBeGreaterThan(tall.x + tall.width);
   // A tile that doesn't fit on the first row fills the space beside the
   // portrait tile's lower half rather than starting a fresh row after it
-  const [, tall2, , below] = packRows(1000, 460, 20, [
+  const [, tall2, , below] = packRows({ width: 1000, height: 460 }, 20, [
     wide,
     9 / 16,
     wide,
@@ -82,14 +87,19 @@ test("a portrait tile spans two rows", () => {
   expect(below.y).toBeCloseTo(240, -1);
   expect(below.x).toBeLessThan(tall2.x);
   // A lone portrait tile doesn't get a slot taller than its width allows
-  const [lone] = packRows(200, 1000, 20, [9 / 16]);
+  const [lone] = packRows({ width: 200, height: 1000 }, 20, [9 / 16]);
   expect(lone.width).toBeCloseTo(200, 0);
   expect(lone.height).toBeCloseTo(355, -1);
 });
 
 test("rows keep a minimum height and run past the bounds instead", () => {
   const wide = 16 / 9;
-  const rows = packRows(400, 300, 20, [wide, wide, wide, wide], 150);
+  const rows = packRows(
+    { width: 400, height: 300 },
+    20,
+    [wide, wide, wide, wide],
+    150,
+  );
   for (const r of rows) expect(r.height).toBeCloseTo(150, 0);
   expect(rows[0].y).toBe(0);
   expect(rows[3].y).toBeCloseTo(510, 0);
@@ -97,8 +107,23 @@ test("rows keep a minimum height and run past the bounds instead", () => {
 
 test("an enlarged tile spans twice the rows", () => {
   const wide = 16 / 9;
-  const [big, small] = packRows(2000, 460, 20, [wide, wide], 0, [true, false]);
+  const [big, small] = packRows(
+    { width: 2000, height: 460 },
+    20,
+    [wide, wide],
+    0,
+    [true, false],
+  );
   expect(big.height).toBeCloseTo(460, -1);
   expect(small.height).toBeCloseTo(220, -1);
   expect(small.x).toBeGreaterThan(big.x + big.width);
+});
+
+test("nonsense shapes and bounds don't hang the packer", () => {
+  expect(
+    packRows({ width: 0, height: 0 }, 20, [NaN, 0, Infinity], 0),
+  ).toHaveLength(3);
+  expect(packRows({ width: NaN, height: NaN }, 20, [16 / 9], 100)).toHaveLength(
+    1,
+  );
 });
