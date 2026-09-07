@@ -181,11 +181,14 @@ export function packRows(
     tallPortraits = true,
   } = {},
 ): Rect[] {
-  // A layout without bounds yet may pass NaN, or substitute 0/0 for an
-  // unknown shape; a NaN width never fits anywhere, so placement would loop
-  // for ever
-  const width = bounds.width > 0 ? bounds.width : 0;
-  const height = bounds.height > 0 ? bounds.height : 0;
+  // A layout without bounds yet may pass NaN for any of these, or substitute
+  // 0/0 for an unknown shape; a NaN width never fits anywhere, so placement
+  // would loop for ever
+  const finite = (n: number): number => (n > 0 && n < Infinity ? n : 0);
+  const width = finite(bounds.width);
+  const height = finite(bounds.height);
+  gap = finite(gap);
+  minRowHeight = finite(minRowHeight);
   const aspectRatios = ratios.map((ar) => (ar > 0 && ar < Infinity ? ar : 1));
   const spans = aspectRatios.map(
     (ar, i) => (tallPortraits && ar < 1 ? 2 : 1) * (enlarged[i] ? 2 : 1),
@@ -199,7 +202,7 @@ export function packRows(
     const rects = aspectRatios.map((ar, i) => {
       const span = spans[i];
       const tileHeight = span * h + (span - 1) * gap;
-      const tileWidth = Math.min(tileHeight * ar, width);
+      const tileWidth = Math.min(finite(tileHeight * ar), width);
       const free = (row: number, x: number): boolean =>
         taken
           .slice(row, row + span)
@@ -242,7 +245,9 @@ export function packRows(
     if (extent(place(mid).rects) <= height) lo = mid;
     else hi = mid;
   }
-  const { rects, rows } = place(Math.min(cap, Math.max(lo, minRowHeight)));
+  const { rects, rows } = place(
+    finite(Math.min(cap, Math.max(lo, minRowHeight))),
+  );
   // Centre the block vertically, and each row horizontally: rows that a
   // portrait tile ties together are centred as one
   const dy = Math.max(0, (height - extent(rects)) / 2);

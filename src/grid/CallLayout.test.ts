@@ -120,6 +120,10 @@ test("an enlarged tile spans twice the rows", () => {
 
 test("nonsense shapes and bounds don't hang the packer", () => {
   expect(
+    packRows({ width: 800, height: 600 }, 20, [16 / 9], { minRowHeight: NaN }),
+  ).toHaveLength(1);
+  expect(packRows({ width: 800, height: 600 }, NaN, [9 / 16])).toHaveLength(1);
+  expect(
     packRows({ width: 0, height: 0 }, 20, [NaN, 0, Infinity]),
   ).toHaveLength(3);
   expect(
