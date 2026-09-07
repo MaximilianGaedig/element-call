@@ -98,10 +98,15 @@ export const makeGridLayout: CallLayout<GridLayoutModel> = ({
     const rows = useMemo(() => {
       if (!hug || !relaxed || enlarged.some(Boolean)) return null;
       const ratios = aspectRatios.map((ar) => ar || tileWidth / tileHeight);
-      // The grid keeps a gap's padding on every side
-      return packRows(width - 2 * gap, minHeight - 2 * gap, gap, ratios).map(
-        (r) => ({ ...r, x: r.x + gap, y: r.y + gap }),
-      );
+      // The grid keeps a gap's padding on every side, and its tiles no
+      // smaller than the cells they'd otherwise get, scrolling if need be
+      return packRows(
+        width - 2 * gap,
+        minHeight - 2 * gap,
+        gap,
+        ratios,
+        tileHeight,
+      ).map((r) => ({ ...r, x: r.x + gap, y: r.y + gap }));
     }, [
       hug,
       relaxed,

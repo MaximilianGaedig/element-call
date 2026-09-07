@@ -86,3 +86,11 @@ test("a portrait tile spans two rows", () => {
   expect(lone.width).toBeCloseTo(200, 0);
   expect(lone.height).toBeCloseTo(355, -1);
 });
+
+test("rows keep a minimum height and run past the bounds instead", () => {
+  const wide = 16 / 9;
+  const rows = packRows(400, 300, 20, [wide, wide, wide, wide], 150);
+  for (const r of rows) expect(r.height).toBeCloseTo(150, 0);
+  expect(rows[0].y).toBe(0);
+  expect(rows[3].y).toBeCloseTo(510, 0);
+});

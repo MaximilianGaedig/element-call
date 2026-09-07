@@ -177,6 +177,8 @@ export const TileGrid: FC<Props> = ({
       style={
         {
           ...style,
+          // Packed rows may run past the page, in which case they scroll
+          minHeight: rects && Math.max(0, ...rects.map((r) => r.y + r.height)),
           "--gap": `${gap}px`,
           "--width": `${Math.floor(tileWidth)}px`,
           "--height": `${Math.floor(tileHeight)}px`,

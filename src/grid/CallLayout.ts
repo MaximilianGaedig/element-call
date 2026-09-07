@@ -166,13 +166,16 @@ export interface Rect {
  * as wide as its shape makes it, at the largest row height at which they all
  * fit within the bounds (which have gaps only between tiles). Portrait tiles
  * span two rows so that they get about the area of a landscape one rather
- * than being squeezed to a single row's height. Rows are centred.
+ * than being squeezed to a single row's height. Rows are centred, unless
+ * they run past the bounds: rows are never shorter than minRowHeight, so a
+ * scrolling layout can keep its tiles a usable size.
  */
 export function packRows(
   width: number,
   height: number,
   gap: number,
   aspectRatios: readonly number[],
+  minRowHeight = 0,
 ): Rect[] {
   const spans = aspectRatios.map((ar) => (ar < 1 ? 2 : 1));
   // Placement at a given row height: each tile goes in the first row, and
@@ -214,23 +217,23 @@ export function packRows(
     Math.max(0, ...rects.map((r) => r.y + r.height));
   // No taller than any tile needs at the full width, so that a lone tile
   // doesn't get a slot the height of the page
-  let hi = Math.min(
-    height,
+  const cap = Math.min(
     ...aspectRatios.map(
       (ar, i) => (width / ar - (spans[i] - 1) * gap) / spans[i],
     ),
   );
   // ponytail: bisection to the pixel, fine for a few dozen tiles
   let lo = 0;
+  let hi = Math.min(height, cap);
   while (hi - lo > 0.5) {
     const mid = (lo + hi) / 2;
     if (extent(place(mid).rects) <= height) lo = mid;
     else hi = mid;
   }
-  const { rects, rows } = place(lo);
+  const { rects, rows } = place(Math.min(cap, Math.max(lo, minRowHeight)));
   // Centre the block vertically, and each row horizontally: rows that a
   // portrait tile ties together are centred as one
-  const dy = (height - extent(rects)) / 2;
+  const dy = Math.max(0, (height - extent(rects)) / 2);
   const tied: boolean[] = [];
   rects.forEach((_r, i) => {
     if (spans[i] === 2) tied[rows[i]] = true;
