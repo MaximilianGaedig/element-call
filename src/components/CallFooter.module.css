@@ -21,11 +21,12 @@ Please see LICENSE in the repository root for full details.
     calc(env(safe-area-inset-bottom) + var(--cpd-space-10x));
   /* Tiles scroll beneath the footer, and must still be grabbed and dropped
   there: only the controls themselves catch the pointer, not the bar or the
-  areas around them */
+  areas around them. (pointer-events inherits, so a control's contents
+  follow it.) */
   pointer-events: none;
 }
 
-.footer > * > * {
+.footer :is(button, input, a, select, [role="button"]) {
   pointer-events: auto;
 }
 
@@ -50,7 +51,7 @@ Please see LICENSE in the repository root for full details.
   inset-inline: 0;
 }
 
-.footer.overlay.hidden > * > * {
+.footer.overlay.hidden :is(button, input, a, select, [role="button"]) {
   pointer-events: none;
 }
 
@@ -58,7 +59,8 @@ Please see LICENSE in the repository root for full details.
   opacity: 1;
 }
 
-.footer.overlay:has(:focus-visible) > * > * {
+.footer.overlay:has(:focus-visible)
+  :is(button, input, a, select, [role="button"]) {
   pointer-events: auto;
 }
 
