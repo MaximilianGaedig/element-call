@@ -171,7 +171,16 @@ export const ShareScreenButton: FC<ShareScreenButtonProps> = ({
 // a 20-unit grid, the size the button renders it at, so it stays crisp.
 const RecordIcon: FC<SVGAttributes<SVGElement>> = (props) => (
   <svg viewBox="0 0 20 20" fill="none" {...props}>
-    <rect className={styles.recordShape} x="4" y="4" width="12" height="12" />
+    {/* rx here too: Firefox ignores it as a CSS property, and would draw a
+    square in every state */}
+    <rect
+      className={styles.recordShape}
+      x="4"
+      y="4"
+      width="12"
+      height="12"
+      rx="6"
+    />
   </svg>
 );
 
