@@ -189,10 +189,11 @@ export const makeSpotlightLandscapeLayout: CallLayout<
     // as in the grid layout; the cell grid around enlarged tiles can't pack
     const [relaxed] = useSetting(relaxedGrid);
     const rows = useMemo(() => {
-      if (!relaxed || enlarged.some(Boolean)) return null;
+      if (!hug || !relaxed || enlarged.some(Boolean)) return null;
       const ratios = aspectRatios.map((ar) => ar || tileWidth / tileHeight);
       return packRows(railWidth, height, railGap, ratios);
     }, [
+      hug,
       relaxed,
       enlarged,
       aspectRatios,

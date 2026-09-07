@@ -96,13 +96,14 @@ export const makeGridLayout: CallLayout<GridLayoutModel> = ({
     // cell grid used around enlarged tiles has fixed tracks.
     const [relaxed] = useSetting(relaxedGrid);
     const rows = useMemo(() => {
-      if (!relaxed || enlarged.some(Boolean)) return null;
+      if (!hug || !relaxed || enlarged.some(Boolean)) return null;
       const ratios = aspectRatios.map((ar) => ar || tileWidth / tileHeight);
       // The grid keeps a gap's padding on every side
       return packRows(width - 2 * gap, minHeight - 2 * gap, gap, ratios).map(
         (r) => ({ ...r, x: r.x + gap, y: r.y + gap }),
       );
     }, [
+      hug,
       relaxed,
       enlarged,
       aspectRatios,

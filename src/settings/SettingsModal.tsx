@@ -218,7 +218,7 @@ export const SettingsModal: FC<Props> = ({
             id="relaxedGrid"
             label={t("settings.relaxed_grid_label")}
             type="checkbox"
-            checked={relaxedGrid}
+            checked={relaxedGrid && hugVideo}
             onChange={(e): void => setRelaxedGrid(e.target.checked)}
             disabled={!hugVideo}
           />
