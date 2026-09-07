@@ -54,6 +54,17 @@ the box, so it mustn't clip or decorate them as it does a lone item */
   min-inline-size: 0;
 }
 
+/* An enlarged tile takes 2×2 cells (or what the columns allow), with the
+rest flowing around it; packed rows size it themselves */
+.itemsLayout:not([data-relaxed]) {
+  grid-auto-flow: dense;
+}
+
+.itemsLayout:not([data-relaxed]) > .itemSlot[data-enlarged] {
+  grid-column: span var(--enlarged-span);
+  grid-row: span 2;
+}
+
 /* Packed into rows by the layout itself (see packRows) */
 .itemsLayout[data-relaxed] {
   display: block;

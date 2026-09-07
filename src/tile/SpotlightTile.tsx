@@ -81,6 +81,7 @@ interface SpotlightItemBaseProps {
   className?: string;
   style?: ComponentProps<typeof animated.div>["style"];
   "data-id": string;
+  onDoubleClick?: () => void;
   targetWidth: number;
   targetHeight: number;
   userId: string;
@@ -414,6 +415,7 @@ interface SpotlightItemProps {
   onUnpin: ((vm: UserMediaViewModel) => void) | undefined;
   zoomed: boolean;
   onToggleZoom: (() => void) | undefined;
+  onDoubleClick?: () => void;
 }
 
 const SpotlightItem: FC<SpotlightItemProps> = ({
@@ -434,6 +436,7 @@ const SpotlightItem: FC<SpotlightItemProps> = ({
   onUnpin,
   zoomed,
   onToggleZoom,
+  onDoubleClick,
 }) => {
   const ourRef = useRef<HTMLDivElement | null>(null);
 
@@ -459,6 +462,7 @@ const SpotlightItem: FC<SpotlightItemProps> = ({
   const baseProps: SpotlightItemBaseProps & RefAttributes<HTMLDivElement> = {
     ref,
     "data-id": vm.id,
+    onDoubleClick,
     className: classNames(className, styles.item, { [styles.snap]: snap }),
     style,
     targetWidth,
@@ -566,6 +570,8 @@ interface SpotlightItemsContext {
   className: string | undefined;
   onUnpin: ((vm: UserMediaViewModel) => void) | undefined;
   onToggleZoom: ((vm: MediaViewModel) => void) | undefined;
+  /** Double-click enlarges a tile, or shrinks it back */
+  onToggleEnlarged: (vm: MediaViewModel) => void;
 }
 
 const SpotlightItemsContext = createContext<SpotlightItemsContext | null>(null);
@@ -576,6 +582,8 @@ interface SpotlightItemsModel {
   /** The size of the space the items are laid out in. */
   width: number;
   height: number;
+  /** The IDs of items shown at twice the size */
+  enlarged: ReadonlySet<string>;
   onMove: ((media: MediaViewModel, to: MediaViewModel) => void) | undefined;
 }
 
@@ -586,7 +594,11 @@ const itemGap = 20; // Must match the gap in the CSS, and the rail's
 // with exactly the same behaviour: this is its layout of slots...
 const SpotlightItemsLayout: FC<
   LayoutProps<SpotlightItemsModel, MediaViewModel, HTMLDivElement>
-> = ({ ref, model: { items, columns, width, height, onMove }, Slot }) => {
+> = ({
+  ref,
+  model: { items, columns, width, height, enlarged, onMove },
+  Slot,
+}) => {
   useUpdateLayout();
   // Rows of one height, each tile as wide as its video's shape makes it,
   // as in the grid layout (see relaxedGrid). Hugged tiles are packed this
@@ -613,8 +625,9 @@ const SpotlightItemsLayout: FC<
     // two rows: side by side, that would dwarf the landscape ones
     return packRows({ width, height }, itemGap, ratios, {
       tallPortraits: false,
+      enlarged: items.map((vm) => enlarged.has(vm.id)),
     });
-  }, [relaxed, hug, aspectRatios, width, height, columns, items.length]);
+  }, [relaxed, hug, aspectRatios, width, height, columns, items, enlarged]);
   return (
     <div
       ref={ref}
@@ -623,6 +636,7 @@ const SpotlightItemsLayout: FC<
       style={
         {
           "--tiled-columns": columns,
+          "--enlarged-span": Math.min(2, columns),
         } as CSSProperties
       }
     >
@@ -633,6 +647,7 @@ const SpotlightItemsLayout: FC<
           model={vm}
           className={styles.itemSlot}
           style={rows ? rectStyle(rows[i]) : undefined}
+          data-enlarged={enlarged.has(vm.id) || undefined}
           onDrag={
             onMove &&
             (({ over }): void => {
@@ -674,6 +689,7 @@ const SpotlightItemTile: FC<TileProps<MediaViewModel, HTMLDivElement>> = ({
       onUnpin={context.onUnpin}
       zoomed={false}
       onToggleZoom={context.onToggleZoom && (() => context.onToggleZoom!(vm))}
+      onDoubleClick={() => context.onToggleEnlarged(vm)}
     />
   );
 };
@@ -814,6 +830,16 @@ export const SpotlightTile: FC<Props> = ({
       setScrollToId(media[visibleIndex + 1].id);
   }, [latestVisibleId, latestMedia, setScrollToId]);
 
+  const [enlarged, setEnlarged] = useState<ReadonlySet<string>>(new Set());
+  const onToggleEnlarged = useCallback(
+    (vm: MediaViewModel) =>
+      setEnlarged((prev) => {
+        const next = new Set(prev);
+        if (!next.delete(vm.id)) next.add(vm.id);
+        return next;
+      }),
+    [],
+  );
   const itemsContext = useMemo<SpotlightItemsContext>(
     () => ({
       showNameTags,
@@ -824,6 +850,7 @@ export const SpotlightTile: FC<Props> = ({
       className: itemClassName,
       onUnpin,
       onToggleZoom,
+      onToggleEnlarged,
     }),
     [
       showNameTags,
@@ -834,6 +861,7 @@ export const SpotlightTile: FC<Props> = ({
       itemClassName,
       onUnpin,
       onToggleZoom,
+      onToggleEnlarged,
     ],
   );
   const itemsModel = useMemo<SpotlightItemsModel>(
@@ -842,9 +870,10 @@ export const SpotlightTile: FC<Props> = ({
       columns,
       width: targetWidth,
       height: targetHeight,
+      enlarged,
       onMove,
     }),
-    [media, columns, targetWidth, targetHeight, onMove],
+    [media, columns, targetWidth, targetHeight, enlarged, onMove],
   );
 
   return (
