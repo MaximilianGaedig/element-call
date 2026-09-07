@@ -177,9 +177,11 @@ test("packed tiles never overlap", () => {
   }
 });
 
-test("a few tiles get cells above the minimum size, many get the minimum", () => {
+test("a few tiles get cells above the minimum area, many get the minimum", () => {
   const few = arrangeTiles(1280, 720, 4);
-  expect(few.tileHeight).toBeGreaterThan(few.minTileHeight);
+  expect(few.tileWidth * few.tileHeight).toBeGreaterThan(few.minTileArea);
   const many = arrangeTiles(1280, 720, 40);
-  expect(many.tileHeight).toBeLessThanOrEqual(many.minTileHeight * 1.1);
+  expect(many.tileWidth * many.tileHeight).toBeLessThanOrEqual(
+    many.minTileArea * 1.2,
+  );
 });

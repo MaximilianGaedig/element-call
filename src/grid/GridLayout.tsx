@@ -72,7 +72,7 @@ export const makeGridLayout: CallLayout<GridLayoutModel> = ({
       () => arrangeTiles(width, minHeight, cells),
       [width, minHeight, cells],
     );
-    const { gap, columns, minTileHeight } = arrangement;
+    const { gap, columns, minTileArea } = arrangement;
     const [hug] = useSetting(hugVideo);
     const aspectRatios = useVideoAspectRatios(model.grid);
     // Hugged tiles are no bigger than their videos make them, so shrink the
@@ -98,14 +98,17 @@ export const makeGridLayout: CallLayout<GridLayoutModel> = ({
       if (!hug || !relaxed) return null;
       const ratios = aspectRatios.map((ar) => ar || tileWidth / tileHeight);
       // The grid keeps a gap's padding on every side. Rows shrink until the
-      // tiles fit the page, but no further than the cells would have got
-      // (which is how small the grid lets tiles get before it pages), and
-      // scroll from there
+      // tiles fit the page, but not so far that any tile gets smaller than
+      // the grid would have paged at (portrait tiles span two rows, so they
+      // reach that area at half the row height), and scroll from there
+      const minRowHeight = Math.max(
+        ...ratios.map((ar) => Math.sqrt(minTileArea / ar) / (ar < 1 ? 2 : 1)),
+      );
       return packRows(
         { width: width - 2 * gap, height: minHeight - 2 * gap },
         gap,
         ratios,
-        { minRowHeight: Math.min(tileHeight, minTileHeight), enlarged },
+        { minRowHeight: Math.min(tileHeight, minRowHeight), enlarged },
       ).map((r) => ({ ...r, x: r.x + gap, y: r.y + gap }));
     }, [
       hug,
@@ -117,7 +120,7 @@ export const makeGridLayout: CallLayout<GridLayoutModel> = ({
       gap,
       tileWidth,
       tileHeight,
-      minTileHeight,
+      minTileArea,
     ]);
 
     return (

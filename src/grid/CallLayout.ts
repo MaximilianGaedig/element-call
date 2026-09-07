@@ -50,8 +50,8 @@ export interface GridArrangement {
   tileHeight: number;
   gap: number;
   columns: number;
-  /** The height of a tile at the smallest size the grid lets tiles get */
-  minTileHeight: number;
+  /** The smallest area the grid lets a tile have before it pages */
+  minTileArea: number;
 }
 
 /**
@@ -158,7 +158,7 @@ export function arrangeTiles(
     tileHeight,
     gap,
     columns,
-    minTileHeight: Math.sqrt(tileArea / tileMinAspectRatio),
+    minTileArea: tileArea,
   };
 }
 
