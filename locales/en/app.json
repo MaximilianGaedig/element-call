@@ -219,6 +219,7 @@
     "blur_not_supported_by_browser": "(Background blur is not supported by this device.)",
     "camera_header": "Camera quality",
     "codec_label": "Codec",
+    "crop_video_label": "Crop video to fill its tile instead of letterboxing it",
     "developer_tab_title": "Developer",
     "devices": {
       "activating": "Activating…",

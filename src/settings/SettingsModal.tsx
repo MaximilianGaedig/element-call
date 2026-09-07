@@ -24,6 +24,7 @@ import {
   soundEffectVolume as soundEffectVolumeSetting,
   backgroundBlur as backgroundBlurSetting,
   developerMode,
+  cropVideo as cropVideoSetting,
   hugVideo as hugVideoSetting,
   relaxedGrid as relaxedGridSetting,
 } from "./settings";
@@ -109,6 +110,7 @@ export const SettingsModal: FC<Props> = ({
   };
 
   const [hugVideo, setHugVideo] = useSetting(hugVideoSetting);
+  const [cropVideo, setCropVideo] = useSetting(cropVideoSetting);
   const [relaxedGrid, setRelaxedGrid] = useSetting(relaxedGridSetting);
 
   const devices = useMediaDevices();
@@ -211,6 +213,16 @@ export const SettingsModal: FC<Props> = ({
             type="checkbox"
             checked={hugVideo}
             onChange={(e): void => setHugVideo(e.target.checked)}
+          />
+        </FieldRow>
+        <FieldRow>
+          <InputField
+            id="cropVideo"
+            label={t("settings.crop_video_label")}
+            type="checkbox"
+            checked={cropVideo && !hugVideo}
+            onChange={(e): void => setCropVideo(e.target.checked)}
+            disabled={hugVideo}
           />
         </FieldRow>
         <FieldRow>

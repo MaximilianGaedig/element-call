@@ -27,6 +27,7 @@ import styles from "./MediaView.module.css";
 import { Avatar } from "../Avatar";
 import { RaisedHandIndicator } from "../reactions/RaisedHandIndicator";
 import {
+  cropVideo,
   showConnectionStats as showConnectionStatsSetting,
   showHandRaisedTimer,
   useSetting,
@@ -138,6 +139,7 @@ export const MediaView: FC<Props> = ({
   const { t } = useTranslation();
   const [handRaiseTimerVisible] = useSetting(showHandRaisedTimer);
   const [showConnectionStats] = useSetting(showConnectionStatsSetting);
+  const [crop] = useSetting(cropVideo);
 
   const avatarSize = Math.round(
     Math.min(targetWidth, targetHeight) *
@@ -238,8 +240,11 @@ export const MediaView: FC<Props> = ({
       ref={ref}
       data-testid="videoTile"
       data-video-enabled={video && videoEnabled}
+      // Screen shares always ask to be contained; camera video is cropped to
+      // fill the tile if the user prefers that to letterboxing
       data-video-fit={
-        videoFit ?? autoVideoFit(videoAspectRatio, tileAspectRatio)
+        videoFit ??
+        (crop ? "cover" : autoVideoFit(videoAspectRatio, tileAspectRatio))
       }
       data-background={background}
       {...props}
