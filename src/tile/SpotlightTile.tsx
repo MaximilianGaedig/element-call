@@ -575,7 +575,7 @@ interface SpotlightItemsModel {
   onMove: ((media: MediaViewModel, to: MediaViewModel) => void) | undefined;
 }
 
-const itemGap = 8; // Must match the gap in the CSS
+const itemGap = 20; // Must match the gap in the CSS, and the rail's
 
 // When the spotlight shows several media as tiles, they're laid out by the
 // same Grid as the call's tiles, so that they can be dragged and rearranged

@@ -46,7 +46,8 @@ the box, so it mustn't clip or decorate them as it does a lone item */
   display: grid;
   grid-template-columns: repeat(var(--tiled-columns), minmax(0, 1fr));
   grid-auto-rows: minmax(0, 1fr);
-  gap: var(--cpd-space-2x);
+  /* The same gap as between the rail's tiles */
+  gap: var(--cpd-space-5x);
 }
 
 .itemSlot {
