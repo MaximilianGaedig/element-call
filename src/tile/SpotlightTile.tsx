@@ -256,6 +256,7 @@ const SpotlightScreenShareItem: FC<SpotlightScreenShareItemProps> = ({
     <MediaView
       videoFit="contain"
       hugVideo
+      setVideoAspectRatio={vm.setVideoAspectRatio}
       mirror={false}
       primaryButton={buttons}
       {...props}
@@ -608,7 +609,11 @@ const SpotlightItemsLayout: FC<
       (width / columns) * (Math.ceil(items.length / columns) / height),
     );
     const ratios = aspectRatios.map((ar) => ar || cellRatio);
-    return packRows({ width, height }, itemGap, ratios);
+    // Pinned tiles share the height on offer, so a portrait one isn't given
+    // two rows: side by side, that would dwarf the landscape ones
+    return packRows({ width, height }, itemGap, ratios, {
+      tallPortraits: false,
+    });
   }, [relaxed, hug, aspectRatios, width, height, columns, items.length]);
   return (
     <div

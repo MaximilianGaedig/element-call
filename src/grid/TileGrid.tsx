@@ -75,9 +75,15 @@ export function useVideoAspectRatios(grid: GridTileViewModel[]): number[] {
  * once the video arrives. 0 for other media, which aren't shaped this way.
  */
 export function videoAspectRatio(media: MediaViewModel): number {
-  if (media.type !== "user") return 0;
-  const ratio = media.videoAspectRatio$.value;
-  return ratio > 0 ? ratio : 16 / 9;
+  if (media.type === "user") {
+    const ratio = media.videoAspectRatio$.value;
+    return ratio > 0 ? ratio : 16 / 9;
+  }
+  if (media.type === "screen share") {
+    const ratio = media.videoAspectRatio$.value;
+    return ratio > 0 ? ratio : 0;
+  }
+  return 0;
 }
 
 /**

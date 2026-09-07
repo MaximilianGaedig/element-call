@@ -175,8 +175,11 @@ export function packRows(
   bounds: { width: number; height: number },
   gap: number,
   ratios: readonly number[],
-  minRowHeight = 0,
-  enlarged: readonly boolean[] = [],
+  {
+    minRowHeight = 0,
+    enlarged = [] as readonly boolean[],
+    tallPortraits = true,
+  } = {},
 ): Rect[] {
   // A layout without bounds yet may pass NaN, or substitute 0/0 for an
   // unknown shape; a NaN width never fits anywhere, so placement would loop
@@ -185,7 +188,7 @@ export function packRows(
   const height = bounds.height > 0 ? bounds.height : 0;
   const aspectRatios = ratios.map((ar) => (ar > 0 && ar < Infinity ? ar : 1));
   const spans = aspectRatios.map(
-    (ar, i) => (ar < 1 ? 2 : 1) * (enlarged[i] ? 2 : 1),
+    (ar, i) => (tallPortraits && ar < 1 ? 2 : 1) * (enlarged[i] ? 2 : 1),
   );
   // Placement at a given row height: each tile goes in the first row, and
   // then the leftmost spot, where it fits, so that the gaps beside a portrait

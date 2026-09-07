@@ -103,8 +103,7 @@ export const makeGridLayout: CallLayout<GridLayoutModel> = ({
         { width: width - 2 * gap, height: minHeight - 2 * gap },
         gap,
         ratios,
-        tileHeight,
-        enlarged,
+        { minRowHeight: tileHeight, enlarged },
       ).map((r) => ({ ...r, x: r.x + gap, y: r.y + gap }));
     }, [
       hug,

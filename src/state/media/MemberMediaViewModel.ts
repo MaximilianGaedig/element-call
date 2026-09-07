@@ -14,7 +14,7 @@ import {
 import { type LocalParticipant, type RemoteParticipant } from "livekit-client";
 import { type Room as LivekitRoom } from "livekit-client";
 
-import { type Behavior, computed } from "../Behavior";
+import { type Behavior, computed, state } from "../Behavior";
 import { type BaseMediaViewModel, createBaseMedia } from "./MediaViewModel";
 import { type EncryptionSystem } from "../../e2ee/sharedKeyManagement";
 import { type Scope } from "../Scope";
@@ -31,6 +31,12 @@ export interface BaseMemberMediaViewModel extends BaseMediaViewModel {
    * The LiveKit video track for this media.
    */
   video$: Behavior<TrackReference | undefined>;
+  /** The aspect ratio of the video track, NaN until it's known. */
+  videoAspectRatio$: Behavior<number>;
+  /**
+   * Set the aspect ratio of the video track to determine the orientation.
+   */
+  setVideoAspectRatio: (ratio: number) => void;
   /**
    * The URL of the LiveKit focus on which this member should be publishing.
    * Exposed for debugging.
@@ -64,10 +70,13 @@ export function createMemberMedia(
 ): BaseMemberMediaViewModel {
   const audio$ = trackReference$(scope, participant$, audioSource);
   const video$ = trackReference$(scope, participant$, videoSource);
+  const videoAspectRatio$ = state(NaN);
 
   return {
     ...createBaseMedia(inputs),
     video$,
+    videoAspectRatio$,
+    setVideoAspectRatio: (ratio) => (videoAspectRatio$.value = ratio),
     focusUrl$,
     unencryptedWarning$: computed(
       () =>

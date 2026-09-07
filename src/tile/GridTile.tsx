@@ -439,6 +439,7 @@ const ScreenShareTile: FC<ScreenShareTileProps> = ({
       video={video ?? undefined}
       videoFit="contain"
       hugVideo
+      setVideoAspectRatio={vm.setVideoAspectRatio}
       userId={vm.userId}
       videoEnabled={videoEnabled}
       unencryptedWarning={unencryptedWarning}

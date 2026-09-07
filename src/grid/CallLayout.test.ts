@@ -98,7 +98,7 @@ test("rows keep a minimum height and run past the bounds instead", () => {
     { width: 400, height: 300 },
     20,
     [wide, wide, wide, wide],
-    150,
+    { minRowHeight: 150 },
   );
   for (const r of rows) expect(r.height).toBeCloseTo(150, 0);
   expect(rows[0].y).toBe(0);
@@ -111,8 +111,7 @@ test("an enlarged tile spans twice the rows", () => {
     { width: 2000, height: 460 },
     20,
     [wide, wide],
-    0,
-    [true, false],
+    { enlarged: [true, false] },
   );
   expect(big.height).toBeCloseTo(460, -1);
   expect(small.height).toBeCloseTo(220, -1);
@@ -121,9 +120,23 @@ test("an enlarged tile spans twice the rows", () => {
 
 test("nonsense shapes and bounds don't hang the packer", () => {
   expect(
-    packRows({ width: 0, height: 0 }, 20, [NaN, 0, Infinity], 0),
+    packRows({ width: 0, height: 0 }, 20, [NaN, 0, Infinity]),
   ).toHaveLength(3);
-  expect(packRows({ width: NaN, height: NaN }, 20, [16 / 9], 100)).toHaveLength(
-    1,
+  expect(
+    packRows({ width: NaN, height: NaN }, 20, [16 / 9], {
+      minRowHeight: 100,
+    }),
+  ).toHaveLength(1);
+});
+
+test("portrait tiles can be kept to one row", () => {
+  const [tall, wide] = packRows(
+    { width: 1000, height: 500 },
+    20,
+    [9 / 16, 16 / 9],
+    {
+      tallPortraits: false,
+    },
   );
+  expect(tall.height).toBeCloseTo(wide.height, -1);
 });
