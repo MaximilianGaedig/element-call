@@ -10,7 +10,7 @@ import classNames from "classnames";
 
 import { type GridLayout as GridLayoutModel } from "../state/layout-types.ts";
 import styles from "./GridLayout.module.css";
-import { type CallLayout, arrangeTiles, fitRowHeight } from "./CallLayout";
+import { type CallLayout, arrangeTiles, packRows } from "./CallLayout";
 import { type DragCallback, useUpdateLayout, useVisibleTiles } from "./Grid";
 import { useBehavior } from "../useBehavior";
 import { useReorderTiles } from "./reorder.ts";
@@ -98,11 +98,10 @@ export const makeGridLayout: CallLayout<GridLayoutModel> = ({
     const rows = useMemo(() => {
       if (!relaxed || enlarged.some(Boolean)) return null;
       const ratios = aspectRatios.map((ar) => ar || tileWidth / tileHeight);
-      const height = fitRowHeight(width, minHeight, gap, ratios);
-      return {
-        height,
-        widths: ratios.map((ar) => Math.min(height * ar, width - 2 * gap)),
-      };
+      // The grid keeps a gap's padding on every side
+      return packRows(width - 2 * gap, minHeight - 2 * gap, gap, ratios).map(
+        (r) => ({ ...r, x: r.x + gap, y: r.y + gap }),
+      );
     }, [
       relaxed,
       enlarged,
@@ -123,8 +122,8 @@ export const makeGridLayout: CallLayout<GridLayoutModel> = ({
         enlarged={enlarged}
         gap={gap}
         tileWidth={tileWidth}
-        tileHeight={rows?.height ?? tileHeight}
-        widths={rows?.widths}
+        tileHeight={tileHeight}
+        rects={rows ?? undefined}
         columns={columns}
         Slot={Slot}
         onDrag={onDragTile}

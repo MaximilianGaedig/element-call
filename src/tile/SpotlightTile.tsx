@@ -72,8 +72,8 @@ import { type RingingMediaViewModel } from "../state/media/RingingMediaViewModel
 import { RingingStatus } from "./RingingStatus";
 import { UserMediaMenuItems } from "./UserMediaMenuItems";
 import { hugVideo, relaxedGrid, useSetting } from "../settings/settings";
-import { fitRowHeight } from "../grid/CallLayout";
-import { videoAspectRatio } from "../grid/TileGrid";
+import { packRows } from "../grid/CallLayout";
+import { rectStyle, videoAspectRatio } from "../grid/TileGrid";
 import { shallowEquals as shallowArrayEquals } from "../utils/array";
 
 interface SpotlightItemBaseProps {
@@ -601,18 +601,7 @@ const SpotlightItemsLayout: FC<
     const cellRatio =
       (width / columns) * (Math.ceil(items.length / columns) / height);
     const ratios = aspectRatios.map((ar) => ar || cellRatio);
-    // fitRowHeight pads its bounds by a gap on every side; we have none
-    const fit = fitRowHeight(
-      width + 2 * itemGap,
-      height + 2 * itemGap,
-      itemGap,
-      ratios,
-    );
-    const rowHeight = Math.min(fit, ...ratios.map((ar) => width / ar));
-    return {
-      height: rowHeight,
-      widths: ratios.map((ar) => Math.min(rowHeight * ar, width)),
-    };
+    return packRows(width, height, itemGap, ratios);
   }, [relaxed, hug, aspectRatios, width, height, columns, items.length]);
   return (
     <div
@@ -622,7 +611,6 @@ const SpotlightItemsLayout: FC<
       style={
         {
           "--tiled-columns": columns,
-          "--height": rows && `${Math.floor(rows.height)}px`,
         } as CSSProperties
       }
     >
@@ -632,7 +620,7 @@ const SpotlightItemsLayout: FC<
           id={vm.id}
           model={vm}
           className={styles.itemSlot}
-          style={rows ? { width: Math.floor(rows.widths[i]) } : undefined}
+          style={rows ? rectStyle(rows[i]) : undefined}
           onDrag={
             onMove &&
             (({ over }): void => {

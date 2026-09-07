@@ -154,44 +154,98 @@ export function arrangeTiles(
   return { tileWidth, tileHeight, gap, columns };
 }
 
+export interface Rect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 /**
- * For rows of tiles that all share one height while their widths follow
- * their videos' shapes (see the relaxedGrid setting): the tallest height at
- * which the tiles, packed into rows in order with the given gap, still fit
- * the bounds. Tiles are packed the way a wrapping flex row packs them, so
- * the result matches what the browser lays out.
+ * Packs tiles of the given aspect ratios into rows of one height, each tile
+ * as wide as its shape makes it, at the largest row height at which they all
+ * fit within the bounds (which have gaps only between tiles). Portrait tiles
+ * span two rows so that they get about the area of a landscape one rather
+ * than being squeezed to a single row's height. Rows are centred.
  */
-export function fitRowHeight(
+export function packRows(
   width: number,
-  minHeight: number,
+  height: number,
   gap: number,
   aspectRatios: readonly number[],
-): number {
-  const maxWidth = width - 2 * gap;
-  const rowsAt = (h: number): number => {
-    let rows = 1;
-    let x = gap;
-    for (const ar of aspectRatios) {
-      const w = Math.min(h * ar, maxWidth);
-      if (x > gap && x + w + gap > width) {
-        rows++;
-        x = gap;
+): Rect[] {
+  const spans = aspectRatios.map((ar) => (ar < 1 ? 2 : 1));
+  // Placement at a given row height: each tile goes in the first row, and
+  // then the leftmost spot, where it fits, so that the gaps beside a portrait
+  // tile in its second row are filled by the tiles after it
+  const place = (h: number): { rects: Rect[]; rows: number[] } => {
+    const taken: [number, number][][] = []; // Each row's occupied spans
+    const rows: number[] = [];
+    const rects = aspectRatios.map((ar, i) => {
+      const span = spans[i];
+      const tileHeight = span * h + (span - 1) * gap;
+      const tileWidth = Math.min(tileHeight * ar, width);
+      const free = (row: number, x: number): boolean =>
+        taken
+          .slice(row, row + span)
+          .every((t) =>
+            t.every(([x0, x1]) => x + tileWidth + gap <= x0 || x >= x1 + gap),
+          );
+      for (let row = 0; ; row++) {
+        const candidates = [
+          0,
+          ...taken
+            .slice(row, row + span)
+            .flatMap((t) => t.map(([, x1]) => x1 + gap)),
+        ].sort((a, b) => a - b);
+        const x = candidates.find(
+          (x) => x + tileWidth <= width && free(row, x),
+        );
+        if (x === undefined) continue;
+        for (let r = row; r < row + span; r++)
+          (taken[r] ??= []).push([x, x + tileWidth]);
+        rows.push(row);
+        return { x, y: row * (h + gap), width: tileWidth, height: tileHeight };
       }
-      x += w + gap;
-    }
-    return rows;
+    });
+    return { rects, rows };
   };
-  const fits = (h: number): boolean => {
-    const rows = rowsAt(h);
-    return rows * h + (rows + 1) * gap <= minHeight;
-  };
+  const extent = (rects: Rect[]): number =>
+    Math.max(0, ...rects.map((r) => r.y + r.height));
+  // No taller than any tile needs at the full width, so that a lone tile
+  // doesn't get a slot the height of the page
+  let hi = Math.min(
+    height,
+    ...aspectRatios.map(
+      (ar, i) => (width / ar - (spans[i] - 1) * gap) / spans[i],
+    ),
+  );
   // ponytail: bisection to the pixel, fine for a few dozen tiles
   let lo = 0;
-  let hi = minHeight - 2 * gap;
   while (hi - lo > 0.5) {
     const mid = (lo + hi) / 2;
-    if (fits(mid)) lo = mid;
+    if (extent(place(mid).rects) <= height) lo = mid;
     else hi = mid;
   }
-  return lo;
+  const { rects, rows } = place(lo);
+  // Centre the block vertically, and each row horizontally: rows that a
+  // portrait tile ties together are centred as one
+  const dy = (height - extent(rects)) / 2;
+  const tied: boolean[] = [];
+  rects.forEach((_r, i) => {
+    if (spans[i] === 2) tied[rows[i]] = true;
+  });
+  const rowCount = Math.max(0, ...rows) + 1;
+  for (let start = 0; start < rowCount;) {
+    let end = start;
+    while (tied[end]) end++;
+    const band = rects.filter((_r, i) => rows[i] >= start && rows[i] <= end);
+    const dx = (width - Math.max(0, ...band.map((r) => r.x + r.width))) / 2;
+    for (const r of band) {
+      r.x += dx;
+      r.y += dy;
+    }
+    start = end + 1;
+  }
+  return rects;
 }

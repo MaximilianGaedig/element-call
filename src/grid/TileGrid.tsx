@@ -22,7 +22,7 @@ import { computed } from "../state/Behavior.ts";
 import { type MediaViewModel } from "../state/media/MediaViewModel.ts";
 import { shallowEquals as shallowArrayEquals } from "../utils/array.ts";
 import { type DragCallback, type SlotProps } from "./Grid";
-import { usedColumns } from "./CallLayout";
+import { type Rect, usedColumns } from "./CallLayout";
 import { useBehavior } from "../useBehavior";
 import styles from "./TileGrid.module.css";
 
@@ -91,17 +91,27 @@ export function cellCount(
   return tileCount + 3 * enlarged.filter(Boolean).length;
 }
 
+/** Positions an element absolutely at the rect, to whole pixels. */
+// Floored so that a row's sizes, which the layout fitted exactly to the
+// grid, can't round up past it and wrap the row's last tile
+export const rectStyle = (r: Rect): CSSProperties => ({
+  left: Math.floor(r.x),
+  top: Math.floor(r.y),
+  width: Math.floor(r.width),
+  height: Math.floor(r.height),
+});
+
 interface TileSlotProps {
   Slot: ComponentType<SlotProps<TileViewModel>>;
   tile: GridTileViewModel;
   onDrag: DragCallback;
-  /** A width of the layout's own choosing, overriding the grid's. */
-  width: number | undefined;
+  /** A place of the layout's own choosing, overriding the grid's. */
+  rect: Rect | undefined;
 }
 
 // Each slot subscribes to its own tile's size so that enlarging one tile
 // doesn't re-render the whole grid
-const TileSlot: FC<TileSlotProps> = ({ Slot, tile, onDrag, width }) => {
+const TileSlot: FC<TileSlotProps> = ({ Slot, tile, onDrag, rect }) => {
   const enlarged = useBehavior(tile.enlarged$);
   return (
     <Slot
@@ -110,9 +120,7 @@ const TileSlot: FC<TileSlotProps> = ({ Slot, tile, onDrag, width }) => {
       model={tile}
       onDrag={onDrag}
       data-enlarged={enlarged || undefined}
-      // Floored so that a row's widths, which the layout fitted exactly to
-      // the grid, can't round up past it and wrap the row's last tile
-      style={width === undefined ? undefined : { width: Math.floor(width) }}
+      style={rect && rectStyle(rect)}
     />
   );
 };
@@ -130,10 +138,10 @@ interface Props {
   /** The most columns the grid may have. */
   columns: number;
   /**
-   * A width for each tile, when they aren't all to be tileWidth wide. The
-   * flexed grid then packs and centres each row of them itself.
+   * A place for each tile, when they aren't to be arranged on a grid of
+   * tileWidth by tileHeight cells (see packRows).
    */
-  widths?: readonly number[];
+  rects?: readonly Rect[];
   Slot: ComponentType<SlotProps<TileViewModel>>;
   onDrag: (tile: GridTileViewModel) => DragCallback;
 }
@@ -152,7 +160,7 @@ export const TileGrid: FC<Props> = ({
   tileWidth,
   tileHeight,
   columns,
-  widths,
+  rects,
   Slot,
   onDrag,
 }) => {
@@ -165,6 +173,7 @@ export const TileGrid: FC<Props> = ({
       // centred. Otherwise they're placed on a grid so that they can flow
       // around the enlarged ones.
       data-cells={enlargedCount > 0 || undefined}
+      data-packed={rects !== undefined || undefined}
       style={
         {
           ...style,
@@ -185,7 +194,7 @@ export const TileGrid: FC<Props> = ({
           Slot={Slot}
           tile={m}
           onDrag={onDrag(m)}
-          width={widths?.[i]}
+          rect={rects?.[i]}
         />
       ))}
     </div>

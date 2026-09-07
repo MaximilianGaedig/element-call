@@ -54,16 +54,14 @@ the box, so it mustn't clip or decorate them as it does a lone item */
   min-inline-size: 0;
 }
 
-/* Loosely packed: rows of one height that the flex row packs and centres */
+/* Packed into rows by the layout itself (see packRows) */
 .itemsLayout[data-relaxed] {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-content: center;
+  display: block;
+  position: relative;
 }
 
 .itemsLayout[data-relaxed] > .itemSlot {
-  block-size: var(--height);
+  position: absolute;
 }
 
 .itemsGrid .item {

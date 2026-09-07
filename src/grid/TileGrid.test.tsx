@@ -28,8 +28,12 @@ const tile = new GridTileViewModel(
 
 test.each([
   ["sizes slots by the grid", undefined, ""],
-  ["sizes slots by the layout's widths", [123], "123px"],
-])("%s", (_, widths, width) => {
+  [
+    "sizes slots by the layout's rects",
+    [{ x: 1, y: 2, width: 123, height: 45 }],
+    "123px",
+  ],
+])("%s", (_, rects, width) => {
   const { getByTestId } = render(
     <TileGrid
       grid={[tile]}
@@ -38,7 +42,7 @@ test.each([
       tileWidth={300}
       tileHeight={200}
       columns={1}
-      widths={widths}
+      rects={rects}
       Slot={Slot}
       onDrag={() => () => {}}
     />,

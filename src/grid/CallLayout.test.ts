@@ -7,7 +7,7 @@ Please see LICENSE in the repository root for full details.
 
 import { expect, test } from "vitest";
 
-import { fitRowHeight, usedColumns } from "./CallLayout";
+import { packRows, usedColumns } from "./CallLayout";
 
 test("a grid with nothing enlarged uses all its columns", () => {
   expect(usedColumns([false, false, false], 3)).toBe(3);
@@ -37,16 +37,52 @@ test("nonsense column counts don't hang the layout", () => {
 });
 
 test("rows of one height fit their bounds", () => {
-  // Four 16:9 tiles in a 1000x500 box with 20px gaps go two to a row, and
-  // it's the height that limits them: 2h + 3 * 20 <= 500
+  // Four 16:9 tiles in a 960x460 box with 20px gaps go two to a row, and
+  // the rows' height is limited by the box: 2h + 20 <= 460
   const wide = 16 / 9;
-  expect(fitRowHeight(1000, 500, 20, [wide, wide, wide, wide])).toBeCloseTo(
-    220,
-    0,
-  );
-  // A lone portrait tile takes the full height
-  expect(fitRowHeight(1000, 500, 20, [9 / 16])).toBeCloseTo(460, 0);
+  const rows = packRows(960, 460, 20, [wide, wide, wide, wide]);
+  for (const r of rows) expect(r.height).toBeCloseTo(220, 0);
+  expect(rows[0].y).toBeCloseTo(0, 0);
+  expect(rows[2].y).toBeCloseTo(240, 0);
   // Three 16:9 tiles in a box with room for one row are limited by the
-  // width instead: 3 * 16h/9 + 4 * 20 <= 1000
-  expect(fitRowHeight(1000, 300, 20, [wide, wide, wide])).toBeCloseTo(172, 0);
+  // width instead: 3 * 16h/9 + 2 * 20 <= 960, and are centred
+  const row = packRows(960, 260, 20, [wide, wide, wide]);
+  expect(row[0].height).toBeCloseTo(172, 0);
+  expect(row[0].x).toBeCloseTo(0, -1);
+  expect(row[0].y).toBeCloseTo(44, 0);
+});
+
+test("a portrait tile spans two rows", () => {
+  // A 9:16 tile beside two rows of two 16:9 tiles: the landscape tiles are
+  // 220px tall as above and the portrait one 460px, with the second row of
+  // landscape tiles flowing beneath the first, not beneath the portrait one
+  const wide = 16 / 9;
+  const [tall, a, , c] = packRows(1200, 460, 20, [
+    9 / 16,
+    wide,
+    wide,
+    wide,
+    wide,
+  ]);
+  expect(tall.height).toBeCloseTo(460, -1);
+  expect(tall.width).toBeCloseTo(259, -1);
+  expect(a.height).toBeCloseTo(220, 0);
+  expect(a.y).toBeCloseTo(0, 0);
+  expect(c.y).toBeCloseTo(240, 0);
+  expect(c.x).toBeCloseTo(a.x, 0);
+  expect(a.x).toBeGreaterThan(tall.x + tall.width);
+  // A tile that doesn't fit on the first row fills the space beside the
+  // portrait tile's lower half rather than starting a fresh row after it
+  const [, tall2, , below] = packRows(1000, 460, 20, [
+    wide,
+    9 / 16,
+    wide,
+    wide,
+  ]);
+  expect(below.y).toBeCloseTo(240, -1);
+  expect(below.x).toBeLessThan(tall2.x);
+  // A lone portrait tile doesn't get a slot taller than its width allows
+  const [lone] = packRows(200, 1000, 20, [9 / 16]);
+  expect(lone.width).toBeCloseTo(200, 0);
+  expect(lone.height).toBeCloseTo(355, -1);
 });
