@@ -255,7 +255,7 @@ export function packRows(
   const dy = Math.max(0, (height - extent(rects)) / 2);
   const tied: boolean[] = [];
   rects.forEach((_r, i) => {
-    if (spans[i] === 2) tied[rows[i]] = true;
+    for (let r = rows[i]; r < rows[i] + spans[i] - 1; r++) tied[r] = true;
   });
   const rowCount = Math.max(0, ...rows) + 1;
   for (let start = 0; start < rowCount;) {

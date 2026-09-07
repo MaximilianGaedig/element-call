@@ -7,7 +7,7 @@ Please see LICENSE in the repository root for full details.
 
 import { expect, test } from "vitest";
 
-import { packRows, usedColumns } from "./CallLayout";
+import { packRows, type Rect, usedColumns } from "./CallLayout";
 
 test("a grid with nothing enlarged uses all its columns", () => {
   expect(usedColumns([false, false, false], 3)).toBe(3);
@@ -143,4 +143,34 @@ test("portrait tiles can be kept to one row", () => {
     },
   );
   expect(tall.height).toBeCloseTo(wide.height, -1);
+});
+
+test("packed tiles never overlap", () => {
+  // A crude fuzz: a fixed sequence of mixed shapes, enlargements and bounds
+  const overlaps = (a: Rect, b: Rect): boolean =>
+    a.x < b.x + b.width - 0.5 &&
+    b.x < a.x + a.width - 0.5 &&
+    a.y < b.y + b.height - 0.5 &&
+    b.y < a.y + a.height - 0.5;
+  let seed = 1;
+  const rnd = (): number => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let t = 0; t < 500; t++) {
+    const n = 1 + Math.floor(rnd() * 12);
+    const ratios = Array.from({ length: n }, () =>
+      rnd() < 0.5 ? 9 / 16 : 16 / 9,
+    );
+    const rects = packRows(
+      { width: 200 + rnd() * 1500, height: 200 + rnd() * 1000 },
+      20,
+      ratios,
+      {
+        enlarged: ratios.map(() => rnd() < 0.2),
+        minRowHeight: rnd() < 0.5 ? rnd() * 300 : 0,
+        tallPortraits: rnd() < 0.5,
+      },
+    );
+    for (let i = 0; i < n; i++)
+      for (let j = i + 1; j < n; j++)
+        expect(overlaps(rects[i], rects[j]), `${t}: ${i} and ${j}`).toBe(false);
+  }
 });
