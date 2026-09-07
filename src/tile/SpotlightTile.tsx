@@ -597,9 +597,13 @@ const SpotlightItemsLayout: FC<
   );
   const rows = useMemo(() => {
     if (!relaxed && !hug) return null;
-    // A tile without a video takes the shape of a cell of the plain grid
-    const cellRatio =
-      (width / columns) * (Math.ceil(items.length / columns) / height);
+    // Unshaped items (screen shares) get a cell's shape, but never a
+    // portrait one, which would earn them two rows for content of no
+    // particular shape and leave the tile beside them sitting high
+    const cellRatio = Math.max(
+      1,
+      (width / columns) * (Math.ceil(items.length / columns) / height),
+    );
     const ratios = aspectRatios.map((ar) => ar || cellRatio);
     return packRows(width, height, itemGap, ratios);
   }, [relaxed, hug, aspectRatios, width, height, columns, items.length]);
