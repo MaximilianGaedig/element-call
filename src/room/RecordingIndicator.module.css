@@ -30,8 +30,8 @@ Please see LICENSE in the repository root for full details.
   z-index: calc(var(--call-view-header-footer-layer) + 1);
 }
 
-/* Until the recorder confirms that it's recording, the light flashes on and
-   off from dark like a bulb, at the record button's pace */
+/* Until the recorder confirms that it's recording, the light pulses from
+   dark up to a dim red like a bulb warming up, at the record button's pace */
 .pending {
   animation: flash 1s ease-in-out infinite;
 }
@@ -44,8 +44,26 @@ Please see LICENSE in the repository root for full details.
   }
 
   50% {
+    background: color(display-p3 0.6 0 0);
+    box-shadow: 0 0 8px 1px rgb(255 0 0 / 20%);
+  }
+}
+
+/* Once it is recording, the light snaps on to full brightness with a flare
+   of glow, so that the change catches the eye */
+.badge:not(.pending) {
+  animation: ignite 0.4s ease-out;
+}
+
+@keyframes ignite {
+  from {
+    background: color(display-p3 0.6 0 0);
+    box-shadow: 0 0 8px 1px rgb(255 0 0 / 20%);
+  }
+
+  30% {
     background: color(display-p3 1 0 0);
-    box-shadow: 0 0 12px 2px rgb(255 0 0 / 40%);
+    box-shadow: 0 0 24px 6px rgb(255 0 0 / 70%);
   }
 }
 
@@ -54,6 +72,10 @@ Please see LICENSE in the repository root for full details.
     animation: none;
     background: rgb(64 64 64);
     box-shadow: none;
+  }
+
+  .badge:not(.pending) {
+    animation: none;
   }
 }
 
