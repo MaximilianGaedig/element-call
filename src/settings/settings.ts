@@ -100,10 +100,10 @@ export const debugTileLayout = new Setting("debug-tile-layout", false);
 export const hugVideo = new Setting<boolean>("hug-video", false);
 
 /**
- * Crop camera video to fill its tile rather than letterboxing it when the
- * two are different shapes. Moot while tiles hug their video.
+ * Crop camera video to fill its tile (when the two are of a similar shape)
+ * rather than letterboxing it. Moot while tiles hug their video.
  */
-export const cropVideo = new Setting<boolean>("crop-video", false);
+export const cropVideo = new Setting<boolean>("crop-video", true);
 
 /**
  * With tiles of differing shapes (see hugVideo), lay the grid out as rows of

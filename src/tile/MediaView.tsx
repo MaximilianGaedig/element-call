@@ -240,11 +240,13 @@ export const MediaView: FC<Props> = ({
       ref={ref}
       data-testid="videoTile"
       data-video-enabled={video && videoEnabled}
-      // Screen shares always ask to be contained; camera video is cropped to
-      // fill the tile if the user prefers that to letterboxing
+      // Screen shares always ask to be contained; camera video is shown
+      // whole unless the user would rather it were cropped to fill the tile
+      // (when the two are of a similar shape; a portrait video cropped to a
+      // landscape tile would lose too much)
       data-video-fit={
         videoFit ??
-        (crop ? "cover" : autoVideoFit(videoAspectRatio, tileAspectRatio))
+        (crop ? autoVideoFit(videoAspectRatio, tileAspectRatio) : "contain")
       }
       data-background={background}
       {...props}
