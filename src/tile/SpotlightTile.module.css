@@ -29,10 +29,15 @@ Please see LICENSE in the repository root for full details.
   border-radius: 0;
 }
 
-/* Several media shown as tiles: a Grid of slots, filled by animated tiles */
+/* Several media shown as tiles: a Grid of slots, filled by animated tiles.
+The tiles are rounded and shadowed themselves, and packed tiles don't fill
+the box, so it mustn't clip or decorate them as it does a lone item */
 .itemsGrid {
   display: block;
-  overflow: hidden;
+  contain: layout style;
+  overflow: visible;
+  border-radius: 0;
+  box-shadow: none;
   scroll-snap-type: none;
 }
 
