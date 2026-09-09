@@ -45,6 +45,7 @@ exports[`LobbyView > renders with AppBar android 1`] = `
     >
       <div
         class="_preview_dd2178"
+        style="aspect-ratio: 1.7777777777777777;"
       >
         <video
           disablepictureinpicture=""
@@ -277,6 +278,7 @@ exports[`LobbyView > renders with AppBar ios 1`] = `
     >
       <div
         class="_preview_dd2178"
+        style="aspect-ratio: 1.7777777777777777;"
       >
         <video
           disablepictureinpicture=""
@@ -556,6 +558,7 @@ exports[`LobbyView > renders with header and participant count 1`] = `
     >
       <div
         class="_preview_dd2178"
+        style="aspect-ratio: 1.7777777777777777;"
       >
         <video
           disablepictureinpicture=""
