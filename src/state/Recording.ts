@@ -15,6 +15,10 @@ import {
   RoomStateEvent,
   type StateEvents,
 } from "matrix-js-sdk";
+import {
+  type CallMembership,
+  type MatrixRTCSession,
+} from "matrix-js-sdk/lib/matrixrtc";
 import { type EncryptedFile } from "matrix-js-sdk/lib/@types/media";
 import { type CryptoApi } from "matrix-js-sdk/lib/crypto-api";
 import { KnownMembership } from "matrix-js-sdk/lib/types";
@@ -38,6 +42,13 @@ import { type EncryptionSystem } from "../e2ee/sharedKeyManagement.ts";
 
 /** The recorder's answer to a request, related to it by reference. */
 export const RecordingStatusEventType = "org.matrix.rtc.recording.status";
+/**
+ * The key under which a participant's call membership carries their
+ * answers to requests that require consent, by request event ID: `true`
+ * to be recorded, `false` to decline. In an `m.rtc.member` event it's in
+ * the `application` object; in a legacy `m.call.member` one, top-level.
+ */
+export const RecordingConsentKey = "org.matrix.rtc.recording_consent";
 
 export type RecordingMedia = "audio" | "video";
 export type RecordingStreams = "composite" | "separate" | "both";
@@ -54,6 +65,8 @@ export interface RecordingEventContent {
   recorder?: string;
   media?: RecordingMedia;
   streams?: RecordingStreams;
+  /** Whether everyone in the call must consent before it's recorded. */
+  requires_consent?: boolean;
 }
 
 /** A recording that is in progress. */
@@ -67,12 +80,25 @@ export interface RecordingState {
   eventId: string;
   /** Whether the recorder has confirmed that it's recording. */
   started: boolean;
+  /** Whether everyone in the call must consent before it's recorded. */
+  requiresConsent: boolean;
+  /** Who has consented (or not), by user ID. */
+  consents: Record<string, boolean>;
+  /** The users in the call who have yet to consent, when it's required. */
+  awaitingConsent: string[];
 }
 
 /** The recorder said it couldn't record, or didn't answer in time. */
 export class RecorderError extends Error {
   public constructor(public readonly reason?: string) {
     super(reason ?? "The recorder didn't confirm the recording");
+  }
+}
+
+/** Somebody in the call declined to be recorded. */
+export class ConsentDeclinedError extends Error {
+  public constructor(public readonly userId: string) {
+    super(`${userId} declined to be recorded`);
   }
 }
 
@@ -95,6 +121,8 @@ export interface MediaFile {
 export interface RecordingOptions {
   /** Ask for the call's audio only, rather than a video composite. */
   audioOnly?: boolean;
+  /** Record only once everyone in the call has consented. */
+  requireConsent?: boolean;
 }
 
 /** A finished recording the recorder has posted into the room. */
@@ -129,6 +157,47 @@ export interface Recording {
   toggle$: Behavior<((options?: RecordingOptions) => Promise<void>) | null>;
   /** Why the last attempt to start or stop failed, until cleared. */
   error$: State<Error | null>;
+  /**
+   * Consents (or declines) to the recording in progress, through our call
+   * membership.
+   */
+  consent: (agree: boolean) => Promise<void>;
+}
+
+/**
+ * The answers to consent requests in a membership, by request event ID:
+ * what the membership's device wants for `recording_consent`.
+ */
+export function membershipConsents(
+  membership: Pick<CallMembership, "applicationData">,
+): Record<string, boolean> {
+  const consents = membership.applicationData[RecordingConsentKey];
+  return typeof consents === "object" && consents !== null
+    ? (consents as Record<string, boolean>)
+    : {};
+}
+
+/**
+ * What to put in our membership to answer a request. The lobby says that
+ * joining a recorded call is consenting to it, so a client that showed
+ * the lobby joins with the consent already given.
+ * @param room The room, whose state may hold a request
+ * @param warnedOnJoin Whether the user was told, before joining, that the
+ *   call is being recorded and that joining means consenting to it.
+ */
+export function consentOnJoin(
+  room: MatrixRoom,
+  slotId: string,
+  warnedOnJoin: boolean,
+): Record<string, unknown> | undefined {
+  if (!warnedOnJoin) return undefined;
+  const event = room.currentState.getStateEvents(RecordingEventType, slotId);
+  const content = event?.getContent() as RecordingEventContent | undefined;
+  return content?.recorder !== undefined &&
+    content.requires_consent === true &&
+    event?.getSender() !== room.client.getUserId()
+    ? { [RecordingConsentKey]: { [event!.getId()!]: true } }
+    : undefined;
 }
 
 /** Invites a bot into the room, unless it's already a member or invited. */
@@ -199,6 +268,10 @@ export async function sendSharedKey(
  *   deployment has one.
  * @param encryptionSystem How the call is encrypted: a recorder can only
  *   record a call encrypted with a shared key if it's given the key.
+ * @param rtcSession The session, through whose membership we consent.
+ * @param memberships$ The memberships in the call, whose data carries
+ *   each participant's consent.
+ * @param bots$ The users in the call who aren't people, so can't consent.
  */
 export function createRecording(
   scope: Scope,
@@ -207,7 +280,11 @@ export function createRecording(
   slotId: string,
   recorder: string | undefined,
   encryptionSystem: EncryptionSystem,
+  rtcSession: Pick<MatrixRTCSession, "updateApplicationData">,
+  memberships$: Behavior<Pick<CallMembership, "userId" | "applicationData">[]>,
+  bots$: Behavior<Set<string>>,
 ): Recording {
+  const userId = room.client.getUserId()!;
   const event$ = fromEvents(
     scope,
     room,
@@ -220,19 +297,48 @@ export function createRecording(
   );
   // Requests the recorder has confirmed, by event ID
   const started$ = state<Set<string>>(new Set());
+  // Our own answer, until our membership carries it
+  const myConsent$ = state<{ request: string; agree: boolean } | null>(null);
   const recording$ = computed<RecordingState | null>(() => {
     const event = event$.value;
     const content = event?.getContent() as RecordingEventContent | undefined;
-    return event && content?.recorder !== undefined
-      ? {
-          by: event.getSender()!,
-          recorder: content.recorder,
-          media: content.media ?? "video",
-          streams: content.streams ?? "composite",
-          eventId: event.getId()!,
-          started: started$.value.has(event.getId()!),
-        }
-      : null;
+    if (!event || content?.recorder === undefined) return null;
+    const eventId = event.getId()!;
+    const by = event.getSender()!;
+    const requiresConsent = content.requires_consent === true;
+    // Whoever asked has consented by asking, and the bots aren't asked
+    const people = memberships$.value.filter(
+      (m) =>
+        m.userId !== by &&
+        m.userId !== content.recorder &&
+        !bots$.value.has(m.userId),
+    );
+    const consents: Record<string, boolean> = {};
+    // A user with several devices has consented if any of them has, and
+    // declined if any of them has
+    for (const m of people) {
+      const answer = membershipConsents(m)[eventId];
+      if (answer !== undefined)
+        consents[m.userId] = (consents[m.userId] ?? true) && answer;
+    }
+    const mine = myConsent$.value;
+    if (mine?.request === eventId && consents[userId] === undefined)
+      consents[userId] = mine.agree;
+    return {
+      by,
+      recorder: content.recorder,
+      media: content.media ?? "video",
+      streams: content.streams ?? "composite",
+      eventId,
+      started: started$.value.has(eventId),
+      requiresConsent,
+      consents,
+      awaitingConsent: requiresConsent
+        ? [...new Set(people.map((m) => m.userId))].filter(
+            (id) => !consents[id],
+          )
+        : [],
+    };
   });
   // The record button shows the state event, so a failed request would
   // otherwise just leave it where it was
@@ -302,17 +408,33 @@ export function createRecording(
   };
   // Nothing is being recorded, so whoever asked clears the request (the
   // recorder should too, but it may be the one that's gone)
-  const giveUp = (error: RecorderError): void => {
+  const giveUp = (error: Error): void => {
     error$.value = error;
-    if (recording$.peek()?.by === room.client.getUserId())
+    if (recording$.peek()?.by === userId)
       send({}).catch((e) => logger.error("Failed to clear recording", e));
   };
+  // A decline means it can't be recorded, so whoever asked gives up
+  // without waiting for the recorder to say so
+  let declined: string | null = null;
+  scope.effect(() => {
+    const current = recording$.value;
+    if (current === null || current.eventId === declined) return;
+    const decliner = Object.keys(current.consents).find(
+      (id) => !current.consents[id],
+    );
+    if (decliner === undefined) return;
+    declined = current.eventId;
+    giveUp(new ConsentDeclinedError(decliner));
+  });
+  // The recorder can't start until everyone has consented, so the clock
+  // only runs once they have
   scope.effect(() => {
     const current = recording$.value;
     if (
       current === null ||
       current.started ||
-      current.by !== room.client.getUserId()
+      current.by !== userId ||
+      current.awaitingConsent.length > 0
     )
       return;
     const timer = setTimeout(
@@ -333,6 +455,7 @@ export function createRecording(
         await send({
           recorder: recorder!,
           ...(options?.audioOnly ? { media: "audio" } : {}),
+          ...(options?.requireConsent ? { requires_consent: true } : {}),
         });
       }
     } catch (e) {
@@ -340,11 +463,21 @@ export function createRecording(
       error$.value = e instanceof Error ? e : new Error(String(e));
     }
   };
+  // Only the current request matters, so older answers are dropped
+  const consent = async (agree: boolean): Promise<void> => {
+    const current = recording$.peek();
+    if (current === null) return;
+    await rtcSession.updateApplicationData({
+      [RecordingConsentKey]: { [current.eventId]: agree },
+    });
+    myConsent$.value = { request: current.eventId, agree };
+  };
 
   return {
     recording$,
     uploads$,
     error$,
+    consent,
     toggle$: computed(() =>
       recorder !== undefined && floorControl.canRecord$.value ? toggle : null,
     ),

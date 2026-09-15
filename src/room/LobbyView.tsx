@@ -15,7 +15,7 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import { type MatrixClient } from "matrix-js-sdk";
-import { Button } from "@vector-im/compound-web";
+import { Button, Text } from "@vector-im/compound-web";
 import classNames from "classnames";
 import { logger } from "matrix-js-sdk/lib/logger";
 import { usePreviewTracks } from "@livekit/components-react";
@@ -63,6 +63,8 @@ interface Props {
   waitingForInvite?: boolean;
   /** Whether a moderator has blocked this device from the call. */
   blocked?: boolean;
+  /** Who is recording the call, if anyone: joining means consenting to it. */
+  recordedBy?: string | null;
 }
 
 export const LobbyView: FC<Props> = ({
@@ -77,6 +79,7 @@ export const LobbyView: FC<Props> = ({
   onShareClick,
   waitingForInvite,
   blocked = false,
+  recordedBy = null,
 }) => {
   useEffect(() => {
     logger.info("[Lifecycle] LobbyView Component mounted");
@@ -247,6 +250,11 @@ export const LobbyView: FC<Props> = ({
                 : (enterLabel ?? t("lobby.join_button"))}
             </Button>
           </VideoPreview>
+          {recordedBy !== null && (
+            <Text className={styles.recorded} size="md" role="alert">
+              {t("lobby.recorded", { name: recordedBy })}
+            </Text>
+          )}
           {!recentsButtonInFooter && recentsButton}
         </div>
         {footerVm !== null && (

@@ -55,7 +55,7 @@ import {
 import { useRoomAvatar } from "./useRoomAvatar";
 import { useRoomName } from "./useRoomName";
 import { useRoomState } from "./useRoomState";
-import { isBlockedInRoom } from "../state/FloorControl.ts";
+import { isBlockedInRoom, RecordingEventType } from "../state/FloorControl.ts";
 import { type LeaveReason } from "../state/CallViewModel/CallViewModel.ts";
 import { useJoinRule } from "./useJoinRule";
 import { InviteModal } from "./InviteModal";
@@ -477,6 +477,24 @@ export const GroupCallView: FC<Props> = ({
       [client, rtcSession],
     ),
   );
+  // Joining a recorded call is consenting to be recorded, so the lobby says
+  // who is recording it
+  const recordedBy = useRoomState(
+    room,
+    useCallback(
+      (state: RoomState) => {
+        const event = state.getStateEvents(
+          RecordingEventType,
+          computeSlotId(rtcSession.slotDescription),
+        );
+        const by = event?.getSender();
+        return event?.getContent().recorder === undefined || by === undefined
+          ? null
+          : (room.getMember(by)?.rawDisplayName ?? by);
+      },
+      [room, rtcSession],
+    ),
+  );
   const lobbyView = (
     <>
       {shareModal}
@@ -486,6 +504,7 @@ export const GroupCallView: FC<Props> = ({
         muteStates={muteStates}
         onEnter={() => setJoined(true)}
         blocked={blocked}
+        recordedBy={recordedBy}
         confineToRoom={confineToRoom}
         hideHeader={header !== HeaderStyle.Standard}
         participantCount={participantCount}

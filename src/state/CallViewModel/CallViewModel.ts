@@ -480,14 +480,6 @@ export function createCallViewModel$(
   // floorControl: moderators muting devices through room state
   const slotId = computeSlotId(matrixRTCSession.slotDescription);
   const floorControl = createFloorControl(scope, matrixRoom, userId, slotId);
-  const recording = createRecording(
-    scope,
-    matrixRoom,
-    floorControl,
-    slotId,
-    Config.get().recording_bot,
-    options.encryptionSystem,
-  );
   const dialIn = createDialIn(
     scope,
     matrixRoom,
@@ -526,6 +518,33 @@ export function createCallViewModel$(
         ),
     );
   }, shallowArrayEquals);
+  /**
+   * The bots this deployment knows and the bridges a moderator has enabled.
+   * They join like anyone else, but aren't people.
+   */
+  const configuredBots$ = computed(
+    () =>
+      new Set(
+        [
+          ...Object.keys(floorControl.content$.value.bridges ?? {}),
+          Config.get().recording_bot,
+          Config.get().sip_bridge,
+        ].filter((id) => id !== undefined),
+      ),
+  );
+  // Recording the call through a bot, where this deployment has one. Only
+  // people can consent to it, through their memberships.
+  const recording = createRecording(
+    scope,
+    matrixRoom,
+    floorControl,
+    slotId,
+    Config.get().recording_bot,
+    options.encryptionSystem,
+    matrixRTCSession,
+    memberships$,
+    configuredBots$,
+  );
   // Our own device honours a moderator's audio mute by not publishing. A
   // video mute is only applied by viewers, who hide the video; our camera
   // stays as it is and the local tile warns that nobody can see it.
@@ -838,22 +857,17 @@ export function createCallViewModel$(
   );
 
   /**
-   * The bots in the call: the recorder and bridge this deployment knows, the
-   * recorder named while a recording runs, and the bridges a moderator has
-   * enabled. They join like anyone else, but aren't people. (The SIP callers
-   * a bridge brings in are separate users, so they show.) The configured
-   * ones are hidden even when idle, since a bot's several memberships linger
-   * for a moment after the state naming it is cleared.
+   * The bots in the call: the configured ones and the recorder named while
+   * a recording runs. (The SIP callers a bridge brings in are separate
+   * users, so they show.) The configured ones are hidden even when idle,
+   * since a bot's several memberships linger for a moment after the state
+   * naming it is cleared.
    */
   const botUserIds$ = computed(() => {
     const recorder = recording.recording$.value?.recorder;
-    return new Set([
-      ...Object.keys(floorControl.content$.value.bridges ?? {}),
-      ...(recorder === undefined ? [] : [recorder]),
-      ...[Config.get().recording_bot, Config.get().sip_bridge].filter(
-        (id) => id !== undefined,
-      ),
-    ]);
+    return recorder === undefined
+      ? configuredBots$.value
+      : new Set([...configuredBots$.value, recorder]);
   });
   /**
    * The user media we want tiles for. Auditorium mode hides the tiles of

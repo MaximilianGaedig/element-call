@@ -72,8 +72,10 @@ describe("LocalMembership", () => {
       });
 
       const mockedSession = vi.mocked({
+        slotDescription: { application: "m.call", id: "ROOM" },
         room: {
           roomId: "roomId",
+          currentState: { getStateEvents: vi.fn().mockReturnValue(null) },
           client: {
             getDomain: vi.fn().mockReturnValue("example.org"),
             getOpenIdToken: vi.fn().mockResolvedValue({
@@ -129,8 +131,10 @@ describe("LocalMembership", () => {
       });
 
       const mockedSession = vi.mocked({
+        slotDescription: { application: "m.call", id: "ROOM" },
         room: {
           roomId: "roomId",
+          currentState: { getStateEvents: vi.fn().mockReturnValue(null) },
           client: {
             getDomain: vi.fn().mockReturnValue("example.org"),
             getOpenIdToken: vi.fn().mockResolvedValue({

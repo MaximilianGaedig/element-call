@@ -29,11 +29,13 @@ interface Props {
 
 /**
  * Asks the user to confirm that they want to record the call, since it
- * warns everyone in it, and whether to record audio only.
+ * warns everyone in it, whether to record audio only, and whether everyone
+ * must consent first.
  */
 export const RecordModal: FC<Props> = ({ open, onDismiss, onStart }) => {
   const { t } = useTranslation();
   const [audioOnly, setAudioOnly] = useState(false);
+  const [requireConsent, setRequireConsent] = useState(false);
   return (
     <Modal
       title={t("recording.confirm_title")}
@@ -53,6 +55,17 @@ export const RecordModal: FC<Props> = ({ open, onDismiss, onStart }) => {
         >
           <Label>{t("recording.audio_only")}</Label>
         </InlineField>
+        <InlineField
+          name="requireConsent"
+          control={
+            <CheckboxControl
+              checked={requireConsent}
+              onChange={(e) => setRequireConsent(e.target.checked)}
+            />
+          }
+        >
+          <Label>{t("recording.require_consent")}</Label>
+        </InlineField>
       </Form>
       <div className={styles.buttons}>
         <Button kind="secondary" onClick={onDismiss}>
@@ -61,7 +74,7 @@ export const RecordModal: FC<Props> = ({ open, onDismiss, onStart }) => {
         <Button
           kind="primary"
           destructive
-          onClick={() => onStart({ audioOnly })}
+          onClick={() => onStart({ audioOnly, requireConsent })}
           data-testid="record_confirm"
         >
           {t("recording.confirm_button")}

@@ -30,7 +30,8 @@ the call is being recorded, and by whom.
   "content": {
     "recorder": "@recordbot:example.org",
     "media": "video",
-    "streams": "composite"
+    "streams": "composite",
+    "requires_consent": false
   }
 }
 ```
@@ -43,6 +44,9 @@ the call is being recorded, and by whom.
 - `streams`: `composite`, `separate` or `both`. Whether to record what a
   participant would see and hear (one mixed file), each participant's
   streams separately, or both. Defaults to `composite`.
+- `requires_consent`: whether everyone in the call must consent before
+  anything is recorded, as the law requires in some places. Defaults to
+  `false`. See [Consent](#consent).
 
 An event with empty content (or no `recorder`) means the call is not being
 recorded; sending one stops a recording. The event's sender is who started
@@ -92,6 +96,53 @@ power to send it.
 A recorder should not record anything it can't tell the room about: if it
 can't send the events, it shouldn't record.
 
+### Consent
+
+Recording someone without their consent is illegal in some countries, so
+a request can ask that nobody be recorded until everyone in the call has
+agreed. When `requires_consent` is `true`, each participant answers in
+their call membership, under `org.matrix.rtc.recording_consent`: a map
+from the request's event ID to `true` to agree to being recorded, or
+`false` to decline. In an `m.rtc.member` event it sits in the
+`application` object; in a legacy `m.call.member` event, at the top
+level:
+
+```json
+{
+  "type": "m.call.member",
+  "state_key": "_@alice:example.org_DEVICEID_m.call",
+  "content": {
+    "application": "m.call",
+    "call_id": "",
+    "device_id": "DEVICEID",
+    "org.matrix.rtc.recording_consent": { "$request": true },
+    "...": "..."
+  }
+}
+```
+
+Consent is per request, since a participant may be willing to be recorded
+by one person and not another; an answer to any other request means
+nothing to this one. It lives in the membership because that is what
+being in the call means: whoever is in the call can set it by definition,
+the recorder and every client already track the current memberships
+reliably (state that can't fall into a gap in the timeline), and it goes
+away with the membership, so someone who leaves and comes back is asked
+again. A user with several devices in the call has consented if any of
+them has, and declined if any of them has.
+
+The recorder joins the call as usual on seeing such a request, but
+doesn't record until every user with a membership in the slot, other than
+the request's sender (who consented by asking) and the recorder itself,
+has answered `true`. Users who leave the call before answering no longer
+need to; users who join after the request are told by their client that
+the call is (or is about to be) recorded and that joining means
+consenting, and their client joins with the consent already in its
+membership. A `false` from anyone in the call means it can't be recorded:
+the recorder answers with a `failed` status naming who declined and
+clears the request. The client that asked should do the same as soon as
+it sees the decline, without waiting for the recorder.
+
 ### Client behaviour
 
 A client whose user is in the call reads the `org.matrix.rtc.recording`
@@ -111,7 +162,17 @@ Which recorder to invite is a deployment matter (Element Call reads it from
 its config). If the recorder answers `failed`, or doesn't answer within a
 reasonable time (Element Call waits 30 seconds), the client that asked
 should clear the event itself, since nothing is being recorded and the
-recorder may not be there to clear it.
+recorder may not be there to clear it. Where the request requires consent,
+that time only starts once everyone has consented, since the recorder
+can't start before then.
+
+For a request that requires consent, a client whose user is in the call
+and hasn't answered asks them, in a way that can't be dismissed without
+answering one way or the other, and shows the person who asked how many
+people have yet to consent. Its join screen warns that the call is being
+recorded and that joining means consenting to it, and sends the consent
+once the user joins; a client that drops the user straight into the call
+asks them there instead.
 
 Element Call's standalone app encrypts calls with a key in the URL rather
 than in the room; recording those needs the key handed to the recorder,
@@ -134,6 +195,11 @@ messages.
 An earlier draft used a timeline event with an `m.text` fallback of
 `!record start`, so that chat-driven bots kept working; that was dropped in
 favour of state that every client can read reliably.
+
+Consent is only as good as the clients: a client that answers `true`
+without asking, or a recorder that ignores `requires_consent`, records
+people who never agreed. The answers are in the room's history, though,
+so at least it can be shown who was asked.
 
 Nothing stops a participant recording the call with software outside
 Matrix. This proposal only makes sanctioned recording visible; it doesn't

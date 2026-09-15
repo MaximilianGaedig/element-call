@@ -96,3 +96,10 @@ Please see LICENSE in the repository root for full details.
   color: var(--cpd-color-text-on-solid-primary);
   box-shadow: var(--small-drop-shadow);
 }
+
+.buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--cpd-space-3x);
+  margin-block-start: var(--cpd-space-6x);
+}

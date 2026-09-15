@@ -7,7 +7,7 @@ Please see LICENSE in the repository root for full details.
 
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { type Room } from "matrix-js-sdk";
 import { TooltipProvider } from "@vector-im/compound-web";
 
@@ -21,7 +21,12 @@ const room = {
     id === "@alice:e" ? { rawDisplayName: "Alice" } : null,
 } as unknown as Room;
 
-function setup(by: string, localUserId: string, started = true): void {
+function setup(
+  by: string,
+  localUserId: string,
+  started = true,
+  consent: Partial<RecordingState> = {},
+): ReturnType<typeof vi.fn> {
   const recording$ = state<RecordingState | null>({
     by,
     recorder: "@bot:e",
@@ -29,14 +34,22 @@ function setup(by: string, localUserId: string, started = true): void {
     streams: "composite",
     eventId: "$1",
     started,
+    requiresConsent: false,
+    consents: {},
+    awaitingConsent: [],
+    ...consent,
   });
-  const vm = { recording: { recording$ } } as unknown as CallViewModel;
+  const consentFn = vi.fn().mockResolvedValue(undefined);
+  const vm = {
+    recording: { recording$, consent: consentFn },
+  } as unknown as CallViewModel;
   render(
     <TooltipProvider>
       <RecordingBadge vm={vm} room={room} />
       <RecordingNotice vm={vm} room={room} localUserId={localUserId} />
     </TooltipProvider>,
   );
+  return consentFn;
 }
 
 test("names who is recording until acknowledged, and keeps the badge", async () => {
@@ -64,4 +77,30 @@ test("marks the badge busy until the recorder confirms", () => {
   expect(screen.getByRole("status")).toHaveAccessibleName(
     "Recording by Alice (@alice:e) is starting",
   );
+});
+
+test("asks for consent until answered, and says who is still to consent", async () => {
+  const consent = setup("@alice:e", "@bob:e", false, {
+    requiresConsent: true,
+    awaitingConsent: ["@bob:e", "@carol:e"],
+  });
+  // The dialog hides the rest of the page from assistive technology
+  expect(screen.getByRole("status", { hidden: true })).toHaveAccessibleName(
+    "Recording by Alice (@alice:e) is waiting for 2 people to consent",
+  );
+  expect(screen.getByRole("dialog")).toHaveTextContent(
+    "Alice wants to record this call",
+  );
+  await userEvent.click(screen.getByRole("button", { name: "Decline" }));
+  expect(consent).toHaveBeenCalledWith(false);
+});
+
+test("asks nothing of those who have already consented", () => {
+  setup("@alice:e", "@bob:e", false, {
+    requiresConsent: true,
+    consents: { "@bob:e": true },
+    awaitingConsent: ["@carol:e"],
+  });
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(screen.queryByRole("alert")).toBeNull();
 });

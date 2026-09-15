@@ -13,6 +13,7 @@ import classNames from "classnames";
 
 import { type CallViewModel } from "../state/CallViewModel/CallViewModel";
 import { useBehavior } from "../useBehavior";
+import { Modal } from "../Modal";
 import styles from "./RecordingIndicator.module.css";
 
 interface BadgeProps {
@@ -33,13 +34,14 @@ export const RecordingBadge: FC<BadgeProps> = ({ vm, room, floating }) => {
   if (recording === null) return null;
 
   const name = room.getMember(recording.by)?.rawDisplayName ?? recording.by;
+  const count = recording.awaitingConsent.length;
+  const label = recording.started
+    ? t("recording.in_progress", { name, userId: recording.by })
+    : count > 0
+      ? t("recording.awaiting_consent", { name, userId: recording.by, count })
+      : t("recording.starting", { name, userId: recording.by });
   return (
-    <Tooltip
-      label={t(
-        recording.started ? "recording.in_progress" : "recording.starting",
-        { name, userId: recording.by },
-      )}
-    >
+    <Tooltip label={label}>
       <div
         className={classNames(styles.badge, {
           [styles.floating]: floating,
@@ -62,7 +64,8 @@ interface NoticeProps {
 
 /**
  * A notice naming who is recording the call, shown to everyone but them
- * until acknowledged.
+ * until acknowledged. When the recording needs everyone's consent, it's a
+ * dialog asking for it instead, which stays until answered either way.
  */
 export const RecordingNotice: FC<NoticeProps> = ({ vm, room, localUserId }) => {
   const { t } = useTranslation();
@@ -70,10 +73,34 @@ export const RecordingNotice: FC<NoticeProps> = ({ vm, room, localUserId }) => {
   // The recording (by event ID) whose notice has been acknowledged
   const [acknowledged, setAcknowledged] = useState<string | null>(null);
   if (recording === null) return null;
-  if (recording.by === localUserId || acknowledged === recording.eventId)
+  if (
+    recording.by === localUserId ||
+    acknowledged === recording.eventId ||
+    recording.consents[localUserId] !== undefined
+  )
     return null;
 
   const name = room.getMember(recording.by)?.rawDisplayName ?? recording.by;
+  if (recording.requiresConsent)
+    return (
+      <Modal title={t("recording.consent_title", { name })} open>
+        <Text>{t("recording.consent_body")}</Text>
+        <div className={styles.buttons}>
+          <Button
+            kind="secondary"
+            onClick={() => void vm.recording.consent(false)}
+          >
+            {t("recording.consent_decline")}
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() => void vm.recording.consent(true)}
+          >
+            {t("recording.consent_agree")}
+          </Button>
+        </div>
+      </Modal>
+    );
   return (
     <div className={styles.notice} role="alert">
       <Text as="span" size="md" weight="semibold">

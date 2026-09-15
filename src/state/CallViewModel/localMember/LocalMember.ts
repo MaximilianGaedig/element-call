@@ -54,6 +54,8 @@ import { type HomeserverConnected } from "./HomeserverConnected.ts";
 import { type LocalTransport } from "./LocalTransport.ts";
 import { areLivekitTransportsEqual } from "../remoteMembers/MatrixLivekitMembers.ts";
 import { PUBLICATION_EVENTS } from "../../trackReference.ts";
+import { consentOnJoin } from "../../Recording.ts";
+import { computeSlotId } from "matrix-js-sdk/lib/matrixrtc/utils";
 
 export enum TransportState {
   /** Not even a transport is available to the LocalMembership */
@@ -769,6 +771,12 @@ export function enterRTCSession(
     {
       notificationType,
       callIntent,
+      // The lobby said that joining a recorded call is consenting to it
+      applicationData: consentOnJoin(
+        rtcSession.room,
+        computeSlotId(rtcSession.slotDescription),
+        !getUrlParams().skipLobby,
+      ),
       manageMediaKeys: encryptMedia,
       delayedLeaveEventRestartMs:
         matrixRtcSessionConfig?.delayed_leave_event_restart_ms,

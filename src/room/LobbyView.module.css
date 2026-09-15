@@ -39,3 +39,10 @@ Please see LICENSE in the repository root for full details.
     gap: var(--cpd-space-10x);
   }
 }
+
+.recorded {
+  margin: 0;
+  padding-inline: var(--cpd-space-4x);
+  text-align: center;
+  color: var(--cpd-color-text-critical-primary);
+}
