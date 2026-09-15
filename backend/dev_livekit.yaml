@@ -3,15 +3,26 @@ bind_addresses:
   - "0.0.0.0"
 rtc:
   tcp_port: 7881
-  port_range_start: 50100
-  port_range_end: 50200
+  port_range_start: 40100
+  port_range_end: 40200
   use_external_ip: false
-# TURN over UDP, so that a browser whose host candidates the SFU can't reach
-# (Firefox hides them behind mDNS until the page is capturing) still connects
+  # Advertise the container's own address as well as loopback: browsers on
+  # the host reach LiveKit at 127.0.0.1 through the published ports, while
+  # the sipbridge container's WPE WebKit refuses loopback candidates
+  # outright and needs the container address
+  enable_loopback_candidate: true
+# TURN over TLS, so that a browser whose host candidates the SFU can't reach
+# (Firefox hides them behind mDNS until the page is capturing) still connects.
+# TLS rather than UDP because LiveKit puts NODE_IP in a UDP TURN URL but the
+# domain in a TLS one, and only a name resolves to something reachable both
+# from the host (loopback) and from the sipbridge container (see the sipbridge
+# service in docker-compose-dev.yml)
 turn:
   enabled: true
-  domain: localhost
-  udp_port: 3478
+  domain: turn.m.localhost
+  tls_port: 5349
+  cert_file: /local_cert.pem
+  key_file: /local_key.pem
   relay_range_start: 30000
   relay_range_end: 30100
 keys:
