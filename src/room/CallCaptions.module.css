@@ -10,7 +10,7 @@ view, taking a slice of the height for the last few lines of transcript
 and running on underneath the footer to the bottom of the view. The call
 view measures it and shrinks the grid to make room. */
 .captions {
-  --captions-height: min(30vh, 240px);
+  --captions-height: min(20vh, 120px);
   flex-shrink: 0;
   position: relative;
   inline-size: 100%;
