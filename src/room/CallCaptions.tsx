@@ -105,7 +105,12 @@ export const CallCaptions: FC<{
   vm: CallViewModel;
   /** Measured by the call view, which makes room for the panel */
   ref?: Ref<HTMLElement>;
-}> = ({ vm, ref }) => {
+  /**
+   * How far the panel extends under the footer, in pixels; its text stays
+   * above.
+   */
+  inset?: number;
+}> = ({ vm, ref, inset = 0 }) => {
   const { t } = useTranslation();
   const transcription = useBehavior(vm.transcription.transcription$);
   const segments = useBehavior(vm.transcription.segments$);
@@ -155,6 +160,11 @@ export const CallCaptions: FC<{
         className={styles.captions}
         aria-label={t("captions.title")}
         ref={ref}
+        style={{
+          blockSize: `calc(var(--captions-height) + ${inset}px)`,
+          marginBlockEnd: -inset,
+          paddingBlockEnd: inset,
+        }}
       >
         {segments.length === 0 ? (
           <Text size="sm" className={styles.waiting}>

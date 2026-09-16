@@ -350,8 +350,12 @@ export const InCallView: FC<InCallViewProps> = ({
   const [footerRef, footerBounds] = useMeasure();
   const [captionsRef, captionsBounds] = useMeasure();
   const captionsOn = useBehavior(vm.transcription.transcription$) !== null;
+  const showFooter = useBehavior(footerVm.showFooter$);
+  // The captions panel runs on underneath the footer, so that there's no
+  // edge above the buttons, and keeps its text above them
+  const captionsInset = showFooter ? footerBounds.height : 0;
   // The measurement lingers after the panel unmounts
-  const captionsHeight = captionsOn ? captionsBounds.height : 0;
+  const captionsHeight = captionsOn ? captionsBounds.height - captionsInset : 0;
 
   const gridBounds = useMemo(
     () => ({
@@ -546,7 +550,6 @@ export const InCallView: FC<InCallViewProps> = ({
     };
   }, [gridBounds$]);
 
-  const showFooter = useBehavior(footerVm.showFooter$);
   const renderContent = (): JSX.Element => {
     if (layout.type === "pip") {
       return (
@@ -727,7 +730,7 @@ export const InCallView: FC<InCallViewProps> = ({
       <ReactionsOverlay vm={vm} />
       {captionsOn && (
         <Suspense fallback={null}>
-          <CallCaptions vm={vm} ref={captionsRef} />
+          <CallCaptions vm={vm} ref={captionsRef} inset={captionsInset} />
         </Suspense>
       )}
       {footer}

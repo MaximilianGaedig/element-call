@@ -6,12 +6,15 @@ Please see LICENSE in the repository root for full details.
 */
 
 /* Sits between the call content and the footer, the full width of the
-view, taking a slice of the height for the last few lines of transcript.
-The call view measures it and shrinks the grid to make room. */
+view, taking a slice of the height for the last few lines of transcript
+and running on underneath the footer to the bottom of the view. The call
+view measures it and shrinks the grid to make room. */
 .captions {
+  --captions-height: min(30vh, 240px);
   flex-shrink: 0;
+  position: relative;
   inline-size: 100%;
-  block-size: min(30vh, 240px);
+  block-size: var(--captions-height);
   display: flex;
   flex-direction: column;
   justify-content: end;
