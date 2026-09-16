@@ -209,6 +209,7 @@
     "consent_title": "{{name}} wants to record this call",
     "download": "Download",
     "failed": "Couldn't ask the recorder to record the call",
+    "finishing": "Finishing recording…",
     "in_progress": "Call is being recorded by {{name}} ({{userId}})",
     "notice": "{{name}} is recording this call",
     "ready": "Recording ready",

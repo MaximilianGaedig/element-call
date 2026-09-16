@@ -170,6 +170,57 @@ describe("createRecording", () => {
     expect(sendStateEvent).toHaveBeenCalledTimes(3);
   });
 
+  it("says a stopped recording is being finished until it's posted", async () => {
+    const { room, set } = setup();
+    const r = createRecording(
+      testScope(),
+      room,
+      canRecord,
+      slot,
+      bot,
+      none,
+      rtcSession,
+      people,
+      noBots,
+    );
+    expect(r.finishing$.value).toBe(false);
+    set(event("@me:e", { recorder: bot }, "$1"));
+    // Stopping before the recorder ever started leaves nothing to post
+    await r.toggle$.value!();
+    expect(r.finishing$.value).toBe(false);
+    set(event("@me:e", { recorder: bot }, "$2"));
+    room.emit(
+      RoomEvent.Timeline,
+      {
+        getSender: () => bot,
+        getType: () => "org.matrix.rtc.recording.status",
+        getContent: () => ({ status: "started" }),
+        getRelation: () => ({ rel_type: "m.reference", event_id: "$2" }),
+        getId: () => "$3",
+      } as unknown as MatrixEvent,
+      room,
+      false,
+      false,
+      null!,
+    );
+    await r.toggle$.value!();
+    expect(r.finishing$.value).toBe(true);
+    room.emit(
+      RoomEvent.Timeline,
+      {
+        getSender: () => bot,
+        getType: () => "m.room.message",
+        getContent: () => ({ msgtype: "m.video", url: "mxc://e/v" }),
+        getId: () => "$4",
+      } as unknown as MatrixEvent,
+      room,
+      false,
+      false,
+      null!,
+    );
+    expect(r.finishing$.value).toBe(false);
+  });
+
   it("hands the recorder the call's shared key before asking", async () => {
     const { room, sendStateEvent } = setup();
     const batch = { batch: [] };

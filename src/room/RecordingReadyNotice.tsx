@@ -8,7 +8,7 @@ Please see LICENSE in the repository root for full details.
 import { type FC, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { type MatrixClient } from "matrix-js-sdk";
-import { Button, Text } from "@vector-im/compound-web";
+import { Button, InlineSpinner, Text } from "@vector-im/compound-web";
 import { logger } from "matrix-js-sdk/lib/logger";
 import { decryptAttachment } from "matrix-encrypt-attachment";
 
@@ -82,18 +82,40 @@ interface Props {
 /**
  * Tells everyone in the call that a recording has been posted to the room,
  * with its thumbnail and a download button, since the standalone app has
- * no timeline to find it in. As a widget the host shows the room, so
- * nothing is shown.
+ * no timeline to find it in. Whoever stopped the recording sees the notice
+ * straight away, with a spinner until the recorder has posted it. As a
+ * widget the host shows the room, so nothing is shown.
  */
 export const RecordingReadyNotice: FC<Props> = ({ vm, client }) => {
   const { t } = useTranslation();
   const uploads = useBehavior(vm.recording.uploads$);
+  const finishing = useBehavior(vm.recording.finishing$);
   const [dismissed, setDismissed] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const upload: RecordingUpload | undefined = uploads[uploads.length - 1];
   const thumbnail = useThumbnail(client, upload?.thumbnail);
-  if (widget !== null || upload === undefined || upload.eventId === dismissed)
-    return null;
+  if (widget !== null) return null;
+  if (finishing) {
+    if (dismissed === "finishing") return null;
+    return (
+      <div className={styles.notice} role="status">
+        <InlineSpinner size={24} />
+        <div className={styles.text}>
+          <Text as="span" size="md" weight="semibold">
+            {t("recording.finishing")}
+          </Text>
+        </div>
+        <Button
+          kind="secondary"
+          size="md"
+          onClick={() => setDismissed("finishing")}
+        >
+          {t("action.close")}
+        </Button>
+      </div>
+    );
+  }
+  if (upload === undefined || upload.eventId === dismissed) return null;
 
   const download = async (): Promise<void> => {
     setDownloading(true);

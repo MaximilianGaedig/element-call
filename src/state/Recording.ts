@@ -151,6 +151,12 @@ export interface Recording {
   /** Recordings the recorder has posted since we've been watching. */
   uploads$: Behavior<RecordingUpload[]>;
   /**
+   * Whether a recording we stopped is still being finished and posted by
+   * the recorder, so that whoever stopped it sees it coming before it
+   * lands in `uploads$`.
+   */
+  finishing$: Behavior<boolean>;
+  /**
    * Starts a recording, or stops the one in progress. Null if the local
    * user may not record or no recorder is configured.
    */
@@ -353,12 +359,14 @@ export function createRecording(
   // messages; in the standalone app there's no timeline to see them in, so
   // collect them as they arrive
   const uploads$ = state<RecordingUpload[]>([]);
+  const finishing$ = state(false);
   const onUpload = (event: MatrixEvent): void => {
     const content = event.getContent();
     const msgtype = content.msgtype;
     const file = mediaFile(content.file, content.url);
     if ((msgtype !== "m.video" && msgtype !== "m.audio") || file === undefined)
       return;
+    finishing$.value = false;
     uploads$.value = [
       ...uploads$.value,
       {
@@ -450,8 +458,11 @@ export function createRecording(
   });
   const toggle = async (options?: RecordingOptions): Promise<void> => {
     try {
-      if (recording$.peek() !== null) {
+      const current = recording$.peek();
+      if (current !== null) {
         await send({});
+        // Something was recorded, so the recorder will post it
+        if (current.started) finishing$.value = true;
       } else {
         // toggle$ only offers this once a recorder is configured
         await inviteBot(room, recorder!);
@@ -481,6 +492,7 @@ export function createRecording(
   return {
     recording$,
     uploads$,
+    finishing$,
     error$,
     consent,
     toggle$: computed(() =>
