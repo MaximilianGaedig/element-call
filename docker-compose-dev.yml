@@ -137,6 +137,10 @@ services:
       - WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS=1
       # GLib resolves *.localhost to loopback, so route loopback:443 to nginx
       - MATRIXRTC_LOOPBACK_TLS_UPSTREAM=nginx:443
+      # Where `!transcribe` streams audio: the `voxtral` service below by
+      # default, or set VOXTRAL_URL to a Voxtral server on the host, e.g.
+      # mlx-audio on Apple Silicon (see README)
+      - MATRIXRTC_BRIDGE_VOXTRAL_URL=${VOXTRAL_URL:-ws://voxtral:8000}
     volumes:
       - ./backend/dev_sipbridge.toml:/app/config.toml:Z
       - ./backend/dev_sipbridge-registration.yaml:/app/appservice-registration.yaml:Z
@@ -165,6 +169,8 @@ services:
   # "can't reach Voxtral" when it's not up:
   #   docker compose -f docker-compose-dev.yml --profile sipbridge --profile voxtral up
   # First start downloads ~8 GB of weights into backend/voxtral_tmp.
+  # On a Mac, run mlx-audio on the host instead and point the bridge at it
+  # with VOXTRAL_URL=ws://host.docker.internal:8000 (no profile needed).
   voxtral:
     profiles: [voxtral]
     image: vllm/vllm-openai:v0.29.0

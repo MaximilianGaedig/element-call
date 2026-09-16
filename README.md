@@ -253,6 +253,19 @@ including federation:
   terms. Without the profile, `!transcribe` just replies that it can't reach
   Voxtral.
 
+  On Apple Silicon, serve the same model with
+  [mlx-audio](https://github.com/Blaizzy/mlx-audio) on the host instead and
+  point the bridge at it; the bridge speaks both servers' `/v1/realtime`
+  dialects:
+
+  ```bash
+  pip install mlx-audio
+  mlx_audio.server --host 0.0.0.0 --port 8000 --realtime \
+      --realtime-model mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit
+  VOXTRAL_URL=ws://host.docker.internal:8000 \
+      docker compose -f docker-compose-dev.yml --profile sipbridge up
+  ```
+
 These use a test 'secret' published in this repository, so this must be used
 only for local development and **_never be exposed to the public Internet._**
 
