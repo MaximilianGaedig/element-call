@@ -7,6 +7,7 @@ Please see LICENSE in the repository root for full details.
 
 import { describe, expect, it, vi } from "vitest";
 import {
+  ClientEvent,
   type MatrixEvent,
   type Room,
   RoomEvent,
@@ -15,6 +16,7 @@ import {
 
 import {
   createTranscription,
+  StreamUpdateType,
   type TranscriptionEventContent,
 } from "./Transcription.ts";
 import { constant } from "./Behavior.ts";
@@ -42,12 +44,35 @@ function message(
   relation?: { rel_type: string; event_id: string },
   sender = bot,
 ): MatrixEvent {
+  const content: Record<string, unknown> = { msgtype: "m.notice", body };
+  if (relation?.rel_type === "m.replace")
+    content["m.new_content"] = { msgtype: "m.notice", body: body.slice(2) };
   return {
     getType: () => "m.room.message",
-    getContent: () => ({ msgtype: "m.notice", body }),
+    getContent: () => content,
     getRelation: () => relation ?? null,
     getSender: () => sender,
     getId: () => id,
+  } as unknown as MatrixEvent;
+}
+
+function update(
+  eventId: string,
+  seq: number,
+  body: string,
+  op = "append",
+  sender = bot,
+): MatrixEvent {
+  return {
+    getType: () => StreamUpdateType,
+    getContent: () => ({
+      room_id: "!room",
+      event_id: eventId,
+      seq,
+      op,
+      content: { body },
+    }),
+    getSender: () => sender,
   } as unknown as MatrixEvent;
 }
 
@@ -56,13 +81,19 @@ function setup(): {
   sendStateEvent: ReturnType<typeof vi.fn>;
   set: (event: MatrixEvent | null) => void;
   receive: (event: MatrixEvent) => void;
+  toDevice: (event: MatrixEvent) => void;
 } {
   let current: MatrixEvent | null = null;
   const sendStateEvent = vi.fn().mockResolvedValue({});
+  const client = {
+    ...mockEmitter(),
+    sendStateEvent,
+    getUserId: () => "@alice:e",
+  };
   const room = {
     ...mockEmitter(),
     roomId: "!room",
-    client: { sendStateEvent, getUserId: () => "@alice:e" },
+    client,
     currentState: {
       getStateEvents: (type: string, key: string) =>
         type === TranscriptionEventType && key === slot ? current : null,
@@ -78,6 +109,7 @@ function setup(): {
     },
     receive: (event) =>
       room.emit(RoomEvent.Timeline, event, room, false, false, null!),
+    toDevice: (event) => client.emit(ClientEvent.ToDeviceEvent, event),
   };
 }
 
@@ -114,11 +146,41 @@ describe("createTranscription", () => {
     receive(
       message("$2", "Old: stuff", { rel_type: "m.thread", event_id: "$other" }),
     );
-    expect(t.segments$.value).toEqual([seg]);
+    expect(t.segments$.value).toEqual([{ event: seg, body: "Alice: hello" }]);
     // Turning it off clears the captions
     set(stateEvent("@alice:e", {}, "$off"));
     expect(t.transcription$.value).toBeNull();
     expect(t.segments$.value).toEqual([]);
+  });
+
+  it("streams a segment's words until its edit arrives", () => {
+    const { room, set, receive, toDevice } = setup();
+    const t = createTranscription(testScope(), room, canTranscribe, slot, bot);
+    set(stateEvent("@alice:e", { transcriber: bot }, "$req"));
+    receive(
+      message("$root", "on", { rel_type: "m.reference", event_id: "$req" }),
+    );
+    const thread = { rel_type: "m.thread", event_id: "$root" };
+    const body = (): string[] => t.segments$.value.map((c) => c.body);
+    // Updates may arrive before the segment itself
+    toDevice(update("$1", 1, " what I"));
+    receive(message("$1", "Alice: so", thread));
+    expect(body()).toEqual(["Alice: so what I"]);
+    toDevice(update("$1", 2, " was saying"));
+    toDevice(update("$1", 2, " was saying")); // a repeat is ignored
+    toDevice(update("$1", 3, " nope", "append", "@mallory:e"));
+    expect(body()).toEqual(["Alice: so what I was saying"]);
+    toDevice(update("$1", 3, "Alice: replaced", "replace"));
+    expect(body()).toEqual(["Alice: replaced"]);
+    // The edit is final, whatever straggles in afterwards
+    receive(
+      message("$1e", "* Alice: so what I was saying.", {
+        rel_type: "m.replace",
+        event_id: "$1",
+      }),
+    );
+    toDevice(update("$1", 4, " more"));
+    expect(body()).toEqual(["Alice: so what I was saying."]);
   });
 
   it("invites the bot and sets the state, then clears it", async () => {

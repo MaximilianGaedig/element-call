@@ -7,7 +7,6 @@ Please see LICENSE in the repository root for full details.
 
 import { type FC, type ReactNode, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { type MatrixEvent } from "matrix-js-sdk";
 import { Text } from "@vector-im/compound-web";
 import {
   DisambiguatedProfileView,
@@ -24,6 +23,7 @@ import {
 import "@element-hq/web-shared-components/dist/element-web-shared-components.css";
 
 import { type CallViewModel } from "../state/CallViewModel/CallViewModel";
+import { type Caption } from "../state/Transcription";
 import { useBehavior } from "../useBehavior";
 import styles from "./CallCaptions.module.css";
 
@@ -55,13 +55,13 @@ const dateTime = new Intl.DateTimeFormat(undefined, {
 
 /**
  * One transcript segment. The bot posts them as "Speaker: words", so the
- * speaker is shown as the sender rather than the bot.
+ * speaker is shown as the sender rather than the bot. The body grows as
+ * the bot streams the speaker's words.
  */
-export const Segment: FC<{ event: MatrixEvent }> = ({ event }) => {
+export const Segment: FC<Caption> = ({ event, body }) => {
   // View models must hand back the same snapshot until something changes,
   // or the shared components' store hook re-renders forever
   const vms = useMemo(() => {
-    const body: string = event.getContent().body ?? "";
     const match = /^(.+?): (.*)$/s.exec(body);
     const ts = event.getTs();
     return {
@@ -77,7 +77,7 @@ export const Segment: FC<{ event: MatrixEvent }> = ({ event }) => {
         inhibitTooltip: true,
       }),
     };
-  }, [event]);
+  }, [event, body]);
   const id = event.getId()!;
   return (
     <EventTileView
@@ -110,12 +110,12 @@ export const CallCaptions: FC<{ vm: CallViewModel }> = ({ vm }) => {
     // Snapshots must be stable between renders (see Segment), so one is
     // built only when the segments change
     let snapshot: TimelineViewSnapshot | null = null;
-    let from: MatrixEvent[] | null = null;
+    let from: Caption[] | null = null;
     const getSnapshot = (): TimelineViewSnapshot => {
       if (snapshot === null || segments$.value !== from) {
         from = segments$.value;
         snapshot = {
-          items: from.map((event, i) => ({
+          items: from.map(({ event }, i) => ({
             key: event.getId()!,
             kind: "event",
             continuation: false,
@@ -140,8 +140,8 @@ export const CallCaptions: FC<{ vm: CallViewModel }> = ({ vm }) => {
     };
   }, [vm]);
   const renderItem = (item: TimelineItem): ReactNode => {
-    const event = segments.find((e) => e.getId() === item.key);
-    return event && <Segment event={event} />;
+    const caption = segments.find((c) => c.event.getId() === item.key);
+    return caption && <Segment {...caption} />;
   };
 
   if (transcription === null) return null;

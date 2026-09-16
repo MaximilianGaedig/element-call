@@ -11,7 +11,7 @@ import { type MatrixEvent } from "matrix-js-sdk";
 
 import { state } from "../state/Behavior";
 import { type CallViewModel } from "../state/CallViewModel/CallViewModel";
-import { type TranscriptionState } from "../state/Transcription";
+import { type Caption, type TranscriptionState } from "../state/Transcription";
 
 // The shared timeline measures itself, which jsdom can't
 vi.stubGlobal(
@@ -25,17 +25,18 @@ vi.stubGlobal(
 const { CallCaptions, Segment, i18n } = await import("./CallCaptions");
 const { I18nContext } = await import("@element-hq/web-shared-components");
 
-function segment(id: string, body: string): MatrixEvent {
-  return {
+function segment(id: string, body: string): Caption {
+  const event = {
     getId: () => id,
     getTs: () => 1_700_000_000_000,
     getContent: () => ({ msgtype: "m.notice", body }),
   } as unknown as MatrixEvent;
+  return { event, body };
 }
 
 test("CallCaptions shows the transcript as it arrives", () => {
   const transcription$ = state<TranscriptionState | null>(null);
-  const segments$ = state<MatrixEvent[]>([]);
+  const segments$ = state<Caption[]>([]);
   const vm = {
     transcription: { transcription$, segments$ },
   } as unknown as CallViewModel;
@@ -63,7 +64,7 @@ test("CallCaptions shows the transcript as it arrives", () => {
 test("Segment shows the speaker as the sender", () => {
   render(
     <I18nContext.Provider value={i18n}>
-      <Segment event={segment("$1", "Alice: hello there")} />
+      <Segment {...segment("$1", "Alice: hello there")} />
     </I18nContext.Provider>,
   );
   screen.getByText("Alice");
@@ -73,7 +74,7 @@ test("Segment shows the speaker as the sender", () => {
 test("Segment shows an unattributed line as it is", () => {
   render(
     <I18nContext.Provider value={i18n}>
-      <Segment event={segment("$1", "hello there")} />
+      <Segment {...segment("$1", "hello there")} />
     </I18nContext.Provider>,
   );
   screen.getByText("hello there");

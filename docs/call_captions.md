@@ -28,6 +28,12 @@ referencing notice tells it which thread to follow, and the replies are the
 captions, rendered as a fragment of timeline above the call controls with
 `@element-hq/web-shared-components`.
 
+While a segment is being spoken the bot streams its words to the devices
+in the call over to-device messages and edits the reply with the finished
+text once the speaker pauses, so captions appear word by word rather than
+sentence by sentence. The mechanism is a simplified MSC4471, described in
+`event_streams.md`.
+
 If the bot can't start (no Voxtral, no call) or stops on its own (everyone
 else left), it clears the state, so the button turns back off.
 
