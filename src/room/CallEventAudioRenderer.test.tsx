@@ -43,7 +43,11 @@ import {
 } from "../utils/test-fixtures";
 import { initializeWidget } from "../widget";
 import { state } from "../state/Behavior";
-import { type RecordingState } from "../state/Recording";
+import {
+  ConsentDeclinedError,
+  RecorderError,
+  type RecordingState,
+} from "../state/Recording";
 initializeWidget();
 vitest.mock("livekit-client/e2ee-worker?worker");
 vitest.mock("../useAudioContext");
@@ -235,42 +239,64 @@ function recordingRequest(started: boolean): RecordingState {
   };
 }
 
-test("plays the recording sounds only once the recorder has started", () => {
+test("announces a recording request, then its start and stop", () => {
   const { vm } = getBasicCallViewModelEnvironment([local, alice]);
   const recording$ = state<RecordingState | null>(null);
   vm.recording = { ...vm.recording, recording$ };
   render(<CallEventAudioRenderer vm={vm} />);
 
   playSound.mockClear();
-  // The request alone, still awaiting consent, is silent
+  // The request alone, still awaiting consent, isn't a recording yet
   act(() => {
     recording$.value = recordingRequest(false);
   });
-  expect(playSound).not.toBeCalled();
+  expect(playSound).toHaveBeenCalledExactlyOnceWith("recordingRequested");
   act(() => {
     recording$.value = recordingRequest(true);
   });
-  expect(playSound).toHaveBeenCalledExactlyOnceWith("recordingStarted");
+  expect(playSound).toHaveBeenLastCalledWith("recordingStarted");
   act(() => {
     recording$.value = null;
   });
   expect(playSound).toHaveBeenLastCalledWith("recordingStopped");
-  expect(playSound).toHaveBeenCalledTimes(2);
+  expect(playSound).toHaveBeenCalledTimes(3);
 });
 
-test("makes no sound for a recording request that never starts", () => {
+test("announces a recording request that somebody declines", () => {
   const { vm } = getBasicCallViewModelEnvironment([local, alice]);
   const recording$ = state<RecordingState | null>(null);
-  vm.recording = { ...vm.recording, recording$ };
+  const error$ = state<Error | null>(null);
+  vm.recording = { ...vm.recording, recording$, error$ };
   render(<CallEventAudioRenderer vm={vm} />);
 
   playSound.mockClear();
   act(() => {
     recording$.value = recordingRequest(false);
   });
-  // Declined, or the recorder failed: whoever asked clears the request
+  // Whoever asked gives up and clears the request
   act(() => {
+    error$.value = new ConsentDeclinedError(local.userId);
     recording$.value = null;
   });
-  expect(playSound).not.toBeCalled();
+  expect(playSound).toHaveBeenLastCalledWith("recordingDenied");
+  expect(playSound).toHaveBeenCalledTimes(2);
+});
+
+test("announces a recording request that the recorder never confirms", () => {
+  const { vm } = getBasicCallViewModelEnvironment([local, alice]);
+  const recording$ = state<RecordingState | null>(null);
+  const error$ = state<Error | null>(null);
+  vm.recording = { ...vm.recording, recording$, error$ };
+  render(<CallEventAudioRenderer vm={vm} />);
+
+  playSound.mockClear();
+  act(() => {
+    recording$.value = recordingRequest(false);
+  });
+  act(() => {
+    error$.value = new RecorderError();
+    recording$.value = null;
+  });
+  expect(playSound).toHaveBeenLastCalledWith("recordingFailed");
+  expect(playSound).toHaveBeenCalledTimes(2);
 });

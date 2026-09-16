@@ -17,6 +17,7 @@ import {
 } from "@vector-im/compound-web";
 
 import { Modal } from "../Modal";
+import { Config } from "../config/Config";
 import { type RecordingOptions } from "../state/Recording";
 import styles from "./RecordModal.module.css";
 
@@ -35,7 +36,10 @@ interface Props {
 export const RecordModal: FC<Props> = ({ open, onDismiss, onStart }) => {
   const { t } = useTranslation();
   const [audioOnly, setAudioOnly] = useState(false);
-  const [requireConsent, setRequireConsent] = useState(false);
+  // A deployment can insist on consent, in which case the option is shown
+  // on but can't be changed
+  const consentForced = Config.get().recording_requires_consent === true;
+  const [requireConsent, setRequireConsent] = useState(consentForced);
   return (
     <Modal
       title={t("recording.confirm_title")}
@@ -60,6 +64,7 @@ export const RecordModal: FC<Props> = ({ open, onDismiss, onStart }) => {
           control={
             <CheckboxControl
               checked={requireConsent}
+              disabled={consentForced}
               onChange={(e) => setRequireConsent(e.target.checked)}
             />
           }

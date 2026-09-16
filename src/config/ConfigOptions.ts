@@ -95,6 +95,13 @@ export interface ConfigOptions {
   recording_bot?: string;
 
   /**
+   * Whether every recording needs everyone in the call to consent before
+   * it starts: the record dialog's "require consent" option is then on and
+   * can't be turned off. Off by default.
+   */
+  recording_requires_consent?: boolean;
+
+  /**
    * The user ID of a SIP bridge bot, such as a matrixrtc-sip-bridge.
    * Moderators can allow dial-in from their settings, which invites the bot
    * into the room and asks it for the call's SIP addresses. Unset hides

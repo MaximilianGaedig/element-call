@@ -24,6 +24,13 @@ import recordingStartedMp3 from "../sound/recording_started.mp3";
 import recordingStartedOgg from "../sound/recording_started.ogg";
 import recordingStoppedMp3 from "../sound/recording_stopped.mp3";
 import recordingStoppedOgg from "../sound/recording_stopped.ogg";
+import recordingRequestedMp3 from "../sound/recording_requested.mp3";
+import recordingRequestedOgg from "../sound/recording_requested.ogg";
+import recordingDeniedMp3 from "../sound/recording_denied.mp3";
+import recordingDeniedOgg from "../sound/recording_denied.ogg";
+import recordingFailedMp3 from "../sound/recording_failed.mp3";
+import recordingFailedOgg from "../sound/recording_failed.ogg";
+import { ConsentDeclinedError } from "../state/Recording";
 import { useAudioContext } from "../useAudioContext";
 import { prefetchSounds } from "../soundUtils";
 import { useLatest } from "../useLatest";
@@ -61,6 +68,18 @@ export const callEventAudioSounds = prefetchSounds({
   recordingStopped: {
     mp3: recordingStoppedMp3,
     ogg: recordingStoppedOgg,
+  },
+  recordingRequested: {
+    mp3: recordingRequestedMp3,
+    ogg: recordingRequestedOgg,
+  },
+  recordingDenied: {
+    mp3: recordingDeniedMp3,
+    ogg: recordingDeniedOgg,
+  },
+  recordingFailed: {
+    mp3: recordingFailedMp3,
+    ogg: recordingFailedOgg,
   },
 });
 
@@ -106,15 +125,24 @@ export function CallEventAudioRenderer({
   useBehaviorChange(vm.screenShares$, (shares, previous) => {
     if (shares.length > previous.length) play("screenshareStarted");
   });
-  // Everyone hears when a recording starts and stops, however big the call.
-  // A request isn't a recording until the recorder confirms it (which, when
-  // consent is required, is only once everyone has consented), so a request
-  // that's declined or times out makes no sound at all.
+  // Everyone hears a recording being asked for, starting and stopping,
+  // however big the call. A request isn't a recording until the recorder
+  // confirms it (which, when consent is required, is only once everyone
+  // has consented); one that goes away before then was declined, failed or
+  // timed out, and everyone hears that too.
   useBehaviorChange(vm.recording.recording$, (recording, previous) => {
     const wasStarted = previous?.started === true;
     const isStarted = recording?.started === true;
     if (isStarted && !wasStarted) play("recordingStarted");
     else if (wasStarted && !isStarted) play("recordingStopped");
+    else if (recording !== null && previous === null)
+      play("recordingRequested");
+    else if (recording === null && previous !== null)
+      play(
+        vm.recording.error$.value instanceof ConsentDeclinedError
+          ? "recordingDenied"
+          : "recordingFailed",
+      );
   });
 
   return <></>;
