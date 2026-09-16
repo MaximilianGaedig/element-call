@@ -110,6 +110,7 @@ Once we exceed 500 we hide everything except the buttons.
   }
   .shareScreen,
   .record,
+  .captions,
   .raiseHand {
     display: none;
   }

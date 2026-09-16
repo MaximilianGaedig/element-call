@@ -35,6 +35,12 @@
     "survey_prompt": "How did it go?"
   },
   "call_name": "Name of call",
+  "captions": {
+    "start_button_label": "Turn on captions",
+    "stop_button_label": "Turn off captions",
+    "title": "Live captions",
+    "waiting": "Waiting for the transcriber to join…"
+  },
   "common": {
     "analytics": "Analytics",
     "audio": "Audio",

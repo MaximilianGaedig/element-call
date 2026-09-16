@@ -14,5 +14,6 @@
     "network_error_retry_ms": 100
   },
   "recording_bot": "@sipbridge:synapse.m.localhost",
+  "transcription_bot": "@sipbridge:synapse.m.localhost",
   "sip_bridge": "@sipbridge:synapse.m.localhost"
 }

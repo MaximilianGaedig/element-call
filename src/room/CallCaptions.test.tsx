@@ -1,0 +1,80 @@
+/*
+Copyright 2026 Element Creations Ltd.
+
+SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+Please see LICENSE in the repository root for full details.
+*/
+
+import { act, render, screen } from "@testing-library/react";
+import { expect, test, vi } from "vitest";
+import { type MatrixEvent } from "matrix-js-sdk";
+
+import { state } from "../state/Behavior";
+import { type CallViewModel } from "../state/CallViewModel/CallViewModel";
+import { type TranscriptionState } from "../state/Transcription";
+
+// The shared timeline measures itself, which jsdom can't
+vi.stubGlobal(
+  "ResizeObserver",
+  class {
+    public observe(): void {}
+    public unobserve(): void {}
+    public disconnect(): void {}
+  },
+);
+const { CallCaptions, Segment, i18n } = await import("./CallCaptions");
+const { I18nContext } = await import("@element-hq/web-shared-components");
+
+function segment(id: string, body: string): MatrixEvent {
+  return {
+    getId: () => id,
+    getTs: () => 1_700_000_000_000,
+    getContent: () => ({ msgtype: "m.notice", body }),
+  } as unknown as MatrixEvent;
+}
+
+test("CallCaptions shows the transcript as it arrives", () => {
+  const transcription$ = state<TranscriptionState | null>(null);
+  const segments$ = state<MatrixEvent[]>([]);
+  const vm = {
+    transcription: { transcription$, segments$ },
+  } as unknown as CallViewModel;
+  const { container } = render(<CallCaptions vm={vm} />);
+  expect(container).toBeEmptyDOMElement();
+
+  act(() => {
+    transcription$.value = {
+      by: "@alice:e",
+      transcriber: "@bot:e",
+      eventId: "$req",
+      rootId: null,
+    };
+  });
+  screen.getByText("Waiting for the transcriber to join…");
+
+  // jsdom can't lay the virtualised timeline out, so only its arrival is
+  // checked here; the tiles are checked below
+  act(() => {
+    segments$.value = [segment("$1", "Alice: hello there")];
+  });
+  screen.getByTestId("timeline-scroller");
+});
+
+test("Segment shows the speaker as the sender", () => {
+  render(
+    <I18nContext.Provider value={i18n}>
+      <Segment event={segment("$1", "Alice: hello there")} />
+    </I18nContext.Provider>,
+  );
+  screen.getByText("Alice");
+  screen.getByText("hello there");
+});
+
+test("Segment shows an unattributed line as it is", () => {
+  render(
+    <I18nContext.Provider value={i18n}>
+      <Segment event={segment("$1", "hello there")} />
+    </I18nContext.Provider>,
+  );
+  screen.getByText("hello there");
+});

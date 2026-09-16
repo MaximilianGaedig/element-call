@@ -87,6 +87,11 @@ export interface BridgeContent {
  * send it, which moderators set through the power levels.
  */
 export const RecordingEventType = "org.matrix.rtc.recording";
+/**
+ * The state event through which a call's live transcription (closed
+ * captions) is asked for, gated like recording by who may send it.
+ */
+export const TranscriptionEventType = "org.matrix.rtc.transcription";
 
 /** What floor control asks of a device, with the defaults applied. */
 export interface Moderation {
@@ -159,6 +164,8 @@ export interface FloorControl {
   canModerate$: Behavior<boolean>;
   /** Whether the local user may start and stop recording the call. */
   canRecord$: Behavior<boolean>;
+  /** Whether the local user may start and stop transcribing the call. */
+  canTranscribe$: Behavior<boolean>;
   /**
    * The power level set for recording, if the room sets one explicitly;
    * otherwise it's the state default.
@@ -419,6 +426,9 @@ export function createFloorControl(
   const canRecord$ = read((state) =>
     state.maySendStateEvent(RecordingEventType, localUserId),
   );
+  const canTranscribe$ = read((state) =>
+    state.maySendStateEvent(TranscriptionEventType, localUserId),
+  );
   const recordingLevel$ = computed(
     () => powerLevels$.value.events?.[RecordingEventType],
   );
@@ -439,6 +449,7 @@ export function createFloorControl(
     content$,
     canModerate$,
     canRecord$,
+    canTranscribe$,
     recordingLevel$,
     canSetRecordingLevel$,
     isModerator$: (userId) => computed(() => mayModerate$.value(userId)),

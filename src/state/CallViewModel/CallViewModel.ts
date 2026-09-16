@@ -26,6 +26,7 @@ import { type CallMembershipIdentityParts } from "matrix-js-sdk/lib/matrixrtc/En
 import { computeSlotId } from "matrix-js-sdk/lib/matrixrtc/utils";
 
 import { createRecording, type Recording } from "../Recording.ts";
+import { createTranscription, type Transcription } from "../Transcription.ts";
 import { createDialIn, type DialIn } from "../DialIn.ts";
 import { v4 as uuidv4 } from "uuid";
 
@@ -325,6 +326,8 @@ export interface CallViewModel {
   floorControl: FloorControl;
   /** Recording the call through a bot, where this deployment has one. */
   recording: Recording;
+  /** Captioning the call through a bot, where this deployment has one. */
+  transcription: Transcription;
   /** Letting people dial in over SIP, where this deployment has a bridge. */
   dialIn: DialIn;
   /**
@@ -528,6 +531,7 @@ export function createCallViewModel$(
         [
           ...Object.keys(floorControl.content$.value.bridges ?? {}),
           Config.get().recording_bot,
+          Config.get().transcription_bot,
           Config.get().sip_bridge,
         ].filter((id) => id !== undefined),
       ),
@@ -544,6 +548,13 @@ export function createCallViewModel$(
     matrixRTCSession,
     memberships$,
     configuredBots$,
+  );
+  const transcription = createTranscription(
+    scope,
+    matrixRoom,
+    floorControl,
+    slotId,
+    Config.get().transcription_bot,
   );
   // Our own device honours a moderator's audio mute by not publishing. A
   // video mute is only applied by viewers, who hide the video; our camera
@@ -1665,6 +1676,7 @@ export function createCallViewModel$(
     tileStoreGeneration$: tileStoreGeneration$,
     floorControl,
     recording,
+    transcription,
     dialIn,
     toggleTileEnlarged,
     togglePinned,

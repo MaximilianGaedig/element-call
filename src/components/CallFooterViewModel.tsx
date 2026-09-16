@@ -171,6 +171,13 @@ export function createCallFooterViewModel(
         ? undefined
         : (options?: RecordingOptions): void => void toggle(options);
     }),
+    captions$: computed(
+      () => callModel.transcription.transcription$.value !== null,
+    ),
+    toggleCaptions$: computed(() => {
+      const toggle = callModel.transcription.toggle$.value;
+      return toggle === null ? undefined : (): void => void toggle();
+    }),
     audioOutputSwitcher$: computed(
       () => callModel.audioOutputSwitcher$.value ?? undefined,
     ),
@@ -229,6 +236,8 @@ export function createLobbyFooterViewModel(
       toggleRecording: undefined,
       recording: false,
       recordingPending: false,
+      toggleCaptions: undefined,
+      captions: false,
       audioEnabled: undefined,
       audioBusy: false,
       audioMutedByModerator: false,

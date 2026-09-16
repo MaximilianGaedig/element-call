@@ -17,6 +17,7 @@ import {
   VideoButton,
   ShareScreenButton,
   RecordButton,
+  CaptionsButton,
   ModeratorIconButton,
   ReactionToggleButton,
   LoudspeakerButton,
@@ -65,6 +66,8 @@ export interface FooterActions {
   toggleScreenSharing: (() => void) | undefined;
   /** Starts or stops recording; also controls if the record button is visible */
   toggleRecording: ((options?: RecordingOptions) => void) | undefined;
+  /** Turns captions on or off; also controls if the captions button is visible */
+  toggleCaptions: (() => void) | undefined;
   /** Also controls if the settings button is visible */
   openSettings: (() => void) | undefined;
   /** Set for moderators, who get a choice of settings from the button */
@@ -100,6 +103,8 @@ export interface FooterState {
   recording: boolean;
   /** Whether the recorder has yet to confirm that it's recording */
   recordingPending: boolean;
+  /** Whether the call is being captioned */
+  captions: boolean;
 
   /** Also controls if the audio output button is visible */
   audioOutputSwitcher: AudioOutputSwitcher | undefined;
@@ -156,6 +161,8 @@ export const CallFooter: FC<FooterProps> = ({
   const recording = useBehavior(vm.recording$);
   const recordingPending = useBehavior(vm.recordingPending$);
   const toggleRecording = useBehavior(vm.toggleRecording$);
+  const captions = useBehavior(vm.captions$);
+  const toggleCaptions = useBehavior(vm.toggleCaptions$);
   // Starting a recording warns the whole room, so it's confirmed first
   const [recordModalOpen, setRecordModalOpen] = useState(false);
   const onRecordClick = useMemo(
@@ -274,6 +281,19 @@ export const CallFooter: FC<FooterProps> = ({
     );
   }
 
+  if (toggleCaptions !== undefined) {
+    buttons.push(
+      <CaptionsButton
+        size={buttonSize}
+        key="captions"
+        className={styles.captions}
+        enabled={captions}
+        onClick={toggleCaptions}
+        data-testid="incall_captions"
+      />,
+    );
+  }
+
   // Reaction button contains a pretty large menu, so treat it like a modal
   if (reactionIdentifier && reactionData && showModals) {
     buttons.push(
@@ -314,6 +334,8 @@ export const CallFooter: FC<FooterProps> = ({
       toggleScreenSharing={toggleScreenSharing}
       recording={recording}
       toggleRecording={onRecordClick}
+      captions={captions}
+      toggleCaptions={toggleCaptions}
       reactions={
         reactionIdentifier && reactionData && showModals
           ? { identifier: reactionIdentifier, reactionData }

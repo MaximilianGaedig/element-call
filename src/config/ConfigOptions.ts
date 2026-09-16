@@ -102,6 +102,16 @@ export interface ConfigOptions {
   recording_requires_consent?: boolean;
 
   /**
+   * The user ID of a bot that transcribes calls when asked to, such as a
+   * matrixrtc-sip-bridge with a Voxtral endpoint. Users who may transcribe
+   * get a closed-caption button, which invites the bot and asks it through
+   * `org.matrix.rtc.transcription` state; the transcript it posts as a
+   * thread is shown as captions above the call controls. Unset disables
+   * captions.
+   */
+  transcription_bot?: string;
+
+  /**
    * The user ID of a SIP bridge bot, such as a matrixrtc-sip-bridge.
    * Moderators can allow dial-in from their settings, which invites the bot
    * into the room and asks it for the call's SIP addresses. Unset hides

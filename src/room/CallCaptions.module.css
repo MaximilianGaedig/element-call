@@ -1,0 +1,31 @@
+/*
+Copyright 2026 Element Creations Ltd.
+
+SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+Please see LICENSE in the repository root for full details.
+*/
+
+/* Sits between the call content and the footer, taking a slice of the
+height for the last few lines of transcript */
+.captions {
+  flex-shrink: 0;
+  block-size: min(30vh, 240px);
+  display: flex;
+  flex-direction: column;
+  justify-content: end;
+  margin-inline: calc(env(safe-area-inset-left) + var(--cpd-space-6x))
+    calc(env(safe-area-inset-right) + var(--cpd-space-6x));
+  border-block-start: 1px solid var(--cpd-color-border-interactive-secondary);
+  background: var(--cpd-color-bg-canvas-default);
+  overflow: hidden;
+}
+
+/* The shared timeline fills whatever height it's given */
+.captions > * {
+  min-block-size: 0;
+}
+
+.waiting {
+  color: var(--cpd-color-text-secondary);
+  padding: var(--cpd-space-3x);
+}

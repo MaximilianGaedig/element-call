@@ -22,7 +22,7 @@ import {
   ShareScreenSolidIcon,
 } from "@vector-im/compound-design-tokens/assets/web/icons";
 
-import { type ReactionData, useReactionsPopup } from "../button";
+import { CaptionsIcon, type ReactionData, useReactionsPopup } from "../button";
 
 interface Props {
   className?: string;
@@ -33,6 +33,8 @@ interface Props {
   toggleScreenSharing?: () => void;
   recording?: boolean;
   toggleRecording?: () => void;
+  captions?: boolean;
+  toggleCaptions?: () => void;
   reactions?: { identifier: string; reactionData: ReactionData };
 }
 
@@ -85,6 +87,8 @@ const MoreMenu: FC<
   toggleScreenSharing,
   recording,
   toggleRecording,
+  captions,
+  toggleCaptions,
   reactionsItem,
 }) => {
   const { t } = useTranslation();
@@ -139,6 +143,14 @@ const MoreMenu: FC<
           label={t("recording.start_button_label")}
           checked={recording ?? false}
           onSelect={toggleRecording}
+        />
+      )}
+      {toggleCaptions !== undefined && (
+        <ToggleMenuItem
+          Icon={CaptionsIcon}
+          label={t("captions.start_button_label")}
+          checked={captions ?? false}
+          onSelect={toggleCaptions}
         />
       )}
       {reactionsItem !== undefined && (

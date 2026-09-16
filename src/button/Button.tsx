@@ -166,6 +166,54 @@ export const ShareScreenButton: FC<ShareScreenButtonProps> = ({
   );
 };
 
+interface CaptionsButtonProps extends ComponentPropsWithoutRef<"button"> {
+  enabled: boolean;
+  size: "md" | "lg";
+}
+
+export const CaptionsButton: FC<CaptionsButtonProps> = ({
+  enabled,
+  ...props
+}) => {
+  const { t } = useTranslation();
+  const label = enabled
+    ? t("captions.stop_button_label")
+    : t("captions.start_button_label");
+  return (
+    <Tooltip label={label}>
+      <CpdButton
+        iconOnly
+        Icon={CaptionsIcon}
+        kind={enabled ? "primary" : "secondary"}
+        role="switch"
+        aria-checked={enabled}
+        {...props}
+      />
+    </Tooltip>
+  );
+};
+
+// A closed-caption glyph, as Compound has none: a rounded box with "CC".
+export const CaptionsIcon: FC<SVGAttributes<SVGElement>> = (props) => (
+  <svg viewBox="0 0 20 20" fill="none" {...props}>
+    <rect
+      x="2"
+      y="4"
+      width="16"
+      height="12"
+      rx="2"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    />
+    <path
+      d="M9 8.3A2.1 2.1 0 0 0 7.4 7.5 2.5 2.5 0 0 0 7.4 12.5 2.1 2.1 0 0 0 9 11.7M14.3 8.3a2.1 2.1 0 0 0-1.6-.8 2.5 2.5 0 0 0 0 5 2.1 2.1 0 0 0 1.6-.8"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
 // A red circle that pulses while the recorder starts up and squares off
 // once it's recording, like a tape deck's record and stop buttons. Drawn on
 // a 20-unit grid, the size the button renders it at, so it stays crisp.

@@ -81,6 +81,7 @@ describe("widget", () => {
       }, // The above with no leading underscore, for room versions whose auth rules allow it
       { eventType: "org.matrix.rtc.floor_control" },
       { eventType: "org.matrix.rtc.recording" },
+      { eventType: "org.matrix.rtc.transcription" },
       { eventType: EventType.RoomMember },
       { eventType: EventType.RoomPowerLevels },
     ];
@@ -92,6 +93,7 @@ describe("widget", () => {
       { eventType: EventType.GroupCallMemberPrefix },
       { eventType: "org.matrix.rtc.floor_control" },
       { eventType: "org.matrix.rtc.recording" },
+      { eventType: "org.matrix.rtc.transcription" },
       { eventType: EventType.RoomPowerLevels },
     ];
 

@@ -8,7 +8,9 @@ Please see LICENSE in the repository root for full details.
 import { type MatrixClient, type Room as MatrixRoom } from "matrix-js-sdk";
 import {
   type FC,
+  lazy,
   type PointerEvent as ReactPointerEvent,
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -63,6 +65,10 @@ import { ReactionsAudioRenderer } from "./ReactionAudioRenderer";
 import { ReactionsOverlay } from "./ReactionsOverlay";
 import { CallEventAudioRenderer } from "./CallEventAudioRenderer";
 import { RecordingBadge, RecordingNotice } from "./RecordingIndicator";
+// The shared timeline components are a sizeable chunk only captions need
+const CallCaptions = lazy(async () => ({
+  default: (await import("./CallCaptions")).CallCaptions,
+}));
 import { RecordingReadyNotice } from "./RecordingReadyNotice";
 import { ConsentDeclinedError, RecorderError } from "../state/Recording.ts";
 import { matrixRTCMode as matrixRTCModeSetting } from "../settings/settings";
@@ -644,6 +650,7 @@ export const InCallView: FC<InCallViewProps> = ({
     <CallFooter className={styles.footer} ref={footerRef} vm={footerVm} />
   );
   const allConnections = useBehavior(vm.allConnections$);
+  const captionsOn = useBehavior(vm.transcription.transcription$) !== null;
   const dialInMode = useBehavior(vm.dialIn.mode$);
   const dialInAddresses = useBehavior(vm.dialIn.addresses$);
 
@@ -710,6 +717,11 @@ export const InCallView: FC<InCallViewProps> = ({
       {reconnectingToast}
       {earpieceOverlay}
       <ReactionsOverlay vm={vm} />
+      {captionsOn && (
+        <Suspense fallback={null}>
+          <CallCaptions vm={vm} />
+        </Suspense>
+      )}
       {footer}
       {showModals && (
         <>
