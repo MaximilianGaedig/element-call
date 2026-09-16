@@ -244,6 +244,14 @@ including federation:
   the bridge's WPE WebKit from `ghcr.io/element-hq/matrixrtc-wpe-webkit`
   (tagged by WebKit commit), another private package, rather than building
   WebKit itself.
+- Optionally (`--profile voxtral`, NVIDIA GPU with >= 16 GB VRAM only) a
+  vLLM instance serving
+  [Voxtral Mini 4B Realtime](https://huggingface.co/mistralai/Voxtral-Mini-4B-Realtime-2602),
+  which the bridge's `!transcribe` command streams call audio to. The first
+  start downloads the weights (~8 GB) into `backend/voxtral_tmp`; the model
+  is gated on Hugging Face, so export an `HF_TOKEN` that has accepted its
+  terms. Without the profile, `!transcribe` just replies that it can't reach
+  Voxtral.
 
 These use a test 'secret' published in this repository, so this must be used
 only for local development and **_never be exposed to the public Internet._**

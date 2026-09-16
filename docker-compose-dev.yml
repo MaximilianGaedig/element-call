@@ -158,6 +158,48 @@ services:
     networks:
       - ecbackend
 
+  # Mistral Voxtral Realtime behind vLLM, for the bridge's `!transcribe`
+  # (it opens one /v1/realtime WebSocket per speaker). NVIDIA-only: vLLM's
+  # image is CUDA and Voxtral Realtime runs nowhere else, and it needs
+  # >= 16 GB VRAM, so it sits in its own profile and the bridge just replies
+  # "can't reach Voxtral" when it's not up:
+  #   docker compose -f docker-compose-dev.yml --profile sipbridge --profile voxtral up
+  # First start downloads ~8 GB of weights into backend/voxtral_tmp.
+  voxtral:
+    profiles: [voxtral]
+    image: vllm/vllm-openai:v0.29.0
+    hostname: voxtral
+    restart: unless-stopped
+    # Flags per https://recipes.vllm.ai/mistralai/Voxtral-Mini-4B-Realtime-2602:
+    # --tokenizer-mode mistral is mandatory (the tokenizer only loads via
+    # mistral_common); the cudagraph mode is the recipe's default.
+    command: >
+      mistralai/Voxtral-Mini-4B-Realtime-2602
+      --tokenizer-mode mistral
+      --compilation_config '{"cudagraph_mode": "PIECEWISE"}'
+    environment:
+      - VLLM_DISABLE_COMPILE_CACHE=1
+      - HF_TOKEN=${HF_TOKEN:-}
+    volumes:
+      - ./backend/voxtral_tmp:/root/.cache/huggingface:Z
+    ipc: host
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      # Weight download + model load
+      start_period: 15m
+    networks:
+      - ecbackend
+
   # A baresip caller with VP8 video for the playwright sipbridge tests
   # (playwright/sipbridge/), which run it themselves; `up` never starts it.
   # It shares the bridge's network namespace so that its media reaches the

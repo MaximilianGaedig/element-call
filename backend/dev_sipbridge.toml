@@ -29,6 +29,10 @@ video = true
 # The local `pnpm dev --host` frontend, through the dev TLS proxy
 element_call_url = "https://call.m.localhost/room"
 recordings_dir = "/app/recordings"
+# `!transcribe` streams call audio to the `voxtral` compose service (vLLM
+# serving Voxtral Realtime, `--profile voxtral`, NVIDIA GPU only). Without
+# it up, `!transcribe` replies that it can't reach Voxtral.
+voxtral_url = "ws://voxtral:8000"
 log_filter = "info,matrixrtc_sip_bridge=debug"
 
 [health]
