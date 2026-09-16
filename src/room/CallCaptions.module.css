@@ -8,11 +8,14 @@ Please see LICENSE in the repository root for full details.
 /* Sits between the call content and the footer, the full width of the
 view, taking a slice of the height for the last few lines of transcript
 and running on underneath the footer to the bottom of the view. The call
-view measures it and shrinks the grid to make room. */
+view measures it and shrinks the grid to make room; when the grid has so
+many tiles that it scrolls, the panel sticks to the bottom as an overlay
+instead of scrolling away. */
 .captions {
   --captions-height: min(20vh, 120px);
   flex-shrink: 0;
-  position: relative;
+  position: sticky;
+  inset-block-end: 0;
   inline-size: 100%;
   block-size: var(--captions-height);
   display: flex;
