@@ -25,5 +25,6 @@
     "DSN": "https://b1e328d49be3402ba96101338989fb35@sentry.tools.element.io/41"
   },
   "recording_bot": "@sipbridge:call-unstable.ems.host",
-  "sip_bridge": "@sipbridge:call-unstable.ems.host"
+  "sip_bridge": "@sipbridge:call-unstable.ems.host",
+  "transcription_bot": "@sipbridge:call-unstable.ems.host"
 }
