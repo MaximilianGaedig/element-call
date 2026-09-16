@@ -348,19 +348,25 @@ export const InCallView: FC<InCallViewProps> = ({
 
   const [headerRef, headerBounds] = useMeasure();
   const [footerRef, footerBounds] = useMeasure();
+  const [captionsRef, captionsBounds] = useMeasure();
+  const captionsOn = useBehavior(vm.transcription.transcription$) !== null;
+  // The measurement lingers after the panel unmounts
+  const captionsHeight = captionsOn ? captionsBounds.height : 0;
 
   const gridBounds = useMemo(
     () => ({
       width: bounds.width,
       height:
         bounds.height -
-        (edgeToEdge ? 0 : headerBounds.height + footerBounds.height),
+        (edgeToEdge ? 0 : headerBounds.height + footerBounds.height) -
+        captionsHeight,
     }),
     [
       bounds.width,
       bounds.height,
       headerBounds.height,
       footerBounds.height,
+      captionsHeight,
       edgeToEdge,
     ],
   );
@@ -570,7 +576,10 @@ export const InCallView: FC<InCallViewProps> = ({
         style={{
           // If not edge-to-edge, consume the header insets right here.
           insetBlockStart: edgeToEdge ? 0 : bounds.top + headerBounds.height,
-          height: edgeToEdge ? "100%" : gridBounds.height,
+          // The captions panel, when shown, takes the bottom of the view
+          height: edgeToEdge
+            ? `calc(100% - ${captionsHeight}px)`
+            : gridBounds.height,
           // If edge-to-edge, compute new safe area insets that account for the
           // header and footer, passing them down to the tiles.
           "--call-view-safe-area-inset-top":
@@ -650,7 +659,6 @@ export const InCallView: FC<InCallViewProps> = ({
     <CallFooter className={styles.footer} ref={footerRef} vm={footerVm} />
   );
   const allConnections = useBehavior(vm.allConnections$);
-  const captionsOn = useBehavior(vm.transcription.transcription$) !== null;
   const dialInMode = useBehavior(vm.dialIn.mode$);
   const dialInAddresses = useBehavior(vm.dialIn.addresses$);
 
@@ -719,7 +727,7 @@ export const InCallView: FC<InCallViewProps> = ({
       <ReactionsOverlay vm={vm} />
       {captionsOn && (
         <Suspense fallback={null}>
-          <CallCaptions vm={vm} />
+          <CallCaptions vm={vm} ref={captionsRef} />
         </Suspense>
       )}
       {footer}

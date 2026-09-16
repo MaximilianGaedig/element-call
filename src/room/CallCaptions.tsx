@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { type FC, type ReactNode, useMemo } from "react";
+import { type FC, type ReactNode, type Ref, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Text } from "@vector-im/compound-web";
 import {
@@ -101,7 +101,11 @@ export const Segment: FC<Caption> = ({ event, body }) => {
  * rendered as a fragment of timeline above the call controls while
  * transcription is on.
  */
-export const CallCaptions: FC<{ vm: CallViewModel }> = ({ vm }) => {
+export const CallCaptions: FC<{
+  vm: CallViewModel;
+  /** Measured by the call view, which makes room for the panel */
+  ref?: Ref<HTMLElement>;
+}> = ({ vm, ref }) => {
   const { t } = useTranslation();
   const transcription = useBehavior(vm.transcription.transcription$);
   const segments = useBehavior(vm.transcription.segments$);
@@ -147,7 +151,11 @@ export const CallCaptions: FC<{ vm: CallViewModel }> = ({ vm }) => {
   if (transcription === null) return null;
   return (
     <I18nContext.Provider value={i18n}>
-      <section className={styles.captions} aria-label={t("captions.title")}>
+      <section
+        className={styles.captions}
+        aria-label={t("captions.title")}
+        ref={ref}
+      >
         {segments.length === 0 ? (
           <Text size="sm" className={styles.waiting}>
             {t("captions.waiting")}

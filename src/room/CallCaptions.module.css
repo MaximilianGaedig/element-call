@@ -5,16 +5,19 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-/* Sits between the call content and the footer, taking a slice of the
-height for the last few lines of transcript */
+/* Sits between the call content and the footer, the full width of the
+view, taking a slice of the height for the last few lines of transcript.
+The call view measures it and shrinks the grid to make room. */
 .captions {
   flex-shrink: 0;
+  inline-size: 100%;
   block-size: min(30vh, 240px);
   display: flex;
   flex-direction: column;
   justify-content: end;
-  margin-inline: calc(env(safe-area-inset-left) + var(--cpd-space-6x))
-    calc(env(safe-area-inset-right) + var(--cpd-space-6x));
+  padding-inline: calc(env(safe-area-inset-left) + var(--cpd-space-3x))
+    calc(env(safe-area-inset-right) + var(--cpd-space-3x));
+  box-sizing: border-box;
   border-block-start: 1px solid var(--cpd-color-border-interactive-secondary);
   background: var(--cpd-color-bg-canvas-default);
   overflow: hidden;
