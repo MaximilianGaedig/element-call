@@ -25,4 +25,5 @@ The following sound effects have been originally created by Element.
 - `reactions/wave`
 - `reactions/baduntss`
 - `recording_requested`, `recording_started`, `recording_stopped`,
-  `recording_denied` and `recording_failed` (synthesised speech)
+  `recording_denied`, `recording_failed` and `recording_cancelled`
+  (synthesised speech)

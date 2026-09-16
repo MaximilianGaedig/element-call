@@ -30,6 +30,8 @@ import recordingDeniedMp3 from "../sound/recording_denied.mp3";
 import recordingDeniedOgg from "../sound/recording_denied.ogg";
 import recordingFailedMp3 from "../sound/recording_failed.mp3";
 import recordingFailedOgg from "../sound/recording_failed.ogg";
+import recordingCancelledMp3 from "../sound/recording_cancelled.mp3";
+import recordingCancelledOgg from "../sound/recording_cancelled.ogg";
 import { ConsentDeclinedError } from "../state/Recording";
 import { useAudioContext } from "../useAudioContext";
 import { prefetchSounds } from "../soundUtils";
@@ -81,6 +83,10 @@ export const callEventAudioSounds = prefetchSounds({
     mp3: recordingFailedMp3,
     ogg: recordingFailedOgg,
   },
+  recordingCancelled: {
+    mp3: recordingCancelledMp3,
+    ogg: recordingCancelledOgg,
+  },
 });
 
 export type CallEventSounds = keyof Awaited<typeof callEventAudioSounds>;
@@ -128,8 +134,8 @@ export function CallEventAudioRenderer({
   // Everyone hears a recording being asked for, starting and stopping,
   // however big the call. A request isn't a recording until the recorder
   // confirms it (which, when consent is required, is only once everyone
-  // has consented); one that goes away before then was declined, failed or
-  // timed out, and everyone hears that too.
+  // has consented); one that goes away before then was declined, failed,
+  // timed out or withdrawn by whoever asked, and everyone hears that too.
   useBehaviorChange(vm.recording.recording$, (recording, previous) => {
     const wasStarted = previous?.started === true;
     const isStarted = recording?.started === true;
@@ -137,12 +143,17 @@ export function CallEventAudioRenderer({
     else if (wasStarted && !isStarted) play("recordingStopped");
     else if (recording !== null && previous === null)
       play("recordingRequested");
-    else if (recording === null && previous !== null)
+    else if (recording === null && previous !== null) {
+      // Giving up on a request records why first; withdrawing it doesn't
+      const error = vm.recording.error$.value;
       play(
-        vm.recording.error$.value instanceof ConsentDeclinedError
-          ? "recordingDenied"
-          : "recordingFailed",
+        error === null
+          ? "recordingCancelled"
+          : error instanceof ConsentDeclinedError
+            ? "recordingDenied"
+            : "recordingFailed",
       );
+    }
   });
 
   return <></>;

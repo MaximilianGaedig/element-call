@@ -262,6 +262,24 @@ test("announces a recording request, then its start and stop", () => {
   expect(playSound).toHaveBeenCalledTimes(3);
 });
 
+test("announces a recording request that whoever asked withdraws", () => {
+  const { vm } = getBasicCallViewModelEnvironment([local, alice]);
+  const recording$ = state<RecordingState | null>(null);
+  const error$ = state<Error | null>(null);
+  vm.recording = { ...vm.recording, recording$, error$ };
+  render(<CallEventAudioRenderer vm={vm} />);
+
+  playSound.mockClear();
+  act(() => {
+    recording$.value = recordingRequest(false);
+  });
+  act(() => {
+    recording$.value = null;
+  });
+  expect(playSound).toHaveBeenLastCalledWith("recordingCancelled");
+  expect(playSound).toHaveBeenCalledTimes(2);
+});
+
 test("announces a recording request that somebody declines", () => {
   const { vm } = getBasicCallViewModelEnvironment([local, alice]);
   const recording$ = state<RecordingState | null>(null);
