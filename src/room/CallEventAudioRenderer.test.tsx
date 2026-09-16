@@ -42,6 +42,8 @@ import {
   localRtcMember,
 } from "../utils/test-fixtures";
 import { initializeWidget } from "../widget";
+import { state } from "../state/Behavior";
+import { type RecordingState } from "../state/Recording";
 initializeWidget();
 vitest.mock("livekit-client/e2ee-worker?worker");
 vitest.mock("../useAudioContext");
@@ -217,4 +219,58 @@ test("should not play a sound when a hand raise is retracted", () => {
     };
   });
   expect(playSound).toHaveBeenCalledExactlyOnceWith("raiseHand");
+});
+
+function recordingRequest(started: boolean): RecordingState {
+  return {
+    by: alice.userId,
+    recorder: "@bot:example.org",
+    media: "video",
+    streams: "composite",
+    eventId: "$request",
+    started,
+    requiresConsent: true,
+    consents: {},
+    awaitingConsent: started ? [] : [local.userId],
+  };
+}
+
+test("plays the recording sounds only once the recorder has started", () => {
+  const { vm } = getBasicCallViewModelEnvironment([local, alice]);
+  const recording$ = state<RecordingState | null>(null);
+  vm.recording = { ...vm.recording, recording$ };
+  render(<CallEventAudioRenderer vm={vm} />);
+
+  playSound.mockClear();
+  // The request alone, still awaiting consent, is silent
+  act(() => {
+    recording$.value = recordingRequest(false);
+  });
+  expect(playSound).not.toBeCalled();
+  act(() => {
+    recording$.value = recordingRequest(true);
+  });
+  expect(playSound).toHaveBeenCalledExactlyOnceWith("recordingStarted");
+  act(() => {
+    recording$.value = null;
+  });
+  expect(playSound).toHaveBeenLastCalledWith("recordingStopped");
+  expect(playSound).toHaveBeenCalledTimes(2);
+});
+
+test("makes no sound for a recording request that never starts", () => {
+  const { vm } = getBasicCallViewModelEnvironment([local, alice]);
+  const recording$ = state<RecordingState | null>(null);
+  vm.recording = { ...vm.recording, recording$ };
+  render(<CallEventAudioRenderer vm={vm} />);
+
+  playSound.mockClear();
+  act(() => {
+    recording$.value = recordingRequest(false);
+  });
+  // Declined, or the recorder failed: whoever asked clears the request
+  act(() => {
+    recording$.value = null;
+  });
+  expect(playSound).not.toBeCalled();
 });

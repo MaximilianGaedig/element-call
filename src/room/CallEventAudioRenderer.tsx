@@ -106,10 +106,15 @@ export function CallEventAudioRenderer({
   useBehaviorChange(vm.screenShares$, (shares, previous) => {
     if (shares.length > previous.length) play("screenshareStarted");
   });
-  // Everyone hears when a recording starts and stops, however big the call
+  // Everyone hears when a recording starts and stops, however big the call.
+  // A request isn't a recording until the recorder confirms it (which, when
+  // consent is required, is only once everyone has consented), so a request
+  // that's declined or times out makes no sound at all.
   useBehaviorChange(vm.recording.recording$, (recording, previous) => {
-    if (recording !== null && previous === null) play("recordingStarted");
-    else if (recording === null && previous !== null) play("recordingStopped");
+    const wasStarted = previous?.started === true;
+    const isStarted = recording?.started === true;
+    if (isStarted && !wasStarted) play("recordingStarted");
+    else if (wasStarted && !isStarted) play("recordingStopped");
   });
 
   return <></>;
