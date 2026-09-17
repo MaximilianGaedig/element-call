@@ -44,7 +44,15 @@ const dateTime = new Intl.DateTimeFormat(undefined, {
  * the body as "Speaker: words". The body grows as the bot streams the
  * speaker's words.
  */
-export const Segment: FC<Caption> = ({ event, body, speaker }) => {
+/** How long a speaker pauses before their next segment gets a new header. */
+const groupGapMs = 5_000;
+
+export const Segment: FC<Caption & { continuation?: boolean }> = ({
+  event,
+  body,
+  speaker,
+  continuation = false,
+}) => {
   // View models must hand back the same snapshot until something changes,
   // or the shared components' store hook re-renders forever
   const vms = useMemo(() => {
@@ -72,10 +80,17 @@ export const Segment: FC<Caption> = ({ event, body, speaker }) => {
         id,
         eventId: id,
         shape: "Thread",
-        state: { isOwnEvent: false, hasReply: false, noSender: !vms.speaker },
+        state: {
+          isOwnEvent: false,
+          hasReply: false,
+          noSender: !vms.speaker,
+          continuation,
+        },
       }}
       slots={{
-        sender: vms.speaker && <DisambiguatedProfileView vm={vms.sender} />,
+        sender: vms.speaker && !continuation && (
+          <DisambiguatedProfileView vm={vms.sender} />
+        ),
         body: <EventContentBodyView vm={vms.body} as="div" />,
         timestamp: <MessageTimestampView vm={vms.timestamp} />,
       }}
@@ -88,6 +103,9 @@ export const Segment: FC<Caption> = ({ event, body, speaker }) => {
  * rendered as a list of message tiles above the call controls while
  * transcription is on.
  */
+const speakerOf = ({ body, speaker }: Caption): string | undefined =>
+  speaker ?? /^(.+?): /.exec(body)?.[1];
+
 export const CallCaptions: FC<{
   vm: CallViewModel;
   /** Measured by the call view, which makes room for the panel */
@@ -130,11 +148,20 @@ export const CallCaptions: FC<{
           </Text>
         ) : (
           <ol className={styles.list} ref={list}>
-            {segments.map((caption) => (
-              <li key={caption.event.getId()}>
-                <Segment {...caption} />
-              </li>
-            ))}
+            {segments.map((caption, i) => {
+              // Runs of one speaker's segments share a header, unless
+              // they paused
+              const prev = segments[i - 1];
+              const continuation =
+                prev !== undefined &&
+                speakerOf(prev) === speakerOf(caption) &&
+                caption.event.getTs() - prev.event.getTs() < groupGapMs;
+              return (
+                <li key={caption.event.getId()}>
+                  <Segment {...caption} continuation={continuation} />
+                </li>
+              );
+            })}
           </ol>
         )}
       </section>

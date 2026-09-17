@@ -27,10 +27,15 @@ Element.prototype.scrollTo = vi.fn();
 const { CallCaptions, Segment, i18n } = await import("./CallCaptions");
 const { I18nContext } = await import("@element-hq/web-shared-components");
 
-function segment(id: string, body: string, speaker?: string): Caption {
+function segment(
+  id: string,
+  body: string,
+  speaker?: string,
+  ts = 1_700_000_000_000,
+): Caption {
   const event = {
     getId: () => id,
-    getTs: () => 1_700_000_000_000,
+    getTs: () => ts,
     getContent: () => ({ msgtype: "m.notice", body }),
   } as unknown as MatrixEvent;
   return { event, body, speaker };
@@ -63,10 +68,18 @@ test("CallCaptions shows the transcript as it arrives", () => {
     segments$.value = [segment("$1", "Alice: hello there")];
   });
   screen.getByText("hello there");
+  // Alice's next words within a few seconds join her first
   act(() => {
-    segments$.value = [...segments$.value, segment("$2", "Bob: hi")];
+    segments$.value = [
+      ...segments$.value,
+      segment("$2", "Alice: and more", undefined, 1_700_000_001_000),
+      segment("$3", "Bob: hi", undefined, 1_700_000_002_000),
+      segment("$4", "Bob: later", undefined, 1_700_000_009_000),
+    ];
   });
-  screen.getByText("hi");
+  screen.getByText("and more");
+  expect(screen.getAllByText("Alice")).toHaveLength(1);
+  expect(screen.getAllByText("Bob")).toHaveLength(2);
 });
 
 test("Segment shows the speaker as the sender", () => {
