@@ -168,7 +168,9 @@ export const CallCaptions: FC<{
       >
         {segments.length === 0 ? (
           <Text size="sm" className={styles.waiting}>
-            {t("captions.waiting")}
+            {transcription.rootId === null
+              ? t("captions.waiting")
+              : t("captions.listening")}
           </Text>
         ) : (
           <TimelineView vm={timelineVm} renderItem={renderItem} />

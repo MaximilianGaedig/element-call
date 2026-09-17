@@ -22,6 +22,9 @@ import {
 import { constant } from "./Behavior.ts";
 import { type FloorControl, TranscriptionEventType } from "./FloorControl.ts";
 import { mockEmitter, testScope } from "../utils/test.ts";
+import { E2eeType } from "../e2ee/e2eeType.ts";
+
+const unencrypted = { kind: E2eeType.NONE } as const;
 
 const slot = "m.call#ROOM";
 const bot = "@bot:e";
@@ -120,7 +123,14 @@ const canTranscribe = {
 describe("createTranscription", () => {
   it("follows the bot's thread off its notice for the request", () => {
     const { room, set, receive } = setup();
-    const t = createTranscription(testScope(), room, canTranscribe, slot, bot);
+    const t = createTranscription(
+      testScope(),
+      room,
+      canTranscribe,
+      slot,
+      bot,
+      unencrypted,
+    );
     expect(t.transcription$.value).toBeNull();
     set(stateEvent("@alice:e", { transcriber: bot }, "$req"));
     expect(t.transcription$.value).toEqual({
@@ -155,7 +165,14 @@ describe("createTranscription", () => {
 
   it("streams a segment's words until its edit arrives", () => {
     const { room, set, receive, toDevice } = setup();
-    const t = createTranscription(testScope(), room, canTranscribe, slot, bot);
+    const t = createTranscription(
+      testScope(),
+      room,
+      canTranscribe,
+      slot,
+      bot,
+      unencrypted,
+    );
     set(stateEvent("@alice:e", { transcriber: bot }, "$req"));
     receive(
       message("$root", "on", { rel_type: "m.reference", event_id: "$req" }),
@@ -185,7 +202,14 @@ describe("createTranscription", () => {
 
   it("invites the bot and sets the state, then clears it", async () => {
     const { room, set, sendStateEvent } = setup();
-    const t = createTranscription(testScope(), room, canTranscribe, slot, bot);
+    const t = createTranscription(
+      testScope(),
+      room,
+      canTranscribe,
+      slot,
+      bot,
+      unencrypted,
+    );
     await t.toggle$.value!();
     expect(sendStateEvent).toHaveBeenCalledWith(
       "!room",
@@ -212,14 +236,21 @@ describe("createTranscription", () => {
   it("offers no toggle without a bot or the power to ask", () => {
     const { room } = setup();
     expect(
-      createTranscription(testScope(), room, canTranscribe, slot, undefined)
-        .toggle$.value,
+      createTranscription(
+        testScope(),
+        room,
+        canTranscribe,
+        slot,
+        undefined,
+        unencrypted,
+      ).toggle$.value,
     ).toBeNull();
     const cannot = {
       canTranscribe$: constant(false),
     } as unknown as FloorControl;
     expect(
-      createTranscription(testScope(), room, cannot, slot, bot).toggle$.value,
+      createTranscription(testScope(), room, cannot, slot, bot, unencrypted)
+        .toggle$.value,
     ).toBeNull();
   });
 });

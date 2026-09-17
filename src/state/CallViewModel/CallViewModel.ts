@@ -555,6 +555,7 @@ export function createCallViewModel$(
     floorControl,
     slotId,
     Config.get().transcription_bot,
+    options.encryptionSystem,
   );
   // Our own device honours a moderator's audio mute by not publishing. A
   // video mute is only applied by viewers, who hide the video; our camera

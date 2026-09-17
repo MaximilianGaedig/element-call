@@ -21,7 +21,9 @@ import { logger } from "matrix-js-sdk/lib/logger";
 import { type Behavior, computed, fromEvents, state } from "./Behavior.ts";
 import { type FloorControl, TranscriptionEventType } from "./FloorControl.ts";
 import { type Scope } from "./Scope.ts";
-import { inviteBot } from "./Recording.ts";
+import { inviteBot, sendSharedKey } from "./Recording.ts";
+import { type EncryptionSystem } from "../e2ee/sharedKeyManagement.ts";
+import { E2eeType } from "../e2ee/e2eeType.ts";
 
 // Transcription (closed captions): a state event, keyed by slot, through
 // which a user asks a transcriber bot to caption the call. The bot posts a
@@ -94,6 +96,8 @@ export interface Transcription {
 /**
  * @param transcriber The user ID of the bot to ask for captions, if this
  *   deployment has one.
+ * @param encryptionSystem How the call is encrypted: a transcriber can only
+ *   hear a call encrypted with a shared key if it's given the key.
  */
 export function createTranscription(
   scope: Scope,
@@ -101,6 +105,7 @@ export function createTranscription(
   floorControl: FloorControl,
   slotId: string,
   transcriber: string | undefined,
+  encryptionSystem: EncryptionSystem,
 ): Transcription {
   const event$ = fromEvents(
     scope,
@@ -252,6 +257,8 @@ export function createTranscription(
         await send({});
       } else {
         await inviteBot(room, transcriber!);
+        if (encryptionSystem.kind === E2eeType.SHARED_KEY)
+          await sendSharedKey(room, transcriber!, encryptionSystem.secret);
         await send({ transcriber: transcriber! });
       }
     } catch (e) {

@@ -52,6 +52,10 @@ test("CallCaptions shows the transcript as it arrives", () => {
     };
   });
   screen.getByText("Waiting for the transcriber to join…");
+  act(() => {
+    transcription$.value = { ...transcription$.value!, rootId: "$root" };
+  });
+  screen.getByText("Listening…");
 
   // jsdom can't lay the virtualised timeline out, so only its arrival is
   // checked here; the tiles are checked below

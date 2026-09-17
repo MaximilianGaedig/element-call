@@ -17,7 +17,9 @@ content: { "transcriber": "@bot:example.org" }
 ```
 
 Empty content (or no `transcriber`) turns captions off. Who may ask is
-governed by the power level for the event type, as for recording.
+governed by the power level for the event type, as for recording. A call
+encrypted with a shared key needs the key handed to the bot first, exactly
+as for recording (see `call_recording_shared_key.md`).
 
 ## Answering
 
