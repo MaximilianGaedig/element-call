@@ -62,7 +62,8 @@ test("CallCaptions shows the transcript as it arrives", () => {
   act(() => {
     transcription$.value = { ...transcription$.value!, rootId: "$root" };
   });
-  screen.getByText("Listening…");
+  // Nothing to say until the transcriber has words for us
+  expect(screen.queryByText("Waiting for the transcriber to join…")).toBeNull();
 
   act(() => {
     segments$.value = [segment("$1", "Alice: hello there")];

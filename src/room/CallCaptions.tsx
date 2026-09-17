@@ -141,11 +141,14 @@ export const CallCaptions: FC<{
         }}
       >
         {segments.length === 0 ? (
-          <Text size="sm" className={styles.waiting}>
-            {transcription.rootId === null
-              ? t("captions.waiting")
-              : t("captions.listening")}
-          </Text>
+          // Blank once the transcriber is in, until it has words for us
+          transcription.rootId === null && (
+            <div className={styles.list}>
+              <Text size="sm" className={styles.waiting}>
+                {t("captions.waiting")}
+              </Text>
+            </div>
+          )
         ) : (
           <ol className={styles.list} ref={list}>
             {segments.map((caption, i) => {
