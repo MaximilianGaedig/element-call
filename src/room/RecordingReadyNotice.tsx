@@ -120,6 +120,23 @@ export const RecordingReadyNotice: FC<Props> = ({ vm, client }) => {
   const download = async (): Promise<void> => {
     setDownloading(true);
     try {
+      if (upload.link !== undefined) {
+        // The recorder checks our OpenID token and hands back a short-lived
+        // URL for the file, served as an attachment so the browser saves
+        // it without leaving the call
+        const token = await client.getOpenIdToken();
+        const response = await fetch(
+          `${upload.link}?server_name=${encodeURIComponent(token.matrix_server_name)}`,
+          { headers: { Authorization: `Bearer ${token.access_token}` } },
+        );
+        if (!response.ok) throw new Error(`${upload.link}: ${response.status}`);
+        const { url } = (await response.json()) as { url: string };
+        const a = document.createElement("a");
+        a.href = url;
+        a.click();
+        return;
+      }
+      if (upload.file === undefined) return;
       const blob = await fetchMedia(client, upload.file);
       const objectUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");

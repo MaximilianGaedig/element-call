@@ -490,6 +490,18 @@ describe("createRecording", () => {
     room.emit(RoomEvent.Timeline, event, room, false, false, null!);
     expect(r.uploads$.value).toHaveLength(1);
     decrypted!(event);
+    // A recording too big for the media repo, linked from the recorder
+    upload(
+      bot,
+      {
+        msgtype: "m.video",
+        body: "big.webm",
+        url: "https://bridge/recordings/big",
+        "org.matrix.rtc.recording.url": "https://bridge/recordings/big",
+        info: { thumbnail_url: "mxc://e/big-thumb" },
+      },
+      "$4",
+    );
     expect(r.uploads$.value).toEqual([
       {
         eventId: "$2",
@@ -504,6 +516,13 @@ describe("createRecording", () => {
         body: "secret.webm",
         file: { url: "mxc://e/enc", encrypted },
         thumbnail: { url: "mxc://e/enc", encrypted },
+      },
+      {
+        eventId: "$4",
+        msgtype: "m.video",
+        body: "big.webm",
+        link: "https://bridge/recordings/big",
+        thumbnail: { url: "mxc://e/big-thumb" },
       },
     ]);
   });

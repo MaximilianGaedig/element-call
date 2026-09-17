@@ -125,13 +125,26 @@ export interface RecordingOptions {
   requireConsent?: boolean;
 }
 
+/**
+ * Content field marking a recording that was too big for the media repo:
+ * its url is a link to the recorder's own download endpoint, not an mxc
+ * URI. Everything else about the message (thumbnail, info) is as usual.
+ */
+export const RecordingUrlField = "org.matrix.rtc.recording.url";
+
 /** A finished recording the recorder has posted into the room. */
 export interface RecordingUpload {
   eventId: string;
   msgtype: "m.video" | "m.audio";
   /** The file name */
   body: string;
-  file: MediaFile;
+  /** The file in the media repo, unless it went to the recorder's storage */
+  file: MediaFile | undefined;
+  /**
+   * Where to ask the recorder for the file, with an OpenID token, when it
+   * was too big for the media repo
+   */
+  link: string | undefined;
   /** A thumbnail, if there is one */
   thumbnail: MediaFile | undefined;
 }
@@ -363,9 +376,13 @@ export function createRecording(
   const onUpload = (event: MatrixEvent): void => {
     const content = event.getContent();
     const msgtype = content.msgtype;
-    const file = mediaFile(content.file, content.url);
-    if ((msgtype !== "m.video" && msgtype !== "m.audio") || file === undefined)
-      return;
+    if (msgtype !== "m.video" && msgtype !== "m.audio") return;
+    const link: unknown = content[RecordingUrlField];
+    const file =
+      typeof link === "string"
+        ? undefined
+        : mediaFile(content.file, content.url);
+    if (typeof link !== "string" && file === undefined) return;
     finishing$.value = false;
     uploads$.value = [
       ...uploads$.value,
@@ -374,6 +391,7 @@ export function createRecording(
         msgtype,
         body: content.body ?? "",
         file,
+        link: typeof link === "string" ? link : undefined,
         thumbnail: mediaFile(
           content.info?.thumbnail_file,
           content.info?.thumbnail_url,
