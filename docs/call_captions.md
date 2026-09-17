@@ -23,11 +23,12 @@ as for recording (see `call_recording_shared_key.md`).
 
 ## Answering
 
-The bot posts an `m.notice` with an `m.reference` relation to the request
-event, and roots a thread on that notice. Each spoken segment is a thread
-reply, as `Speaker: words`. Element Call watches the bot's messages: the
-referencing notice tells it which thread to follow, and the replies are the
-captions, rendered as a fragment of timeline above the call controls with
+The bot posts an `m.notice` naming the request event in an
+`org.matrix.rtc.transcription.request` content field (a relation would stop
+a thread being rooted on it), and roots a thread on that notice. Each
+spoken segment is a thread reply, as `Speaker: words`. Element Call watches
+the bot's messages: the notice tells it which thread to follow, and the
+replies are the captions, rendered as a fragment of timeline above the call controls with
 `@element-hq/web-shared-components`.
 
 While a segment is being spoken the bot streams its words to the devices

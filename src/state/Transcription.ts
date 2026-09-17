@@ -27,11 +27,18 @@ import { E2eeType } from "../e2ee/e2eeType.ts";
 
 // Transcription (closed captions): a state event, keyed by slot, through
 // which a user asks a transcriber bot to caption the call. The bot posts a
-// notice referencing the request and roots a thread on it, in which each
+// notice naming the request and roots a thread on it, in which each
 // spoken segment lands as a reply; those replies are the captions. While a
 // segment is being spoken the bot streams its words to the devices in the
 // call as MSC4471-style to-device updates, and edits the reply with the
 // finished text when the speaker pauses (see docs/event_streams.md).
+
+/**
+ * Content field of the bot's thread-root notice naming the request it
+ * answers. A field rather than a relation, since a thread can't be rooted
+ * on an event that has one.
+ */
+export const TranscriptionRequestField = "org.matrix.rtc.transcription.request";
 
 /** An MSC4471 stream update, sent in the clear in unencrypted rooms. */
 export const StreamUpdateType = "org.matrix.msc4471.stream.update";
@@ -200,8 +207,9 @@ export function createTranscription(
   const onBotEvent = (event: MatrixEvent): void => {
     if (event.getType() !== EventType.RoomMessage) return;
     const relation = event.getRelation();
-    if (relation?.rel_type === RelationType.Reference && relation.event_id) {
-      roots$.value = { ...roots$.value, [relation.event_id]: event.getId()! };
+    const request: unknown = event.getContent()[TranscriptionRequestField];
+    if (typeof request === "string") {
+      roots$.value = { ...roots$.value, [request]: event.getId()! };
     } else if (
       relation?.rel_type === RelationType.Replace &&
       relation.event_id

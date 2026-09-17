@@ -18,6 +18,7 @@ import {
   createTranscription,
   StreamUpdateType,
   type TranscriptionEventContent,
+  TranscriptionRequestField,
 } from "./Transcription.ts";
 import { constant } from "./Behavior.ts";
 import { type FloorControl, TranscriptionEventType } from "./FloorControl.ts";
@@ -50,6 +51,24 @@ function message(
   const content: Record<string, unknown> = { msgtype: "m.notice", body };
   if (relation?.rel_type === "m.replace")
     content["m.new_content"] = { msgtype: "m.notice", body: body.slice(2) };
+  return messageWith(id, content, relation, sender);
+}
+
+/** The bot's thread-root notice for a request. */
+function rootNotice(id: string, request: string): MatrixEvent {
+  return messageWith(id, {
+    msgtype: "m.notice",
+    body: "Live captions are on.",
+    [TranscriptionRequestField]: request,
+  });
+}
+
+function messageWith(
+  id: string,
+  content: Record<string, unknown>,
+  relation?: { rel_type: string; event_id: string },
+  sender = bot,
+): MatrixEvent {
   return {
     getType: () => "m.room.message",
     getContent: () => content,
@@ -141,12 +160,7 @@ describe("createTranscription", () => {
     });
     // Someone else's chatter isn't a transcript
     receive(message("$x", "hi", undefined, "@bob:e"));
-    receive(
-      message("$root", "Live captions are on.", {
-        rel_type: "m.reference",
-        event_id: "$req",
-      }),
-    );
+    receive(rootNotice("$root", "$req"));
     expect(t.transcription$.value?.rootId).toBe("$root");
     const seg = message("$1", "Alice: hello", {
       rel_type: "m.thread",
@@ -174,9 +188,7 @@ describe("createTranscription", () => {
       unencrypted,
     );
     set(stateEvent("@alice:e", { transcriber: bot }, "$req"));
-    receive(
-      message("$root", "on", { rel_type: "m.reference", event_id: "$req" }),
-    );
+    receive(rootNotice("$root", "$req"));
     const thread = { rel_type: "m.thread", event_id: "$root" };
     const body = (): string[] => t.segments$.value.map((c) => c.body);
     // Updates may arrive before the segment itself
