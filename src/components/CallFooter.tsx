@@ -382,9 +382,9 @@ export const CallFooter: FC<FooterProps> = ({
       {!hideControls && layoutSwitchVm && (
         <LayoutSwitch vm={layoutSwitchVm} className={styles.layout} />
       )}
-      {toggleRecording !== undefined && (
+      {toggleRecording !== undefined && recordModalOpen && (
         <RecordModal
-          open={recordModalOpen}
+          open
           onDismiss={() => setRecordModalOpen(false)}
           onStart={(options) => {
             setRecordModalOpen(false);
