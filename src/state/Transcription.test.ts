@@ -18,7 +18,6 @@ import {
   createTranscription,
   StreamUpdateType,
   type TranscriptionEventContent,
-  TranscriptionRequestField,
   TranscriptionSpeakerField,
 } from "./Transcription.ts";
 import { constant } from "./Behavior.ts";
@@ -53,15 +52,6 @@ function message(
   if (relation?.rel_type === "m.replace")
     content["m.new_content"] = { msgtype: "m.notice", body: body.slice(2) };
   return messageWith(id, content, relation, sender);
-}
-
-/** The bot's thread-root notice for a request. */
-function rootNotice(id: string, request: string): MatrixEvent {
-  return messageWith(id, {
-    msgtype: "m.notice",
-    body: "Live captions are on.",
-    [TranscriptionRequestField]: request,
-  });
 }
 
 function messageWith(
@@ -99,7 +89,7 @@ function update(
   } as unknown as MatrixEvent;
 }
 
-function setup(): {
+function setup(history: MatrixEvent[] = []): {
   room: Room;
   sendStateEvent: ReturnType<typeof vi.fn>;
   set: (event: MatrixEvent | null) => void;
@@ -122,6 +112,7 @@ function setup(): {
         type === TranscriptionEventType && key === slot ? current : null,
     },
     getMember: (id: string) => (id === "@bob:e" ? { name: "Bob" } : null),
+    getLiveTimeline: () => ({ getEvents: () => history }),
   } as unknown as Room;
   return {
     room,
@@ -141,7 +132,7 @@ const canTranscribe = {
 } as unknown as FloorControl;
 
 describe("createTranscription", () => {
-  it("follows the bot's thread off its notice for the request", () => {
+  it("follows the thread the bot names in the state", () => {
     const { room, set, receive } = setup();
     const t = createTranscription(
       testScope(),
@@ -153,15 +144,10 @@ describe("createTranscription", () => {
     );
     expect(t.transcription$.value).toBeNull();
     set(stateEvent("@alice:e", { transcriber: bot }, "$req"));
-    expect(t.transcription$.value).toEqual({
-      by: "@alice:e",
-      transcriber: bot,
-      eventId: "$req",
-      rootId: null,
-    });
+    expect(t.transcription$.value).toEqual({ transcriber: bot, rootId: null });
     // Someone else's chatter isn't a transcript
     receive(message("$x", "hi", undefined, "@bob:e"));
-    receive(rootNotice("$root", "$req"));
+    set(stateEvent(bot, { transcriber: bot, root: "$root" }, "$named"));
     expect(t.transcription$.value?.rootId).toBe("$root");
     const seg = message("$1", "Alice: hello", {
       rel_type: "m.thread",
@@ -202,8 +188,7 @@ describe("createTranscription", () => {
       bot,
       unencrypted,
     );
-    set(stateEvent("@alice:e", { transcriber: bot }, "$req"));
-    receive(rootNotice("$root", "$req"));
+    set(stateEvent(bot, { transcriber: bot, root: "$root" }, "$req"));
     const thread = { rel_type: "m.thread", event_id: "$root" };
     const body = (): string[] => t.segments$.value.map((c) => c.body);
     // Updates may arrive before the segment itself

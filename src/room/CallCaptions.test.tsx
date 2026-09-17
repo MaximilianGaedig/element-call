@@ -51,12 +51,7 @@ test("CallCaptions shows the transcript as it arrives", () => {
   expect(container).toBeEmptyDOMElement();
 
   act(() => {
-    transcription$.value = {
-      by: "@alice:e",
-      transcriber: "@bot:e",
-      eventId: "$req",
-      rootId: null,
-    };
+    transcription$.value = { transcriber: "@bot:e", rootId: null };
   });
   screen.getByText("Waiting for the transcriber to join…");
   act(() => {

@@ -27,18 +27,14 @@ import { E2eeType } from "../e2ee/e2eeType.ts";
 
 // Transcription (closed captions): a state event, keyed by slot, through
 // which a user asks a transcriber bot to caption the call. The bot posts a
-// notice naming the request and roots a thread on it, in which each
-// spoken segment lands as a reply; those replies are the captions. While a
-// segment is being spoken the bot streams its words to the devices in the
+// notice and roots a thread on it, in which each spoken segment lands as a
+// reply; those replies are the captions. The bot names the notice in the
+// state event (its `root`), since state reaches everyone in the call where
+// the notice is history a late joiner may not have or be able to decrypt.
+// While a segment is being spoken the bot streams its words to the devices in the
 // call as MSC4471-style to-device updates, and edits the reply with the
 // finished text when the speaker pauses (see docs/event_streams.md).
 
-/**
- * Content field of the bot's thread-root notice naming the request it
- * answers. A field rather than a relation, since a thread can't be rooted
- * on an event that has one.
- */
-export const TranscriptionRequestField = "org.matrix.rtc.transcription.request";
 /** Content field of a segment naming the user who spoke it. */
 export const TranscriptionSpeakerField = "org.matrix.rtc.transcription.speaker";
 
@@ -69,15 +65,13 @@ interface LiveBody {
 /** Empty content, or no transcriber, means the call isn't being captioned. */
 export interface TranscriptionEventContent {
   transcriber?: string;
+  /** The bot's notice that roots the transcript thread, once it's posted. */
+  root?: string;
 }
 
 /** A transcription that is in progress. */
 export interface TranscriptionState {
-  /** The user who asked for it. */
-  by: string;
   transcriber: string;
-  /** The event that started it. */
-  eventId: string;
   /** The bot's notice that roots the transcript thread, once it's posted. */
   rootId: string | null;
 }
@@ -128,8 +122,6 @@ export function createTranscription(
     ],
     (room) => room!.currentState.getStateEvents(TranscriptionEventType, slotId),
   );
-  // The bot's thread root, by the request it answers
-  const roots$ = state<Record<string, string>>({});
   // Thread replies, by root
   const replies$ = state<Record<string, MatrixEvent[]>>({});
   // Streamed words, by segment
@@ -140,12 +132,9 @@ export function createTranscription(
       | TranscriptionEventContent
       | undefined;
     if (!event || content?.transcriber === undefined) return null;
-    const eventId = event.getId()!;
     return {
-      by: event.getSender()!,
       transcriber: content.transcriber,
-      eventId,
-      rootId: roots$.value[eventId] ?? null,
+      rootId: typeof content.root === "string" ? content.root : null,
     };
   });
   const segments$ = computed<Caption[]>(() => {
@@ -221,13 +210,7 @@ export function createTranscription(
   const onBotEvent = (event: MatrixEvent): void => {
     if (event.getType() !== EventType.RoomMessage) return;
     const relation = event.getRelation();
-    const request: unknown = event.getContent()[TranscriptionRequestField];
-    if (typeof request === "string") {
-      roots$.value = { ...roots$.value, [request]: event.getId()! };
-    } else if (
-      relation?.rel_type === RelationType.Replace &&
-      relation.event_id
-    ) {
+    if (relation?.rel_type === RelationType.Replace && relation.event_id) {
       // The segment is finished: its edit is the last word
       const body: string =
         event.getContent()["m.new_content"]?.body ?? event.getContent().body;
@@ -264,6 +247,11 @@ export function createTranscription(
   };
   room.on(RoomEvent.Timeline, onTimeline);
   scope.onEnd(() => room.off(RoomEvent.Timeline, onTimeline));
+  // Captions may have started before we got here: the segments so far are
+  // in the timeline we already have
+  // ponytail: only the synced window; paginate back if older ones matter
+  for (const event of room.getLiveTimeline().getEvents())
+    onTimeline(event, room);
 
   const send = async (content: TranscriptionEventContent): Promise<void> => {
     await room.client.sendStateEvent(

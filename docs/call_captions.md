@@ -25,11 +25,20 @@ as for recording (see `call_recording_shared_key.md`).
 
 The bot posts an `m.notice` naming the request event in an
 `org.matrix.rtc.transcription.request` content field (a relation would stop
-a thread being rooted on it), and roots a thread on that notice. Each
-spoken segment is a thread reply, as `Speaker: words`, naming the speaker's
-user id in an `org.matrix.rtc.transcription.speaker` content field. Element Call watches
-the bot's messages: the notice tells it which thread to follow, and the
-replies are the captions, rendered as a list of message tiles above the call controls with
+a thread being rooted on it), roots a thread on that notice, and rewrites
+the slot's transcription state with the notice's event id:
+
+```
+content: { "transcriber": "@bot:example.org", "root": "$notice" }
+```
+
+State reaches everyone in the call, where the notice is history that
+anyone joining later may not have synced, or in an encrypted room be able
+to decrypt. Each spoken segment is a thread reply, as `Speaker: words`,
+naming the speaker's user id in an `org.matrix.rtc.transcription.speaker`
+content field. Element Call follows the thread the state names, replaying
+the timeline it already has for replies posted before it joined, and
+renders the replies as a list of message tiles above the call controls with
 `@element-hq/web-shared-components`, each shown as the speaker's words (under
 their current name in the room) rather than the bot's.
 
