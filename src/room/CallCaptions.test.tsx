@@ -13,7 +13,7 @@ import { state } from "../state/Behavior";
 import { type CallViewModel } from "../state/CallViewModel/CallViewModel";
 import { type Caption, type TranscriptionState } from "../state/Transcription";
 
-// The shared timeline measures itself, which jsdom can't
+// The shared components measure themselves, which jsdom can't
 vi.stubGlobal(
   "ResizeObserver",
   class {
@@ -22,6 +22,8 @@ vi.stubGlobal(
     public disconnect(): void {}
   },
 );
+// jsdom has no scrolling
+Element.prototype.scrollTo = vi.fn();
 const { CallCaptions, Segment, i18n } = await import("./CallCaptions");
 const { I18nContext } = await import("@element-hq/web-shared-components");
 
@@ -57,12 +59,14 @@ test("CallCaptions shows the transcript as it arrives", () => {
   });
   screen.getByText("Listening…");
 
-  // jsdom can't lay the virtualised timeline out, so only its arrival is
-  // checked here; the tiles are checked below
   act(() => {
     segments$.value = [segment("$1", "Alice: hello there")];
   });
-  screen.getByTestId("timeline-scroller");
+  screen.getByText("hello there");
+  act(() => {
+    segments$.value = [...segments$.value, segment("$2", "Bob: hi")];
+  });
+  screen.getByText("hi");
 });
 
 test("Segment shows the speaker as the sender", () => {

@@ -28,7 +28,7 @@ The bot posts an `m.notice` naming the request event in an
 a thread being rooted on it), and roots a thread on that notice. Each
 spoken segment is a thread reply, as `Speaker: words`. Element Call watches
 the bot's messages: the notice tells it which thread to follow, and the
-replies are the captions, rendered as a fragment of timeline above the call controls with
+replies are the captions, rendered as a list of message tiles above the call controls with
 `@element-hq/web-shared-components`.
 
 While a segment is being spoken the bot streams its words to the devices

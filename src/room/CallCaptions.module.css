@@ -33,9 +33,12 @@ instead of scrolling away. */
   overflow: hidden;
 }
 
-/* The shared timeline fills whatever height it's given */
-.captions > * {
+.list {
   min-block-size: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
 }
 
 .waiting {

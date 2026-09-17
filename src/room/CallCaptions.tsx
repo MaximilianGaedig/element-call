@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { type FC, type ReactNode, type Ref, useMemo } from "react";
+import { type FC, type Ref, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Text } from "@vector-im/compound-web";
 import {
@@ -15,9 +15,6 @@ import {
   I18nApi,
   I18nContext,
   MessageTimestampView,
-  type TimelineItem,
-  TimelineView,
-  type TimelineViewSnapshot,
   type ViewModel,
 } from "@element-hq/web-shared-components";
 import "@element-hq/web-shared-components/dist/element-web-shared-components.css";
@@ -34,18 +31,6 @@ export const i18n = new I18nApi();
 function constantVm<S>(snapshot: S): ViewModel<S> {
   return { getSnapshot: () => snapshot, subscribe: () => () => {} };
 }
-
-const noop = (): void => {};
-const timelineActions = {
-  onStartReached: noop,
-  onEndReached: noop,
-  onAnchorReached: noop,
-  onVisibleRangeChanged: noop,
-  onAtBottomStateChange: noop,
-  onJumpToReadMarker: noop,
-  onMarkAllAsRead: noop,
-  onJumpToLive: noop,
-};
 
 const time = new Intl.DateTimeFormat(undefined, { timeStyle: "short" });
 const dateTime = new Intl.DateTimeFormat(undefined, {
@@ -98,7 +83,7 @@ export const Segment: FC<Caption> = ({ event, body }) => {
 
 /**
  * Live captions: the transcript the transcriber bot posts as a thread,
- * rendered as a fragment of timeline above the call controls while
+ * rendered as a list of message tiles above the call controls while
  * transcription is on.
  */
 export const CallCaptions: FC<{
@@ -114,44 +99,13 @@ export const CallCaptions: FC<{
   const { t } = useTranslation();
   const transcription = useBehavior(vm.transcription.transcription$);
   const segments = useBehavior(vm.transcription.segments$);
-  const timelineVm = useMemo(() => {
-    const { segments$ } = vm.transcription;
-    // Snapshots must be stable between renders (see Segment), so one is
-    // built only when the segments change
-    let snapshot: TimelineViewSnapshot | null = null;
-    let from: Caption[] | null = null;
-    const getSnapshot = (): TimelineViewSnapshot => {
-      if (snapshot === null || segments$.value !== from) {
-        from = segments$.value;
-        snapshot = {
-          items: from.map(({ event }, i) => ({
-            key: event.getId()!,
-            kind: "event",
-            continuation: false,
-            lastInSection: i === from!.length - 1,
-          })),
-          atLiveEnd: true,
-          pendingAnchor: null,
-          highlightedEventId: null,
-          isAtBottom: true,
-          canJumpToReadMarker: false,
-          numUnreadMessages: 0,
-          hasHighlights: false,
-        };
-      }
-      return snapshot;
-    };
-    return {
-      getSnapshot,
-      subscribe: (listener: () => void) =>
-        segments$.subscribe(() => listener()),
-      ...timelineActions,
-    };
-  }, [vm]);
-  const renderItem = (item: TimelineItem): ReactNode => {
-    const caption = segments.find((c) => c.event.getId() === item.key);
-    return caption && <Segment {...caption} />;
-  };
+  // Keep the latest words in view as they arrive. (The shared TimelineView
+  // is not used here: a few lines need no virtualising, and it never leaves
+  // its loading state under React StrictMode.)
+  const list = useRef<HTMLOListElement>(null);
+  useEffect(() => {
+    list.current?.scrollTo({ top: list.current.scrollHeight });
+  }, [segments]);
 
   if (transcription === null) return null;
   return (
@@ -173,7 +127,13 @@ export const CallCaptions: FC<{
               : t("captions.listening")}
           </Text>
         ) : (
-          <TimelineView vm={timelineVm} renderItem={renderItem} />
+          <ol className={styles.list} ref={list}>
+            {segments.map((caption) => (
+              <li key={caption.event.getId()}>
+                <Segment {...caption} />
+              </li>
+            ))}
+          </ol>
         )}
       </section>
     </I18nContext.Provider>
