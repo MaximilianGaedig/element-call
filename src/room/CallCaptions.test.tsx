@@ -27,13 +27,13 @@ Element.prototype.scrollTo = vi.fn();
 const { CallCaptions, Segment, i18n } = await import("./CallCaptions");
 const { I18nContext } = await import("@element-hq/web-shared-components");
 
-function segment(id: string, body: string): Caption {
+function segment(id: string, body: string, speaker?: string): Caption {
   const event = {
     getId: () => id,
     getTs: () => 1_700_000_000_000,
     getContent: () => ({ msgtype: "m.notice", body }),
   } as unknown as MatrixEvent;
-  return { event, body };
+  return { event, body, speaker };
 }
 
 test("CallCaptions shows the transcript as it arrives", () => {
@@ -76,6 +76,16 @@ test("Segment shows the speaker as the sender", () => {
     </I18nContext.Provider>,
   );
   screen.getByText("Alice");
+  screen.getByText("hello there");
+});
+
+test("Segment prefers the speaker the bot named", () => {
+  render(
+    <I18nContext.Provider value={i18n}>
+      <Segment {...segment("$1", "Alice: hello there", "Alice Smith")} />
+    </I18nContext.Provider>,
+  );
+  screen.getByText("Alice Smith");
   screen.getByText("hello there");
 });
 

@@ -39,6 +39,8 @@ import { E2eeType } from "../e2ee/e2eeType.ts";
  * on an event that has one.
  */
 export const TranscriptionRequestField = "org.matrix.rtc.transcription.request";
+/** Content field of a segment naming the user who spoke it. */
+export const TranscriptionSpeakerField = "org.matrix.rtc.transcription.speaker";
 
 /** An MSC4471 stream update, sent in the clear in unencrypted rooms. */
 export const StreamUpdateType = "org.matrix.msc4471.stream.update";
@@ -86,6 +88,8 @@ export interface Caption {
   event: MatrixEvent;
   /** Its text as it stands, including words streamed since it was posted. */
   body: string;
+  /** Who spoke it, as they are known in the room, if the bot said. */
+  speaker?: string;
 }
 
 export interface Transcription {
@@ -149,8 +153,18 @@ export function createTranscription(
     const replies = rootId == null ? [] : (replies$.value[rootId] ?? []);
     return replies.map((event) => {
       const live = live$.value[event.getId()!];
-      const body: string = event.getContent().body ?? "";
-      return { event, body: live ? (live.base ?? body) + live.extra : body };
+      const content = event.getContent();
+      const body: string = content.body ?? "";
+      const userId: unknown = content[TranscriptionSpeakerField];
+      const speaker =
+        typeof userId === "string"
+          ? (room.getMember(userId)?.name ?? userId)
+          : undefined;
+      return {
+        event,
+        body: live ? (live.base ?? body) + live.extra : body,
+        speaker,
+      };
     });
   });
 

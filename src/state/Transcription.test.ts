@@ -19,6 +19,7 @@ import {
   StreamUpdateType,
   type TranscriptionEventContent,
   TranscriptionRequestField,
+  TranscriptionSpeakerField,
 } from "./Transcription.ts";
 import { constant } from "./Behavior.ts";
 import { type FloorControl, TranscriptionEventType } from "./FloorControl.ts";
@@ -120,7 +121,7 @@ function setup(): {
       getStateEvents: (type: string, key: string) =>
         type === TranscriptionEventType && key === slot ? current : null,
     },
-    getMember: () => null,
+    getMember: (id: string) => (id === "@bob:e" ? { name: "Bob" } : null),
   } as unknown as Room;
   return {
     room,
@@ -170,7 +171,21 @@ describe("createTranscription", () => {
     receive(
       message("$2", "Old: stuff", { rel_type: "m.thread", event_id: "$other" }),
     );
-    expect(t.segments$.value).toEqual([{ event: seg, body: "Alice: hello" }]);
+    // Named speakers are shown under their room name
+    const named = messageWith(
+      "$3",
+      {
+        msgtype: "m.notice",
+        body: "Bob: hi",
+        [TranscriptionSpeakerField]: "@bob:e",
+      },
+      { rel_type: "m.thread", event_id: "$root" },
+    );
+    receive(named);
+    expect(t.segments$.value).toEqual([
+      { event: seg, body: "Alice: hello", speaker: undefined },
+      { event: named, body: "Bob: hi", speaker: "Bob" },
+    ]);
     // Turning it off clears the captions
     set(stateEvent("@alice:e", {}, "$off"));
     expect(t.transcription$.value).toBeNull();

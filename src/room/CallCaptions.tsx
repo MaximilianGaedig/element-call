@@ -39,20 +39,22 @@ const dateTime = new Intl.DateTimeFormat(undefined, {
 });
 
 /**
- * One transcript segment. The bot posts them as "Speaker: words", so the
- * speaker is shown as the sender rather than the bot. The body grows as
- * the bot streams the speaker's words.
+ * One transcript segment, shown as the speaker's words rather than the
+ * bot's: the bot names the speaker in the event, or failing that posts
+ * the body as "Speaker: words". The body grows as the bot streams the
+ * speaker's words.
  */
-export const Segment: FC<Caption> = ({ event, body }) => {
+export const Segment: FC<Caption> = ({ event, body, speaker }) => {
   // View models must hand back the same snapshot until something changes,
   // or the shared components' store hook re-renders forever
   const vms = useMemo(() => {
     const match = /^(.+?): (.*)$/s.exec(body);
+    const name = speaker ?? match?.[1];
     const ts = event.getTs();
     return {
-      speaker: match?.[1],
+      speaker: name,
       sender: constantVm({
-        displayName: match?.[1] ?? "",
+        displayName: name ?? "",
         emphasizeDisplayName: true,
       }),
       body: constantVm({ body: match?.[2] ?? body }),
@@ -62,7 +64,7 @@ export const Segment: FC<Caption> = ({ event, body }) => {
         inhibitTooltip: true,
       }),
     };
-  }, [event, body]);
+  }, [event, body, speaker]);
   const id = event.getId()!;
   return (
     <EventTileView
