@@ -354,8 +354,12 @@ export const InCallView: FC<InCallViewProps> = ({
   // The captions panel runs on underneath the footer, so that there's no
   // edge above the buttons, and keeps its text above them
   const captionsInset = showFooter ? footerBounds.height : 0;
-  // The measurement lingers after the panel unmounts
-  const captionsHeight = captionsOn ? captionsBounds.height - captionsInset : 0;
+  // The measurement lingers after the panel unmounts, and is zero until
+  // the (lazily loaded) panel has mounted, so clamp: a negative height
+  // would let the grid grow past the view before the panel measures
+  const captionsHeight = captionsOn
+    ? Math.max(0, captionsBounds.height - captionsInset)
+    : 0;
 
   const gridBounds = useMemo(
     () => ({
