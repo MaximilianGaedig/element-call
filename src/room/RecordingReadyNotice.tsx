@@ -122,8 +122,11 @@ export const RecordingReadyNotice: FC<Props> = ({ vm, client }) => {
     try {
       if (upload.link !== undefined) {
         // The recorder checks our OpenID token and hands back a short-lived
-        // URL for the file, served as an attachment so the browser saves
-        // it without leaving the call
+        // URL for the file, served as an attachment. It's cross-origin, so
+        // the download attribute is ignored and clicking it navigates,
+        // which fires beforeunload and makes LiveKit hang up on us
+        // (https://github.com/element-hq/element-call-rageshakes/issues/17546).
+        // A new tab starts the download and closes itself.
         const token = await client.getOpenIdToken();
         const response = await fetch(
           `${upload.link}?server_name=${encodeURIComponent(token.matrix_server_name)}`,
@@ -131,9 +134,7 @@ export const RecordingReadyNotice: FC<Props> = ({ vm, client }) => {
         );
         if (!response.ok) throw new Error(`${upload.link}: ${response.status}`);
         const { url } = (await response.json()) as { url: string };
-        const a = document.createElement("a");
-        a.href = url;
-        a.click();
+        window.open(url, "_blank", "noopener");
         return;
       }
       if (upload.file === undefined) return;
