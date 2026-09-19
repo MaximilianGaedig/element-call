@@ -26,6 +26,8 @@ const layerStyle = (railWidth: number): LayerCSSProperties => ({
   "--rail-width": `${railWidth}px`,
 });
 
+// The rail's fixed width before it became resizable, so nothing gets
+// narrower than it was
 const minRailWidth = 180;
 
 /**

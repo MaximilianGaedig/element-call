@@ -54,6 +54,7 @@ except where switched back on, as here, so hovering the gap reaches it. */
 
 .handle {
   z-index: 2;
+  /* !important: re-resizable sets the handle's size and position inline */
   inline-size: var(--gap) !important;
   inset-inline-start: calc(-1 * var(--gap)) !important;
 }

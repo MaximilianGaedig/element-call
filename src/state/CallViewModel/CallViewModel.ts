@@ -1146,7 +1146,8 @@ export function createCallViewModel$(
   });
   /**
    * The width of the rail of grid tiles beside the spotlight in the landscape
-   * spotlight layout, which the user can drag to resize.
+   * spotlight layout, which the user can drag to resize. Starts at the rail's
+   * minimum width (see SpotlightLandscapeLayout), which was its fixed width.
    */
   const spotlightRailWidth$ = state(180);
   /**
