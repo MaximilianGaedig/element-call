@@ -45,10 +45,6 @@ interface Props extends ComponentProps<typeof animated.div> {
   targetHeight: number;
   video: TrackReferenceOrPlaceholder | undefined;
   /**
-   * How to fit the video content inside the tile. When undefined, MediaView
-   * chooses a smart default based on the aspect ratios of the tile and video.
-   */
-  /**
    * How the video fills the tile: cover, contain, "auto" for cover only when
    * the two are of a similar shape, or (unset) the user's crop setting.
    */
