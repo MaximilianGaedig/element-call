@@ -29,10 +29,19 @@ test("RecordModal is accessible and starts with the chosen options", async () =>
   expect(onDismiss).toHaveBeenCalled();
   expect(onStart).not.toHaveBeenCalled();
 
+  const mirror = screen.getByRole("checkbox", {
+    name: "Mirror my layout in the recording",
+  });
+  await user.click(mirror);
+  expect(mirror).toBeChecked();
+  // An audio recording has no layout to mirror
   await user.click(screen.getByRole("checkbox", { name: "Record audio only" }));
+  expect(mirror).toBeDisabled();
+  expect(mirror).not.toBeChecked();
   await user.click(screen.getByRole("button", { name: "Start recording" }));
   expect(onStart).toHaveBeenCalledWith({
     audioOnly: true,
     requireConsent: false,
+    mirrorLayout: false,
   });
 });

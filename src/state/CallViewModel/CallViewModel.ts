@@ -36,7 +36,18 @@ import { createTranscription, type Transcription } from "../Transcription.ts";
 import { createDialIn, type DialIn } from "../DialIn.ts";
 import { v4 as uuidv4 } from "uuid";
 
-import { duplicateTiles, showReactions } from "../../settings/settings";
+import {
+  duplicateTiles,
+  enlargeActiveSpeakers,
+  type Setting,
+  showReactions,
+} from "../../settings/settings";
+import {
+  createLayoutMirror,
+  createLayoutOps,
+  type LayoutOp,
+  type TileRef,
+} from "../LayoutMirror.ts";
 import { Config } from "../../config/Config";
 import { MatrixRTCMode } from "../../config/ConfigOptions";
 import { isFirefox, platform } from "../../Platform";
@@ -845,6 +856,30 @@ export function createCallViewModel$(
   );
 
   /**
+   * The layout decisions the user makes, as they make them, for directing
+   * a recording's layout (see LayoutMirror).
+   */
+  const layoutOps = createLayoutOps();
+  /**
+   * Names a piece of media the way the layout mirror does, by whose stream
+   * it is. Media IDs are `userId:deviceId:dup[:screen-share]`.
+   */
+  const tileRef = (media: MediaViewModel): TileRef | null => {
+    if (media.type === "ringing") return null;
+    const deviceId = media.id.slice(media.userId.length + 1).split(":")[0];
+    return {
+      user_id: media.userId,
+      device_id: deviceId,
+      ...(media.type === "screen share" ? { media: "screen_share" } : {}),
+    };
+  };
+  /** Whether `media` is the stream a mirrored op names. */
+  const matchesRef = (media: MediaViewModel, ref: TileRef): boolean =>
+    media.type !== "ringing" &&
+    media.id ===
+      `${ref.user_id}:${ref.device_id}:0${ref.media === "screen_share" ? ":screen-share" : ""}`;
+
+  /**
    * IDs of the user media the local user has pinned to the spotlight (by
    * double-clicking their tile or choosing Pin from its menu).
    */
@@ -853,6 +888,9 @@ export function createCallViewModel$(
     const next = new Set(pinnedIds$.peek());
     if (!next.delete(media.id)) next.add(media.id);
     pinnedIds$.value = next;
+    const ref = tileRef(media);
+    if (ref)
+      layoutOps.emit({ type: "pin", ...ref, pinned: next.has(media.id) });
   };
 
   /**
@@ -1192,9 +1230,13 @@ export function createCallViewModel$(
     media: MediaViewModel,
     to: MediaViewModel,
   ): void => {
+    const index = spotlight$.peek().indexOf(to);
     spotlightOrder$.value = moveMember(spotlight$.peek(), media, to).map(
       (m) => m.id,
     );
+    const ref = tileRef(media);
+    if (ref && index !== -1)
+      layoutOps.emit({ type: "move_tile", ...ref, index, in: "spotlight" });
   };
 
   /**
@@ -1238,13 +1280,24 @@ export function createCallViewModel$(
   const spotlightExpanded$ = state(false);
   const toggleSpotlightExpanded = (): void => {
     spotlightExpanded$.value = !spotlightExpanded$.value;
+    layoutOps.emit({
+      type: "spotlight_expanded",
+      expanded: spotlightExpanded$.peek(),
+    });
   };
 
-  const layoutSwitchVm = createLayoutSwitchViewModel(
+  const layoutSwitch = createLayoutSwitchViewModel(
     scope,
     windowMode$,
     hasScreenShares$,
   );
+  const layoutSwitchVm: LayoutSwitchViewModel = {
+    layout$: layoutSwitch.layout$,
+    setLayout: (value) => {
+      layoutSwitch.setLayout(value);
+      layoutOps.emit({ type: "layout", layout: value });
+    },
+  };
 
   const oneOnOneLayoutMedia$ = computed<OneOnOneMedia | null>(() => {
     const userMedia = userMedia$.value;
@@ -1523,6 +1576,11 @@ export function createCallViewModel$(
       localTileMoved$.value = true;
     pendingMove = { media, to: toMedia };
     moves$.value++;
+    // The tile lands where `to` was
+    const index = gridTiles().indexOf(to);
+    const ref = tileRef(media);
+    if (ref && index !== -1)
+      layoutOps.emit({ type: "move_tile", ...ref, index });
   };
 
   // This is an effect rather than a computed because the TileStore mutates the
@@ -1600,7 +1658,20 @@ export function createCallViewModel$(
     );
   });
   const toggleTileEnlarged = (tile: GridTileViewModel): void => {
-    if (gridLikeLayout$.peek()) tile.toggleEnlarged();
+    if (!gridLikeLayout$.peek()) return;
+    tile.toggleEnlarged();
+    const ref = tileRef(tile.media$.peek());
+    if (ref)
+      layoutOps.emit({
+        type: "enlarge",
+        ...ref,
+        enlarged: tile.enlarged$.peek(),
+      });
+  };
+  /** The tiles of the grid (or the rail), in order, when there is one. */
+  const gridTiles = (): GridTileViewModel[] => {
+    const layout = layoutInternals$.peek()?.layout;
+    return layout !== undefined && "grid" in layout ? layout.grid : [];
   };
 
   /**
@@ -1735,6 +1806,174 @@ export function createCallViewModel$(
       errors?.connectionError ??
       null;
     if (error !== null) fatalError$.value = error;
+  });
+
+  // Directing a recording's layout, or following its director: what the
+  // user changes below is sent as it happens; a snapshot catches a recorder
+  // up; and the recorder applies each op as if its user had done it.
+  // The settings that shape and pack tiles, by their name on the wire. The
+  // tile shape ones (hug_video, crop_video, relaxed_grid) join this list
+  // with the tile shapes stack.
+  type TileOption =
+    | "hug_video"
+    | "crop_video"
+    | "relaxed_grid"
+    | "enlarge_active_speakers";
+  const tileOptions: Partial<Record<TileOption, Setting<boolean>>> = {
+    enlarge_active_speakers: enlargeActiveSpeakers,
+  };
+  const tileOptionEntries = Object.entries(tileOptions) as [
+    TileOption,
+    Setting<boolean>,
+  ][];
+  const lastOptions: Partial<Record<TileOption, boolean>> = {};
+  scope.effect(() => {
+    const changed: Partial<Record<TileOption, boolean>> = {};
+    for (const [k, setting] of tileOptionEntries) {
+      const value = setting.value$.value;
+      if (lastOptions[k] !== undefined && lastOptions[k] !== value)
+        changed[k] = value;
+      lastOptions[k] = value;
+    }
+    if (Object.keys(changed).length > 0)
+      layoutOps.emit({ type: "tile_options", ...changed });
+  });
+  let lastRailWidth: number | null = null;
+  scope.effect(() => {
+    const width = spotlightRailWidth$.value;
+    if (lastRailWidth !== null && lastRailWidth !== width)
+      layoutOps.emit({ type: "rail_width", width });
+    lastRailWidth = width;
+  });
+  const lastVolumes = new Map<string, number>();
+  scope.effect(() => {
+    for (const m of userMedia$.value) {
+      if (m.local) continue;
+      const volume = Math.round(m.playbackVolume$.value * 100);
+      const last = lastVolumes.get(m.id);
+      lastVolumes.set(m.id, volume);
+      const ref = tileRef(m);
+      if (last !== undefined && last !== volume && ref)
+        layoutOps.emit({ type: "volume", ...ref, volume });
+    }
+  });
+  const snapshotLayout = (): LayoutOp[] => {
+    const ops: LayoutOp[] = [
+      { type: "layout", layout: layoutSwitch.layout$.peek() },
+      { type: "spotlight_expanded", expanded: spotlightExpanded$.peek() },
+      {
+        type: "tile_options",
+        ...Object.fromEntries(
+          tileOptionEntries.map(([k, s]) => [k, s.value$.peek()]),
+        ),
+      },
+      { type: "rail_width", width: spotlightRailWidth$.peek() },
+    ];
+    for (const m of userMedia$.peek()) {
+      const ref = tileRef(m);
+      if (!ref) continue;
+      if (pinnedIds$.peek().has(m.id))
+        ops.push({ type: "pin", ...ref, pinned: true });
+      if (!m.local && m.playbackVolume$.peek() !== 1)
+        ops.push({
+          type: "volume",
+          ...ref,
+          volume: Math.round(m.playbackVolume$.peek() * 100),
+        });
+    }
+    gridTiles().forEach((tile, index) => {
+      const ref = tileRef(tile.media$.peek());
+      if (!ref) return;
+      if (tile.enlarged$.peek())
+        ops.push({ type: "enlarge", ...ref, enlarged: true });
+      ops.push({ type: "move_tile", ...ref, index });
+    });
+    return ops;
+  };
+  const recorderDevices$ = computed(() => {
+    const recorder = recording.recording$.value?.recorder;
+    return [
+      ...new Set(
+        memberships$.value
+          .filter((m) => m.userId === recorder)
+          .map((m) => baseDeviceId(m.deviceId)),
+      ),
+    ];
+  });
+  const findMedia = (ref: TileRef): MediaViewModel | undefined =>
+    ref.media === "screen_share"
+      ? screenShares$.peek().find((m) => matchesRef(m, ref))
+      : userMedia$.peek().find((m) => matchesRef(m, ref));
+  const findTile = (ref: TileRef): GridTileViewModel | undefined => {
+    const media = findMedia(ref);
+    return media && gridTiles().find((t) => t.media$.peek().id === media.id);
+  };
+  const applyLayoutOp = (op: LayoutOp): void => {
+    switch (op.type) {
+      case "layout":
+        layoutSwitch.setLayout(op.layout);
+        break;
+      case "spotlight_expanded":
+        if (spotlightExpanded$.peek() !== op.expanded)
+          spotlightExpanded$.value = op.expanded;
+        break;
+      case "move_tile": {
+        if (op.in === "spotlight") {
+          const media = findMedia(op);
+          const items = spotlight$.peek();
+          const to = items[Math.min(op.index, items.length - 1)];
+          if (media && to && to !== media) moveSpotlightItem(media, to);
+          break;
+        }
+        const tile = findTile(op);
+        const tiles = gridTiles();
+        const to = tiles[Math.min(op.index, tiles.length - 1)];
+        if (tile && to && to !== tile) moveTile(tile, to);
+        break;
+      }
+      case "pin": {
+        const media = findMedia(op);
+        if (
+          media?.type === "user" &&
+          pinnedIds$.peek().has(media.id) !== op.pinned
+        )
+          togglePinned(media);
+        break;
+      }
+      case "enlarge": {
+        const tile = findTile(op);
+        if (tile && tile.enlarged$.peek() !== op.enlarged)
+          toggleTileEnlarged(tile);
+        break;
+      }
+      case "tile_options":
+        for (const [key, setting] of tileOptionEntries) {
+          const value = op[key];
+          if (typeof value === "boolean" && setting.value$.peek() !== value)
+            setting.setValue(value);
+        }
+        break;
+      case "rail_width":
+        // The rail's own minimum; its maximum depends on our window, which
+        // the layout applies when it arranges the rail
+        spotlightRailWidth$.value = Math.max(180, Math.round(op.width));
+        break;
+      case "volume": {
+        const media = findMedia(op);
+        if (media?.type === "user" && !media.local) {
+          media.adjustPlaybackVolume(Math.max(0, Math.min(2, op.volume / 100)));
+          media.commitPlaybackVolume();
+        }
+        break;
+      }
+    }
+  };
+  createLayoutMirror(scope, matrixRoom, {
+    recording$: recording.recording$,
+    recorderDevices$,
+    ops: layoutOps,
+    snapshot: snapshotLayout,
+    apply: applyLayoutOp,
   });
 
   return {

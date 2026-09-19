@@ -18,6 +18,7 @@ import {
   ConsentDeclinedError,
   consentOnJoin,
   createRecording,
+  DirectorDeviceField,
   RecorderError,
   RecordingConsentKey,
   type RecordingEventContent,
@@ -53,7 +54,11 @@ function setup(botMembership?: string): {
   const room = {
     ...mockEmitter(),
     roomId: "!room",
-    client: { sendStateEvent, getUserId: () => "@alice:e" },
+    client: {
+      sendStateEvent,
+      getUserId: () => "@alice:e",
+      getDeviceId: () => "ALICEDEV",
+    },
     currentState: {
       getStateEvents: (type: string, key: string) =>
         type === RecordingEventType && key === slot ? current : null,
@@ -278,6 +283,36 @@ describe("createRecording", () => {
       noBots,
     );
     await r.toggle$.value!({ audioOnly: true });
+    expect(sendStateEvent).toHaveBeenLastCalledWith(
+      "!room",
+      RecordingEventType,
+      { recorder: bot, media: "audio" },
+      slot,
+    );
+  });
+
+  it("names this device as director when asked to mirror the layout", async () => {
+    const { room, sendStateEvent } = setup();
+    const r = createRecording(
+      testScope(),
+      room,
+      canRecord,
+      slot,
+      bot,
+      none,
+      rtcSession,
+      people,
+      noBots,
+    );
+    await r.toggle$.value!({ mirrorLayout: true });
+    expect(sendStateEvent).toHaveBeenLastCalledWith(
+      "!room",
+      RecordingEventType,
+      { recorder: bot, [DirectorDeviceField]: "ALICEDEV" },
+      slot,
+    );
+    // An audio recording has no layout to mirror
+    await r.toggle$.value!({ mirrorLayout: true, audioOnly: true });
     expect(sendStateEvent).toHaveBeenLastCalledWith(
       "!room",
       RecordingEventType,

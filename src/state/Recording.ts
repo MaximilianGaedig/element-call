@@ -34,6 +34,7 @@ import {
 import { type FloorControl, RecordingEventType } from "./FloorControl.ts";
 import { type Scope } from "./Scope.ts";
 import { E2eeType } from "../e2ee/e2eeType.ts";
+import { widget } from "../widget.ts";
 import { type EncryptionSystem } from "../e2ee/sharedKeyManagement.ts";
 
 // Recording: a state event, keyed by slot, through which users ask a
@@ -60,6 +61,12 @@ export type RecordingStreams = "composite" | "separate" | "both";
  */
 export const SharedKeyEventType = "io.element.call.shared_key";
 
+/**
+ * Field of the request naming the sender's device whose layout the recorder
+ * should mirror. See docs/call_layout_mirroring.md.
+ */
+export const DirectorDeviceField = "io.element.call.director_device";
+
 /** Empty content, or no recorder, means the call isn't being recorded. */
 export interface RecordingEventContent {
   recorder?: string;
@@ -67,6 +74,7 @@ export interface RecordingEventContent {
   streams?: RecordingStreams;
   /** Whether everyone in the call must consent before it's recorded. */
   requires_consent?: boolean;
+  [DirectorDeviceField]?: string;
 }
 
 /** A recording that is in progress. */
@@ -86,6 +94,11 @@ export interface RecordingState {
   consents: Record<string, boolean>;
   /** The users in the call who have yet to consent, when it's required. */
   awaitingConsent: string[];
+  /**
+   * The device of whoever asked whose layout the recorder mirrors, if they
+   * chose to direct it.
+   */
+  directorDevice?: string;
 }
 
 /** The recorder said it couldn't record, or didn't answer in time. */
@@ -123,6 +136,8 @@ export interface RecordingOptions {
   audioOnly?: boolean;
   /** Record only once everyone in the call has consented. */
   requireConsent?: boolean;
+  /** Have the recorder mirror this device's layout decisions. */
+  mirrorLayout?: boolean;
 }
 
 /**
@@ -264,6 +279,40 @@ async function trackUser(crypto: CryptoApi, userId: string): Promise<void> {
   await outgoingRequestsManager?.doProcessOutgoingRequests();
 }
 
+/**
+ * Sends a to-device message to the given devices, Olm-encrypted. As a
+ * widget the host encrypts; standalone, our own crypto does, which needs
+ * to be tracking the recipient.
+ */
+export async function sendEncryptedToDevice(
+  room: MatrixRoom,
+  eventType: string,
+  targets: { userId: string; deviceId: string }[],
+  content: Record<string, unknown>,
+): Promise<void> {
+  if (widget !== null) {
+    const client = room.client as unknown as {
+      encryptAndSendToDevice: (
+        eventType: string,
+        devices: { userId: string; deviceId: string }[],
+        payload: Record<string, unknown>,
+      ) => Promise<void>;
+    };
+    await client.encryptAndSendToDevice(eventType, targets, content);
+    return;
+  }
+  const crypto = room.client.getCrypto();
+  if (crypto === undefined) throw new Error("Encryption isn't available");
+  for (const userId of new Set(targets.map((t) => t.userId)))
+    await trackUser(crypto, userId);
+  const batch = await crypto.encryptToDeviceMessages(
+    eventType,
+    targets,
+    content,
+  );
+  await room.client.queueToDevice(batch);
+}
+
 /** Sends the call's shared key to every device of the recorder, encrypted. */
 export async function sendSharedKey(
   room: MatrixRoom,
@@ -279,12 +328,10 @@ export async function sendSharedKey(
   );
   if (targets.length === 0)
     throw new Error("The recorder has no devices to send the call's key to");
-  const batch = await crypto.encryptToDeviceMessages(
-    SharedKeyEventType,
-    targets,
-    { room_id: room.roomId, key },
-  );
-  await room.client.queueToDevice(batch);
+  await sendEncryptedToDevice(room, SharedKeyEventType, targets, {
+    room_id: room.roomId,
+    key,
+  });
 }
 
 /**
@@ -362,6 +409,7 @@ export function createRecording(
             (id) => !consents[id],
           )
         : [],
+      directorDevice: content[DirectorDeviceField],
     };
   });
   // The record button shows the state event, so a failed request would
@@ -493,6 +541,10 @@ export function createRecording(
           recorder: recorder!,
           ...(options?.audioOnly ? { media: "audio" } : {}),
           ...(options?.requireConsent ? { requires_consent: true } : {}),
+          // Only a video recording has a layout to mirror
+          ...(options?.mirrorLayout && !options.audioOnly
+            ? { [DirectorDeviceField]: room.client.getDeviceId()! }
+            : {}),
         });
       }
     } catch (e) {

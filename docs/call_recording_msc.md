@@ -189,7 +189,10 @@ asks them there instead.
 Element Call's standalone app encrypts calls with a key in the URL rather
 than in the room; recording those needs the key handed to the recorder,
 which Element Call does with a to-device message of its own, described in
-[call_recording_shared_key.md](./call_recording_shared_key.md).
+[call_recording_shared_key.md](./call_recording_shared_key.md). It also
+lets whoever asks for a recording direct its layout by adding their device
+to the request and sending the recorder their layout decisions, described
+in [call_layout_mirroring.md](./call_layout_mirroring.md).
 
 ## Potential issues
 

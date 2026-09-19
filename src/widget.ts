@@ -27,6 +27,7 @@ import {
   BridgeInfoEventType,
   BridgeInfoRequestEventType,
 } from "./state/DialIn.ts";
+import { LayoutEventType } from "./state/LayoutMirror.ts";
 import {
   FloorControlEventType,
   RecordingEventType,
@@ -190,6 +191,8 @@ export const initializeWidget = (
         // Asking a SIP bridge for the call's addresses
         BridgeInfoRequestEventType,
         BridgeInfoEventType,
+        // Directing a recording's layout, and following its director
+        LayoutEventType,
       ];
 
       const client = createRoomWidgetClient(

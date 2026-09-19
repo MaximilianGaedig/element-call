@@ -111,6 +111,7 @@ describe("widget", () => {
       EventType.CallEncryptionKeysPrefix,
       "org.matrix.rtc.bridge_info.request",
       "org.matrix.rtc.bridge_info",
+      "io.element.call.layout",
     ];
 
     expect(createRoomWidgetClientSpy.mock.calls[0][1]).toStrictEqual({
