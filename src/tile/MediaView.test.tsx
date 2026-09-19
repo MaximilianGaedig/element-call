@@ -74,6 +74,10 @@ describe("MediaView", () => {
       render(<MediaView {...baseProps} displayName="Bob" />);
       expect(screen.getByTestId("name_tag")).toHaveTextContent("Bob");
     });
+    test("marks a pinned tile", () => {
+      render(<MediaView {...baseProps} displayName="Bob" pinned />);
+      expect(screen.getByTestId("name_tag")).toHaveTextContent("📌 Bob");
+    });
   });
 
   describe("waitingForMedia", () => {
