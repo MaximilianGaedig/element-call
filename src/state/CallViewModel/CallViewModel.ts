@@ -319,9 +319,8 @@ export interface CallViewModel {
    */
   floorControl: FloorControl;
   /**
-   * Gives a tile more prominence, or takes it back, at the user's request
-   * (double-clicking it). In the grid layout this doubles the tile's size; in
-   * the spotlight layouts it pins the user to the spotlight.
+   * Doubles a tile's size in the grid or the spotlight's rail, or takes that
+   * back, at the user's request (double-clicking it).
    */
   toggleTileEnlarged: (tile: GridTileViewModel) => void;
   /**
