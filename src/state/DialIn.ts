@@ -54,12 +54,18 @@ export function createDialIn(
     ),
   );
 
+  // Only the configured bridge is believed, and only about this room; the
+  // answer is written into floor control by whoever asked (a moderator)
   const onToDevice = (event: MatrixEvent): void => {
-    if (event.getType() !== BridgeInfoEventType || event.getSender() !== bridge)
+    if (
+      bridge === undefined ||
+      event.getType() !== BridgeInfoEventType ||
+      event.getSender() !== bridge
+    )
       return;
     const { room_id: roomId, sip } = event.getContent<BridgeInfoContent>();
     if (roomId === room.roomId && floorControl.canModerate$.peek())
-      void floorControl.setBridge(bridge!, { sip: sip ?? [] });
+      void floorControl.setBridge(bridge, { sip: sip ?? [] });
   };
   room.client.on(ClientEvent.ToDeviceEvent, onToDevice);
   scope.onEnd(() => room.client.off(ClientEvent.ToDeviceEvent, onToDevice));
@@ -67,6 +73,7 @@ export function createDialIn(
   const setMode = async (mode: SipDialIn | undefined): Promise<void> => {
     await floorControl.setSipDialIn(mode);
     if (mode === undefined) return;
+    // setMode$ only offers this once a bridge is configured
     await inviteBot(room, bridge!);
     await room.client.sendToDevice(
       BridgeInfoRequestEventType,
