@@ -3,8 +3,8 @@ bind_addresses:
   - "0.0.0.0"
 rtc:
   tcp_port: 17881
-  port_range_start: 50300
-  port_range_end: 50400
+  port_range_start: 40300
+  port_range_end: 40400
   use_external_ip: false
 turn:
   enabled: false
