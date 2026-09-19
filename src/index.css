@@ -27,6 +27,8 @@ the digits, # and * (the bases of keycap emoji) that Chrome renders as blank
 boxes, and everything else must fall through to Inter as usual. */
 @font-face {
   font-family: "Twemoji";
+  /* block, not swap: a fallback face would draw tofu (or the platform's own
+  emoji) and then swap, which flashes on each reaction */
   font-display: block;
   src: url("./fonts/Twemoji_Mozilla/TwemojiMozilla-colr.woff2") format("woff2");
   unicode-range:
@@ -143,6 +145,7 @@ body,
 /* On Android and iOS, prefer native system fonts. The global.css file of
 Compound Web is where these variables ultimately get consumed to set the page's
 font-family. */
+/* Compound's own sans stack, with Twemoji in front of it */
 body[data-platform="desktop"] {
   --cpd-font-family-sans:
     "Twemoji", Inter, "Inter Fallback: Helvetica Neue",
