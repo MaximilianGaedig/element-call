@@ -382,6 +382,10 @@ interface ScreenShareTileProps extends TileProps {
   vm: ScreenShareViewModel;
 }
 
+// A local share has no videoEnabled$ (we always send it), so its tile reads
+// this instead of making a fresh signal on every render
+const alwaysEnabled$ = constant(true);
+
 const ScreenShareTile: FC<ScreenShareTileProps> = ({
   vm,
   className,
@@ -392,7 +396,7 @@ const ScreenShareTile: FC<ScreenShareTileProps> = ({
 }) => {
   const video = useBehavior(vm.video$);
   const videoEnabled = useBehavior(
-    vm.local ? constant(true) : vm.videoEnabled$,
+    vm.local ? alwaysEnabled$ : vm.videoEnabled$,
   );
   const unencryptedWarning = useBehavior(vm.unencryptedWarning$);
   const focusUrl = useBehavior(vm.focusUrl$);

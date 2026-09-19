@@ -137,7 +137,10 @@ export function computeLayoutMedia({
 }: LayoutMediaInputs): LayoutMedia {
   const hasScreenShare = spotlight.some((vm) => vm.type === "screen share");
   // In the grid layout, screen shares are tiles like any other (enlarged, see
-  // GridTileViewModel) rather than a small floating spotlight
+  // GridTileViewModel) rather than a small floating spotlight. They're ordered
+  // as presenting members, which the grid ordering keeps on screen ahead of
+  // everyone else; the other fields only break ties between presenters, and
+  // an infinite lastActive keeps the shares first among those too.
   const gridLayout = (): GridLayoutMedia => ({
     type: "grid",
     edgeToEdge: false,
