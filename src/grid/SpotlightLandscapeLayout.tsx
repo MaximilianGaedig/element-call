@@ -52,6 +52,7 @@ const layerStyle = (
   );
   const widthFor = (columns: number): number =>
     Math.floor((railWidth - (columns - 1) * railGap) / columns);
+  // Rail tiles are 4:3, as they were when they were fixed at 180×135
   const heightFor = (columns: number): number => {
     const rows = Math.ceil(tileCount / columns);
     return (
