@@ -13,7 +13,7 @@ import {
   type StateEvents,
 } from "matrix-js-sdk";
 
-import { type Behavior, computed, constant, fromEvents } from "./Behavior.ts";
+import { type Behavior, computed, fromEvents } from "./Behavior.ts";
 import { type Scope } from "./Scope.ts";
 
 // Floor control: a room state event through which moderators mute other
@@ -79,7 +79,7 @@ export function createFloorControl(
   slotId: string,
 ): FloorControl {
   const read = <T>(f: (state: RoomState) => T): Behavior<T> =>
-    fromEvents(scope, room, stateEvents, (room) => f(room!.currentState));
+    fromEvents(scope, room, stateEvents, (room) => f(room.currentState));
 
   const content$ = read(
     (state) =>
@@ -94,6 +94,8 @@ export function createFloorControl(
   const canModerate$ = computed(() => mayModerate$.value(localUserId));
 
   const send = async (content: FloorControlContent): Promise<void> => {
+    // The SDK types state events by the spec's known types; ours is a custom
+    // (draft MSC) type, so it has to be smuggled past those types
     await room.client.sendStateEvent(
       room.roomId,
       FloorControlEventType as keyof StateEvents,
@@ -134,18 +136,16 @@ export function createFloorControl(
         };
       }),
     moderator$: (id) =>
-      canModerate$.value === undefined
-        ? constant(null)
-        : computed(() =>
-            canModerate$.value
-              ? {
-                  setAudioMuted: async (muted) =>
-                    setDevice(id, { audio_muted: muted }),
-                  setVideoMuted: async (muted) =>
-                    setDevice(id, { video_muted: muted }),
-                }
-              : null,
-          ),
+      computed(() =>
+        canModerate$.value
+          ? {
+              setAudioMuted: async (muted) =>
+                setDevice(id, { audio_muted: muted }),
+              setVideoMuted: async (muted) =>
+                setDevice(id, { video_muted: muted }),
+            }
+          : null,
+      ),
     setDevice,
     setDefaults,
   };
