@@ -1,8 +1,9 @@
 name: Deploy experiment to Netlify
 # Mirrors upstream's build + deploy-to-netlify flow, publishing the
-# matthew/experiment branch (the top of the signals/* stack) to production
-# at element-call-experiment.netlify.app. Needs the NETLIFY_AUTH_TOKEN and
-# NETLIFY_SITE_ID repository secrets.
+# matthew/experiment branch (the merge of every experiment PR, see
+# docs/experiment_stack.md) to production at
+# element-call-experiment.netlify.app. Needs the NETLIFY_AUTH_TOKEN and
+# NETLIFY_SITE_ID repository secrets. Netlify never builds anything itself.
 on:
   push:
     branches: [matthew/experiment]
