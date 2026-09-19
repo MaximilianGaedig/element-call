@@ -80,7 +80,7 @@ const noBots = constant(new Set<string>());
 /** A call membership, with the user's answers to consent requests */
 function member(
   userId: string,
-  consents?: Record<string, boolean>,
+  consents?: Record<string, unknown>,
 ): {
   userId: string;
   applicationData: { type: string; [key: string]: unknown };
@@ -498,7 +498,8 @@ describe("createRecording", () => {
         member("@alice:e"),
         member("@bob:e", { $other: true }),
         member("@bob:e", { $req: true }),
-        member("@carol:e"),
+        // Carol's client answered with something that isn't an answer
+        member("@carol:e", { $req: "yes" }),
       ];
       expect(r.recording$.value?.consents).toEqual({ "@bob:e": true });
       expect(r.recording$.value?.awaitingConsent).toEqual(["@carol:e"]);

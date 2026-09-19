@@ -172,9 +172,14 @@ export function membershipConsents(
   membership: Pick<CallMembership, "applicationData">,
 ): Record<string, boolean> {
   const consents = membership.applicationData[RecordingConsentKey];
-  return typeof consents === "object" && consents !== null
-    ? (consents as Record<string, boolean>)
-    : {};
+  if (typeof consents !== "object" || consents === null) return {};
+  // Other people's memberships aren't ours to trust: anything but a
+  // boolean is no answer at all, rather than a truthy one
+  return Object.fromEntries(
+    Object.entries(consents).filter(
+      (entry): entry is [string, boolean] => typeof entry[1] === "boolean",
+    ),
+  );
 }
 
 /**
