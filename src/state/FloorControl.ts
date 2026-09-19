@@ -314,6 +314,16 @@ export function createFloorControl(
       return moderator || localLevel >= required;
     };
   });
+  const sendPowerLevels = async (
+    content: PowerLevelsContent,
+  ): Promise<void> => {
+    await room.client.sendStateEvent(
+      room.roomId,
+      EventType.RoomPowerLevels,
+      content,
+      "",
+    );
+  };
   const setModerator = async (
     userId: string,
     moderator: boolean,
@@ -322,12 +332,7 @@ export function createFloorControl(
     const users = { ...content.users };
     if (moderator) users[userId] = requiredLevel$.peek();
     else delete users[userId];
-    await room.client.sendStateEvent(
-      room.roomId,
-      EventType.RoomPowerLevels,
-      { ...content, users },
-      "",
-    );
+    await sendPowerLevels({ ...content, users });
   };
   const setMembership = async (
     userId: string,
@@ -411,12 +416,7 @@ export function createFloorControl(
     const events = { ...content.events };
     if (level === undefined) delete events[RecordingEventType];
     else events[RecordingEventType] = level;
-    await room.client.sendStateEvent(
-      room.roomId,
-      EventType.RoomPowerLevels,
-      { ...content, events },
-      "",
-    );
+    await sendPowerLevels({ ...content, events });
   };
 
   return {
