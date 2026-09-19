@@ -34,6 +34,7 @@ import {
 import { type FloorControl, RecordingEventType } from "./FloorControl.ts";
 import { type Scope } from "./Scope.ts";
 import { E2eeType } from "../e2ee/e2eeType.ts";
+import { widget } from "../widget.ts";
 import { type EncryptionSystem } from "../e2ee/sharedKeyManagement.ts";
 
 // Recording: a state event, keyed by slot, through which users ask a
@@ -278,6 +279,40 @@ async function trackUser(crypto: CryptoApi, userId: string): Promise<void> {
   await outgoingRequestsManager?.doProcessOutgoingRequests();
 }
 
+/**
+ * Sends a to-device message to the given devices, Olm-encrypted. As a
+ * widget the host encrypts; standalone, our own crypto does, which needs
+ * to be tracking the recipient.
+ */
+export async function sendEncryptedToDevice(
+  room: MatrixRoom,
+  eventType: string,
+  targets: { userId: string; deviceId: string }[],
+  content: Record<string, unknown>,
+): Promise<void> {
+  if (widget !== null) {
+    const client = room.client as unknown as {
+      encryptAndSendToDevice: (
+        eventType: string,
+        devices: { userId: string; deviceId: string }[],
+        payload: Record<string, unknown>,
+      ) => Promise<void>;
+    };
+    await client.encryptAndSendToDevice(eventType, targets, content);
+    return;
+  }
+  const crypto = room.client.getCrypto();
+  if (crypto === undefined) throw new Error("Encryption isn't available");
+  for (const userId of new Set(targets.map((t) => t.userId)))
+    await trackUser(crypto, userId);
+  const batch = await crypto.encryptToDeviceMessages(
+    eventType,
+    targets,
+    content,
+  );
+  await room.client.queueToDevice(batch);
+}
+
 /** Sends the call's shared key to every device of the recorder, encrypted. */
 export async function sendSharedKey(
   room: MatrixRoom,
@@ -293,12 +328,10 @@ export async function sendSharedKey(
   );
   if (targets.length === 0)
     throw new Error("The recorder has no devices to send the call's key to");
-  const batch = await crypto.encryptToDeviceMessages(
-    SharedKeyEventType,
-    targets,
-    { room_id: room.roomId, key },
-  );
-  await room.client.queueToDevice(batch);
+  await sendEncryptedToDevice(room, SharedKeyEventType, targets, {
+    room_id: room.roomId,
+    key,
+  });
 }
 
 /**
