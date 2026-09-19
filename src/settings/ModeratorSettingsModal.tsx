@@ -26,9 +26,12 @@ interface Props {
   room: Room;
 }
 
-/** Splits a media ID into its user and device. User IDs can't contain ':'
- * after the localpart... but device IDs can't contain ':' at all, so split
- * at the last one. */
+/**
+ * Splits a media ID into its user and device. The user ID has a ':' of its
+ * own (and another if its server name carries a port), so split at the last
+ * one, which assumes the device ID contains none. Servers generate device IDs
+ * without one; a client-chosen device ID with a ':' would be misread here.
+ */
 export function splitMediaId(id: string): [userId: string, deviceId: string] {
   const i = id.lastIndexOf(":");
   return [id.slice(0, i), id.slice(i + 1)];
