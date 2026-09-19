@@ -6,7 +6,12 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { type CallMembership } from "matrix-js-sdk/lib/matrixrtc";
+import {
+  CallMembership,
+  Status as RTCSessionStatus,
+} from "matrix-js-sdk/lib/matrixrtc";
+import { computeRtcIdentityRaw } from "matrix-js-sdk/lib/matrixrtc/membershipData";
+import { EventType, MatrixEvent } from "matrix-js-sdk";
 import {
   type BaseKeyProvider,
   type ConnectionState,
@@ -22,6 +27,7 @@ import {
   type MatrixRTCSession,
 } from "matrix-js-sdk/lib/matrixrtc";
 import { type IWidgetApiRequest } from "matrix-widget-api";
+import { UpdateDelayedEventAction } from "matrix-js-sdk/lib/@types/requests";
 import { type CallMembershipIdentityParts } from "matrix-js-sdk/lib/matrixrtc/EncryptionManager";
 import { computeSlotId } from "matrix-js-sdk/lib/matrixrtc/utils";
 
@@ -678,13 +684,67 @@ export function createCallViewModel$(
     logger: logger.getChild(`[${Date.now()}]`),
   });
 
-  const localRtcMembership$ = computed(
-    () =>
+  // A local echo of our own membership: while the membership manager is
+  // joined, we stand in for the event until it comes back over sync, so the
+  // local tile appears the moment we join rather than a slow sync later. Only
+  // the IDs are read from it, so a legacy-shaped event serves for every mode,
+  // but the backend identity must match the real one or the tile would be
+  // rebuilt when that arrives.
+  const localEchoMembership$ = state<CallMembership | null>(null);
+  scope.effect(() => {
+    const hashed = matrixRTCMode$.value === MatrixRTCMode.Matrix_2_0;
+    let cancelled = false;
+    void (
+      hashed
+        ? computeRtcIdentityRaw(
+            userId,
+            deviceId,
+            ownMembershipIdentity.memberId,
+          )
+        : Promise.resolve(`${userId}:${deviceId}`)
+    ).then((rtcBackendIdentity) => {
+      if (cancelled) return;
+      const event = new MatrixEvent({
+        type: EventType.GroupCallMemberPrefix,
+        sender: userId,
+        event_id: "$local-echo",
+        content: {
+          application: "m.call",
+          call_id: "",
+          device_id: deviceId,
+          foci_preferred: [],
+          focus_active: { type: "livekit", focus_selection: "multi_sfu" },
+        },
+      });
+      localEchoMembership$.value = new CallMembership(
+        event,
+        CallMembership.membershipDataFromMatrixEvent(event),
+        rtcBackendIdentity,
+      );
+    });
+    return (): void => {
+      cancelled = true;
+    };
+  });
+  const membershipStatus$ = fromEvents(
+    scope,
+    matrixRTCSession,
+    [MembershipManagerEvent.StatusChanged],
+    (session) => session.membershipStatus,
+  );
+  const localRtcMembership$ = computed(() => {
+    const status = membershipStatus$.value;
+    return (
       memberships$.value.find(
         (membership) =>
           membership.userId === userId && membership.deviceId === deviceId,
-      ) ?? null,
-  );
+      ) ??
+      (status === RTCSessionStatus.Connecting ||
+      status === RTCSessionStatus.Connected
+        ? localEchoMembership$.value
+        : null)
+    );
+  });
 
   // The local member exists for as long as we have a membership; its
   // membership$ follows ours over that time.
@@ -977,6 +1037,50 @@ export function createCallViewModel$(
     scope.onEnd(() =>
       widget!.lazyActions.off(ElementWidgetActions.HangupCall, onHangup),
     );
+  } else {
+    // When the tab is closed or reloaded, fire our delayed leave event now
+    // rather than leaving it to time out: others see us go at once, and a
+    // reload doesn't have the old tab's leave land on top of the new join. A
+    // keepalive request outlives the page. (In widget mode the host client
+    // leaves for us.)
+    const onPageHide = (): void => {
+      if (!matrixRTCSession.isJoined()) return;
+      const opts = { keepAlive: true };
+      const delayId = matrixRTCSession.delayId;
+      if (delayId !== undefined)
+        client
+          ._unstable_updateDelayedEvent(
+            delayId,
+            UpdateDelayedEventAction.Send,
+            opts,
+          )
+          .catch((e) => logger.warn("Failed to send leave on page hide", e));
+      // The delayed leave can have been lost (the SDK may re-send a
+      // membership after a sleep without re-arming it), so also clear the
+      // membership state event directly. Only state-event memberships can be
+      // ended this way: sticky-event sends can't be keepalive.
+      const stateKey = matrixRoom.currentState
+        .getStateEvents(EventType.GroupCallMemberPrefix)
+        .find(
+          (e) =>
+            e.getSender() === userId && e.getContent().device_id === deviceId,
+        )
+        ?.getStateKey();
+      if (stateKey !== undefined)
+        client
+          .sendStateEvent(
+            matrixRoom.roomId,
+            EventType.GroupCallMemberPrefix,
+            {},
+            stateKey,
+            opts,
+          )
+          .catch((e) =>
+            logger.warn("Failed to clear membership on page hide", e),
+          );
+    };
+    window.addEventListener("pagehide", onPageHide);
+    scope.onEnd(() => window.removeEventListener("pagehide", onPageHide));
   }
 
   /**
