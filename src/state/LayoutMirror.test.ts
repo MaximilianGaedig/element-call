@@ -6,7 +6,7 @@ Please see LICENSE in the repository root for full details.
 */
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { type Room } from "matrix-js-sdk";
+import { ClientEvent, type MatrixEvent, type Room } from "matrix-js-sdk";
 
 import {
   createLayoutMirror,
@@ -79,6 +79,7 @@ describe("layout director", () => {
       recorderDevices$: constant(["BOT1", "BOT2"]),
       ops,
       snapshot: () => [],
+      apply: () => {},
     });
     ops.emit(pin);
     expect(sendToDevice).not.toHaveBeenCalled();
@@ -118,6 +119,7 @@ describe("layout director", () => {
       recorderDevices$: constant(["BOT1"]),
       ops: createLayoutOps(),
       snapshot: () => [],
+      apply: () => {},
     });
     expect(mirror.directing$.value).toBe(false);
     const { room: mine } = setup();
@@ -126,6 +128,7 @@ describe("layout director", () => {
       recorderDevices$: constant(["BOT1"]),
       ops: createLayoutOps(),
       snapshot: () => [],
+      apply: () => {},
     });
     expect(audio.directing$.value).toBe(false);
   });
@@ -139,6 +142,7 @@ describe("layout director", () => {
       recorderDevices$: constant(["BOT1"]),
       ops,
       snapshot: () => [],
+      apply: () => {},
     });
     const volume = (v: number): LayoutOp => ({
       type: "volume",
@@ -164,6 +168,7 @@ describe("layout director", () => {
       recorderDevices$: constant(["BOT1"]),
       ops: createLayoutOps(),
       snapshot: () => [{ type: "layout", layout: "spotlight" }, pin],
+      apply: () => {},
     });
     expect(sendToDevice).not.toHaveBeenCalled();
     recording$.value = recording({ started: true });
@@ -171,5 +176,66 @@ describe("layout director", () => {
     expect(
       sendToDevice.mock.calls.map((c) => c[1].get(bot).get("BOT1").seq),
     ).toEqual([1, 2]);
+  });
+});
+
+describe("layout follower", () => {
+  function toDevice(
+    sender: string,
+    content: Record<string, unknown>,
+    type = LayoutEventType,
+  ): MatrixEvent {
+    return {
+      getType: () => type,
+      getSender: () => sender,
+      getContent: () => content,
+    } as unknown as MatrixEvent;
+  }
+  const content = (
+    seq: number,
+    extra: Record<string, unknown> = {},
+  ): Record<string, unknown> => ({
+    room_id: "!room",
+    request: "$req",
+    device_id: "ALICEDEV",
+    seq,
+    op: pin,
+    ...extra,
+  });
+
+  it("applies the director's ops, in order, and nobody else's", () => {
+    const { room } = setup(bot, "BOT1");
+    const recording$ = state<RecordingState | null>(null);
+    const apply = vi.fn();
+    const mirror = createLayoutMirror(testScope(), room, {
+      recording$,
+      recorderDevices$: constant([]),
+      ops: createLayoutOps(),
+      snapshot: () => [],
+      apply,
+    });
+    const emit = (event: MatrixEvent): void => {
+      room.client.emit(ClientEvent.ToDeviceEvent, event);
+    };
+    emit(toDevice("@alice:e", content(1)));
+    expect(apply).not.toHaveBeenCalled();
+    recording$.value = recording();
+    expect(mirror.following$.value).toBe(true);
+    emit(toDevice("@alice:e", content(1)));
+    expect(apply).toHaveBeenCalledTimes(1);
+    expect(apply).toHaveBeenCalledWith(pin);
+    // Late, repeated, or somebody else's
+    emit(toDevice("@alice:e", content(1)));
+    emit(toDevice("@bob:e", content(2)));
+    emit(toDevice("@alice:e", content(3, { device_id: "OTHER" })));
+    emit(toDevice("@alice:e", content(4, { request: "$old" })));
+    emit(toDevice("@alice:e", content(5, { room_id: "!other" })));
+    emit(toDevice("@alice:e", content(6), "io.element.call.other"));
+    expect(apply).toHaveBeenCalledTimes(1);
+    emit(toDevice("@alice:e", content(7)));
+    expect(apply).toHaveBeenCalledTimes(2);
+    // A recording without a director isn't followed
+    recording$.value = recording({ directorDevice: undefined });
+    expect(mirror.following$.value).toBe(false);
   });
 });

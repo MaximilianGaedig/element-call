@@ -5,7 +5,11 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { type Room as MatrixRoom } from "matrix-js-sdk";
+import {
+  ClientEvent,
+  type MatrixEvent,
+  type Room as MatrixRoom,
+} from "matrix-js-sdk";
 import { logger } from "matrix-js-sdk/lib/logger";
 
 import { type Behavior, computed } from "./Behavior.ts";
@@ -90,11 +94,15 @@ export interface LayoutMirrorInputs {
   ops: LayoutOps;
   /** The local user's current decisions, for a recorder catching up. */
   snapshot: () => LayoutOp[];
+  /** Does to the local layout what the director did to theirs. */
+  apply: (op: LayoutOp) => void;
 }
 
 export interface LayoutMirror {
   /** Whether this device is directing the recording's layout. */
   directing$: Behavior<boolean>;
+  /** Whether this device is the recorder, following a director. */
+  following$: Behavior<boolean>;
 }
 
 /** The key two ops of a coalesced type replace each other under. */
@@ -105,13 +113,14 @@ function coalesceKey(op: LayoutOp): string {
 }
 
 /**
- * Directs a recording's layout: while the local device is the director of
- * a recording, sends each layout decision the user makes to the recorder.
+ * Mirrors layout decisions between whoever directs a recording and the
+ * recorder: as the director, sends each decision the local user makes to
+ * the recorder; as the recorder, applies the director's.
  */
 export function createLayoutMirror(
   scope: Scope,
   room: MatrixRoom,
-  { recording$, recorderDevices$, ops, snapshot }: LayoutMirrorInputs,
+  { recording$, recorderDevices$, ops, snapshot, apply }: LayoutMirrorInputs,
 ): LayoutMirror {
   const userId = room.client.getUserId()!;
   const deviceId = room.client.getDeviceId()!;
@@ -125,6 +134,13 @@ export function createLayoutMirror(
       r.media === "video"
     );
   });
+  const following$ = computed(() => {
+    const r = recording$.value;
+    return (
+      r !== null && r.recorder === userId && r.directorDevice !== undefined
+    );
+  });
+
   // Directing
   let seq = 0;
   const send = async (op: LayoutOp): Promise<void> => {
@@ -185,5 +201,39 @@ export function createLayoutMirror(
     for (const op of snapshot()) direct(op);
   });
 
-  return { directing$ };
+  // Following
+  let lastSeq = 0;
+  scope.effect(() => {
+    if (!following$.value) return;
+    lastSeq = 0;
+    const onToDevice = (event: MatrixEvent): void => {
+      const r = recording$.peek();
+      if (event.getType() !== LayoutEventType || r === null) return;
+      // In an encrypted room only an encrypted message reaches us, since
+      // the widget host drops the rest, so the sender is who it says
+      const content = event.getContent<Partial<LayoutEventContent>>();
+      if (
+        event.getSender() !== r.by ||
+        content.room_id !== room.roomId ||
+        content.request !== r.eventId ||
+        content.device_id !== r.directorDevice ||
+        typeof content.seq !== "number" ||
+        content.seq <= lastSeq ||
+        content.op === undefined
+      )
+        return;
+      lastSeq = content.seq;
+      try {
+        apply(content.op);
+      } catch (e) {
+        logger.warn("Failed to apply layout op", content.op, e);
+      }
+    };
+    room.client.on(ClientEvent.ToDeviceEvent, onToDevice);
+    return (): void => {
+      room.client.off(ClientEvent.ToDeviceEvent, onToDevice);
+    };
+  });
+
+  return { directing$, following$ };
 }

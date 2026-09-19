@@ -801,6 +801,12 @@ export function createCallViewModel$(
       ...(media.type === "screen share" ? { media: "screen_share" } : {}),
     };
   };
+  /** Whether `media` is the stream a mirrored op names. */
+  const matchesRef = (media: MediaViewModel, ref: TileRef): boolean =>
+    media.type !== "ringing" &&
+    media.id ===
+      `${ref.user_id}:${ref.device_id}:0${ref.media === "screen_share" ? ":screen-share" : ""}`;
+
   /**
    * IDs of the user media the local user has pinned to the spotlight (by
    * double-clicking their tile or choosing Pin from its menu).
@@ -1775,11 +1781,80 @@ export function createCallViewModel$(
       ),
     ];
   });
+  const findMedia = (ref: TileRef): MediaViewModel | undefined =>
+    ref.media === "screen_share"
+      ? screenShares$.peek().find((m) => matchesRef(m, ref))
+      : userMedia$.peek().find((m) => matchesRef(m, ref));
+  const findTile = (ref: TileRef): GridTileViewModel | undefined => {
+    const media = findMedia(ref);
+    return media && gridTiles().find((t) => t.media$.peek().id === media.id);
+  };
+  const applyLayoutOp = (op: LayoutOp): void => {
+    switch (op.type) {
+      case "layout":
+        layoutSwitch.setLayout(op.layout);
+        break;
+      case "spotlight_expanded":
+        if (spotlightExpanded$.peek() !== op.expanded)
+          spotlightExpanded$.value = op.expanded;
+        break;
+      case "move_tile": {
+        if (op.in === "spotlight") {
+          const media = findMedia(op);
+          const items = spotlight$.peek();
+          const to = items[Math.min(op.index, items.length - 1)];
+          if (media && to && to !== media) moveSpotlightItem(media, to);
+          break;
+        }
+        const tile = findTile(op);
+        const tiles = gridTiles();
+        const to = tiles[Math.min(op.index, tiles.length - 1)];
+        if (tile && to && to !== tile) moveTile(tile, to);
+        break;
+      }
+      case "pin": {
+        const media = findMedia(op);
+        if (
+          media?.type === "user" &&
+          pinnedIds$.peek().has(media.id) !== op.pinned
+        )
+          togglePinned(media);
+        break;
+      }
+      case "enlarge": {
+        const tile = findTile(op);
+        if (tile && tile.enlarged$.peek() !== op.enlarged)
+          toggleTileEnlarged(tile);
+        break;
+      }
+      case "tile_options":
+        for (const [key, setting] of tileOptionEntries) {
+          const value = op[key];
+          if (typeof value === "boolean" && setting.value$.peek() !== value)
+            setting.setValue(value);
+        }
+        break;
+      case "rail_width":
+        // The rail's own minimum; its maximum depends on our window, which
+        // the layout applies when it arranges the rail
+        spotlightRailWidth$.value = Math.max(180, Math.round(op.width));
+        break;
+      case "volume": {
+        const media = findMedia(op);
+        if (media?.type === "user" && !media.local) {
+          media.adjustPlaybackVolume(Math.max(0, Math.min(2, op.volume / 100)));
+          media.commitPlaybackVolume();
+        }
+        break;
+      }
+    }
+  };
   createLayoutMirror(scope, matrixRoom, {
     recording$: recording.recording$,
     recorderDevices$,
     ops: layoutOps,
     snapshot: snapshotLayout,
+    apply: applyLayoutOp,
   });
 
   return {
