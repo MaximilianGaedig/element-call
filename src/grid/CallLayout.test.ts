@@ -146,12 +146,14 @@ test("portrait tiles can be kept to one row", () => {
 });
 
 test("packed tiles never overlap", () => {
-  // A crude fuzz: a fixed sequence of mixed shapes, enlargements and bounds
+  // A crude fuzz: a fixed sequence of mixed shapes, enlargements and bounds.
+  // Row heights are bisected to within half a pixel, so allow that much
   const overlaps = (a: Rect, b: Rect): boolean =>
     a.x < b.x + b.width - 0.5 &&
     b.x < a.x + a.width - 0.5 &&
     a.y < b.y + b.height - 0.5 &&
     b.y < a.y + a.height - 0.5;
+  // Park-Miller's minimal standard generator, so the sequence is fixed
   let seed = 1;
   const rnd = (): number => (seed = (seed * 16807) % 2147483647) / 2147483647;
   for (let t = 0; t < 500; t++) {
