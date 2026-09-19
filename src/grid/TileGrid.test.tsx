@@ -58,10 +58,13 @@ test("a user's tile is 16:9 until their video shows its shape", () => {
     }) as Partial<MediaViewModel> as MediaViewModel;
   expect(videoAspectRatio(user(NaN))).toBeCloseTo(16 / 9);
   expect(videoAspectRatio(user(9 / 16))).toBeCloseTo(9 / 16);
-  // Other media, such as screen shares, aren't shaped this way
-  expect(
-    videoAspectRatio({
+  // A screen share takes its video's shape once known, and is unshaped
+  // (rather than assumed 16:9) until then
+  const share = (ratio: number): MediaViewModel =>
+    ({
       type: "screen share",
-    } as Partial<MediaViewModel> as MediaViewModel),
-  ).toBe(0);
+      videoAspectRatio$: constant(ratio),
+    }) as Partial<MediaViewModel> as MediaViewModel;
+  expect(videoAspectRatio(share(NaN))).toBe(0);
+  expect(videoAspectRatio(share(4 / 3))).toBeCloseTo(4 / 3);
 });
