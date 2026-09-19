@@ -7,6 +7,7 @@ Please see LICENSE in the repository root for full details.
 */
 import {
   ConnectionState as LivekitConnectionState,
+  LocalAudioTrack,
   type LocalTrackPublication,
   LocalVideoTrack,
   ParticipantEvent,
@@ -14,8 +15,6 @@ import {
   Track,
 } from "livekit-client";
 import { type Logger } from "matrix-js-sdk/lib/logger";
-import { LocalAudioTrack } from "livekit-client";
-import { GainProcessor } from "../../../livekit/GainProcessor.ts";
 
 import { type Behavior, computed, constant } from "../../Behavior.ts";
 import type {
@@ -28,6 +27,7 @@ import {
   type ProcessorState,
   trackProcessorSync,
 } from "../../../livekit/TrackProcessorContext.tsx";
+import { GainProcessor } from "../../../livekit/GainProcessor.ts";
 import { getUrlParams } from "../../../UrlParams.ts";
 import { trackReference$ } from "../../trackReference";
 import { type Connection } from "../remoteMembers/Connection.ts";
