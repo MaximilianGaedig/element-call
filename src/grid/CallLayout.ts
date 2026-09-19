@@ -50,6 +50,8 @@ export interface GridArrangement {
   tileHeight: number;
   gap: number;
   columns: number;
+  /** The smallest area the grid lets a tile have before it pages */
+  minTileArea: number;
 }
 
 /**
@@ -151,5 +153,129 @@ export function arrangeTiles(
   else if (tileAspectRatio < tileMinAspectRatio)
     tileHeight = tileWidth / tileMinAspectRatio;
 
-  return { tileWidth, tileHeight, gap, columns };
+  return {
+    tileWidth,
+    tileHeight,
+    gap,
+    columns,
+    minTileArea: tileArea,
+  };
+}
+
+export interface Rect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Packs tiles of the given aspect ratios into rows of one height, each tile
+ * as wide as its shape makes it, at the largest row height at which they all
+ * fit within the bounds (which have gaps only between tiles). Portrait tiles
+ * span two rows so that they get about the area of a landscape one rather
+ * than being squeezed to a single row's height, and enlarged tiles span
+ * twice as many rows as they otherwise would. Rows are centred, unless
+ * they run past the bounds: rows are never shorter than minRowHeight, so a
+ * scrolling layout can keep its tiles a usable size.
+ */
+export function packRows(
+  bounds: { width: number; height: number },
+  gap: number,
+  ratios: readonly number[],
+  {
+    minRowHeight = 0,
+    enlarged = [] as readonly boolean[],
+    tallPortraits = true,
+  } = {},
+): Rect[] {
+  // A layout without bounds yet may pass NaN for any of these, or substitute
+  // 0/0 for an unknown shape; a NaN width never fits anywhere, so placement
+  // would loop for ever
+  const finite = (n: number): number => (n > 0 && n < Infinity ? n : 0);
+  const width = finite(bounds.width);
+  const height = finite(bounds.height);
+  gap = finite(gap);
+  minRowHeight = finite(minRowHeight);
+  // An unknown shape is taken as square: as good a guess as any, and it
+  // gets a single row either way
+  const aspectRatios = ratios.map((ar) => (ar > 0 && ar < Infinity ? ar : 1));
+  const spans = aspectRatios.map(
+    (ar, i) => (tallPortraits && ar < 1 ? 2 : 1) * (enlarged[i] ? 2 : 1),
+  );
+  // Placement at a given row height: each tile goes in the first row, and
+  // then the leftmost spot, where it fits, so that the gaps beside a portrait
+  // tile in its second row are filled by the tiles after it
+  const place = (h: number): { rects: Rect[]; rows: number[] } => {
+    const taken: [number, number][][] = []; // Each row's occupied spans
+    const rows: number[] = [];
+    const rects = aspectRatios.map((ar, i) => {
+      const span = spans[i];
+      const tileHeight = span * h + (span - 1) * gap;
+      const tileWidth = Math.min(finite(tileHeight * ar), width);
+      const free = (row: number, x: number): boolean =>
+        taken
+          .slice(row, row + span)
+          .every((t) =>
+            t.every(([x0, x1]) => x + tileWidth + gap <= x0 || x >= x1 + gap),
+          );
+      for (let row = 0; ; row++) {
+        const candidates = [
+          0,
+          ...taken
+            .slice(row, row + span)
+            .flatMap((t) => t.map(([, x1]) => x1 + gap)),
+        ].sort((a, b) => a - b);
+        const x = candidates.find(
+          (x) => x + tileWidth <= width && free(row, x),
+        );
+        if (x === undefined) continue;
+        for (let r = row; r < row + span; r++)
+          (taken[r] ??= []).push([x, x + tileWidth]);
+        rows.push(row);
+        return { x, y: row * (h + gap), width: tileWidth, height: tileHeight };
+      }
+    });
+    return { rects, rows };
+  };
+  const extent = (rects: Rect[]): number =>
+    Math.max(0, ...rects.map((r) => r.y + r.height));
+  // No taller than any tile needs at the full width, so that a lone tile
+  // doesn't get a slot the height of the page
+  const cap = Math.min(
+    ...aspectRatios.map(
+      (ar, i) => (width / ar - (spans[i] - 1) * gap) / spans[i],
+    ),
+  );
+  // ponytail: bisection to the pixel, fine for a few dozen tiles
+  let lo = 0;
+  let hi = Math.min(height, cap);
+  while (hi - lo > 0.5) {
+    const mid = (lo + hi) / 2;
+    if (extent(place(mid).rects) <= height) lo = mid;
+    else hi = mid;
+  }
+  const { rects, rows } = place(
+    finite(Math.min(cap, Math.max(lo, minRowHeight))),
+  );
+  // Centre the block vertically, and each row horizontally: rows that a
+  // portrait tile ties together are centred as one
+  const dy = Math.max(0, (height - extent(rects)) / 2);
+  const tied: boolean[] = [];
+  rects.forEach((_r, i) => {
+    for (let r = rows[i]; r < rows[i] + spans[i] - 1; r++) tied[r] = true;
+  });
+  const rowCount = Math.max(0, ...rows) + 1;
+  for (let start = 0; start < rowCount;) {
+    let end = start;
+    while (tied[end]) end++;
+    const band = rects.filter((_r, i) => rows[i] >= start && rows[i] <= end);
+    const dx = (width - Math.max(0, ...band.map((r) => r.x + r.width))) / 2;
+    for (const r of band) {
+      r.x += dx;
+      r.y += dy;
+    }
+    start = end + 1;
+  }
+  return rects;
 }

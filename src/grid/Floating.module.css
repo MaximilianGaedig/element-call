@@ -14,8 +14,18 @@ edge and infinity means the end edge. */
 
 .floating {
   position: absolute;
-  inline-size: var(--floating-inline-size);
-  block-size: var(--floating-block-size);
+  /* Shaped to --floating-aspect-ratio within the given size, when set: the
+  fallbacks are ratios so extreme that min() keeps the given size instead */
+  --inline-size: min(
+    var(--floating-inline-size),
+    var(--floating-block-size) * var(--floating-aspect-ratio, 1e9)
+  );
+  --block-size: min(
+    var(--floating-block-size),
+    var(--floating-inline-size) / var(--floating-aspect-ratio, 1e-9)
+  );
+  inline-size: var(--inline-size);
+  block-size: var(--block-size);
   --inset-inline-start: var(
     --floating-inset-inline-start,
     var(--floating-inset, 0px)
@@ -35,11 +45,11 @@ edge and infinity means the end edge. */
   inset-inline-start: clamp(
     var(--inset-inline-start),
     var(--floating-x) * 1px,
-    100% - var(--inset-inline-end) - var(--floating-inline-size)
+    100% - var(--inset-inline-end) - var(--inline-size)
   );
   inset-block-start: clamp(
     var(--inset-block-start),
     var(--floating-y) * 1px,
-    100% - var(--inset-block-end) - var(--floating-block-size)
+    100% - var(--inset-block-end) - var(--block-size)
   );
 }

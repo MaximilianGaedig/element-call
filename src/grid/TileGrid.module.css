@@ -19,6 +19,16 @@ Please see LICENSE in the repository root for full details.
   height: var(--height);
 }
 
+/* Packed by the layout itself (see packRows) */
+.grid[data-packed] {
+  display: block;
+  position: relative;
+}
+
+.grid[data-packed] > .slot {
+  position: absolute;
+}
+
 .grid[data-cells] {
   display: grid;
   grid-template-columns: repeat(var(--columns), var(--width));

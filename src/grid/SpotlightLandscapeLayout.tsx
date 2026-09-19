@@ -15,7 +15,7 @@ import {
 import classNames from "classnames";
 import { Resizable } from "re-resizable";
 
-import { type CallLayout } from "./CallLayout";
+import { type CallLayout, packRows } from "./CallLayout";
 import { type SpotlightLandscapeLayout as SpotlightLandscapeLayoutModel } from "../state/layout-types.ts";
 import styles from "./SpotlightLandscapeLayout.module.css";
 import { useUpdateLayout, useVisibleTiles } from "./Grid";
@@ -23,7 +23,13 @@ import { type MediaViewModel } from "../state/media/MediaViewModel.ts";
 import { type Behavior } from "../state/Behavior.ts";
 import { useBehavior } from "../useBehavior.ts";
 import { useReorderTiles } from "./reorder.ts";
-import { TileGrid, cellCount, useEnlargedTiles } from "./TileGrid";
+import {
+  TileGrid,
+  cellCount,
+  useEnlargedTiles,
+  useVideoAspectRatios,
+} from "./TileGrid";
+import { hugVideo, relaxedGrid, useSetting } from "../settings/settings";
 
 interface LayerCSSProperties extends CSSProperties {
   "--rail-width": string;
@@ -157,10 +163,49 @@ export const makeSpotlightLandscapeLayout: CallLayout<
     // the rest flow around them
     const enlarged = useEnlargedTiles(model.grid);
     const cells = cellCount(model.grid.length, enlarged);
-    const { columns, tileWidth, tileHeight } = useMemo(
+    const arrangement = useMemo(
       () => arrangeRail(railWidth, cells, height),
       [railWidth, cells, height],
     );
+    const { columns } = arrangement;
+    const [hug] = useSetting(hugVideo);
+    const aspectRatios = useVideoAspectRatios(model.grid);
+    // Hugged tiles are no bigger than their videos make them, so shrink the
+    // cells to the widest and tallest of them, as the grid layout does
+    const { tileWidth, tileHeight } = useMemo(() => {
+      const known = aspectRatios.filter((ar) => ar > 0);
+      if (!hug || known.length === 0) return arrangement;
+      const tileHeight = Math.min(
+        arrangement.tileHeight,
+        Math.max(...known.map((ar) => arrangement.tileWidth / ar)),
+      );
+      const tileWidth = Math.min(
+        arrangement.tileWidth,
+        Math.max(...known.map((ar) => tileHeight * ar)),
+      );
+      return { tileWidth, tileHeight };
+    }, [hug, aspectRatios, arrangement]);
+    // Rows of one height, each tile as wide as its video's shape makes it,
+    // as in the grid layout
+    const [relaxed] = useSetting(relaxedGrid);
+    const rows = useMemo(() => {
+      if (!hug || !relaxed) return null;
+      const ratios = aspectRatios.map((ar) => ar || tileWidth / tileHeight);
+      // Tiles no smaller than the rail's cells, scrolling if need be
+      return packRows({ width: railWidth, height }, railGap, ratios, {
+        minRowHeight: tileHeight,
+        enlarged,
+      });
+    }, [
+      hug,
+      relaxed,
+      enlarged,
+      aspectRatios,
+      railWidth,
+      height,
+      tileWidth,
+      tileHeight,
+    ]);
 
     return (
       <div ref={ref} className={styles.layer} style={layerStyle(railWidth)}>
@@ -171,6 +216,7 @@ export const makeSpotlightLandscapeLayout: CallLayout<
           gap={railGap}
           tileWidth={tileWidth}
           tileHeight={tileHeight}
+          rects={rows ?? undefined}
           columns={columns}
           Slot={Slot}
           onDrag={onDragTile}

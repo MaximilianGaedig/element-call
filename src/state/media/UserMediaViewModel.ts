@@ -14,7 +14,7 @@ import {
 import { ParticipantEvent, Track } from "livekit-client";
 
 import { type ReactionOption } from "../../reactions";
-import { type Behavior, computed, fromEvents, state } from "../Behavior";
+import { type Behavior, computed, fromEvents } from "../Behavior";
 import { type LocalUserMediaViewModel } from "./LocalUserMediaViewModel";
 import {
   createMemberMedia,
@@ -63,10 +63,6 @@ export interface BaseUserMediaViewModel extends BaseMemberMediaViewModel {
   pinned$: Behavior<boolean>;
   audioStreamStats$: Behavior<RtpStreamStats | undefined>;
   videoStreamStats$: Behavior<RtpStreamStats | undefined>;
-  /**
-   * Set the aspect ratio of the video track to determine the orientation.
-   */
-  setVideoAspectRatio: (ratio: number) => void;
 }
 
 export interface BaseUserMediaInputs extends Omit<
@@ -102,7 +98,6 @@ export function createBaseUserMedia(
   }: BaseUserMediaInputs,
 ): BaseUserMediaViewModel {
   const { participant$ } = inputs;
-  const videoAspectRatio$ = state(NaN);
   const trackEnabled$ = (source: Track.Source): Behavior<boolean> =>
     fromEvents(
       scope,
@@ -147,7 +142,7 @@ export function createBaseUserMedia(
     ),
     videoEnabled$,
     videoOrientation$: computed(() =>
-      videoAspectRatio$.value > 1 ? "landscape" : "portrait",
+      memberMedia.videoAspectRatio$.value > 1 ? "landscape" : "portrait",
     ),
     rtcBackendIdentity,
     handRaised$,
@@ -160,6 +155,5 @@ export function createBaseUserMedia(
     pinned$,
     audioStreamStats$: streamStats$(Track.Source.Microphone),
     videoStreamStats$: streamStats$(Track.Source.Camera),
-    setVideoAspectRatio: (ratio) => (videoAspectRatio$.value = ratio),
   };
 }

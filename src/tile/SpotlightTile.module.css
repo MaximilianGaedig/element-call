@@ -9,6 +9,8 @@ Please see LICENSE in the repository root for full details.
   block-size: 100%;
   inline-size: 100%;
   display: flex;
+  /* So a lone item can size itself against us in container units */
+  container-type: size;
   border-radius: var(--cpd-space-6x);
   box-shadow: var(--draggable-shadow);
   contain: strict;
@@ -27,10 +29,15 @@ Please see LICENSE in the repository root for full details.
   border-radius: 0;
 }
 
-/* Several media shown as tiles: a Grid of slots, filled by animated tiles */
+/* Several media shown as tiles: a Grid of slots, filled by animated tiles.
+The tiles are rounded and shadowed themselves, and packed tiles don't fill
+the box, so it mustn't clip or decorate them as it does a lone item */
 .itemsGrid {
   display: block;
-  overflow: hidden;
+  contain: layout style;
+  overflow: visible;
+  border-radius: 0;
+  box-shadow: none;
   scroll-snap-type: none;
 }
 
@@ -39,11 +46,33 @@ Please see LICENSE in the repository root for full details.
   display: grid;
   grid-template-columns: repeat(var(--tiled-columns), minmax(0, 1fr));
   grid-auto-rows: minmax(0, 1fr);
-  gap: var(--cpd-space-2x);
+  /* The same gap as between the rail's tiles */
+  gap: var(--cpd-space-5x);
 }
 
 .itemSlot {
   min-inline-size: 0;
+}
+
+/* An enlarged tile takes 2×2 cells (or what the columns allow), with the
+rest flowing around it; packed rows size it themselves */
+.itemsLayout:not([data-relaxed]) {
+  grid-auto-flow: dense;
+}
+
+.itemsLayout:not([data-relaxed]) > .itemSlot[data-enlarged] {
+  grid-column: span var(--enlarged-span);
+  grid-row: span 2;
+}
+
+/* Packed into rows by the layout itself (see packRows) */
+.itemsLayout[data-relaxed] {
+  display: block;
+  position: relative;
+}
+
+.itemsLayout[data-relaxed] > .itemSlot {
+  position: absolute;
 }
 
 .itemsGrid .item {
@@ -57,6 +86,14 @@ Please see LICENSE in the repository root for full details.
   height: 100%;
   flex-basis: 100%;
   flex-shrink: 0;
+  /* A lone screen share takes the largest box of its video's shape that fits,
+  rather than letterboxing the video */
+  &[data-hug="true"]:only-child {
+    flex-basis: auto;
+    inline-size: min(100cqw, calc(100cqh * var(--video-aspect-ratio)));
+    block-size: min(100cqh, calc(100cqw / var(--video-aspect-ratio)));
+    margin: auto;
+  }
   /* The item rounds its own corners (and so does its video) rather than
   relying on the container to clip it, which composited video can escape */
   --media-view-border-radius: var(--cpd-space-6x);
