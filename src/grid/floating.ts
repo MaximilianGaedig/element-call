@@ -12,9 +12,11 @@ import { type DragCallback } from "./Grid.tsx";
 import styles from "./Floating.module.css";
 
 /**
- * How close to an edge, in pixels, a dropped tile snaps. This is the margin
- * the tiles keep from the edges (--cpd-space-4x), so that a tile dropped
- * within its margin sits flush against it.
+ * How close to an edge, in pixels, a dropped tile snaps. This is the smallest
+ * margin any layout keeps from its edges (--cpd-space-4x, in the one-on-one
+ * layouts), so that a tile dropped within its margin sits flush against it.
+ * Layouts with bigger margins clamp the tile to them in CSS anyway; snapping
+ * only decides whether it also stays flush when the window resizes.
  */
 const snap = 16;
 
