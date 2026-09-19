@@ -103,6 +103,8 @@ const TileSlot: FC<TileSlotProps> = ({ Slot, tile, onDrag, width }) => {
       model={tile}
       onDrag={onDrag}
       data-enlarged={enlarged || undefined}
+      // Floored so that a row's widths, which the layout fitted exactly to
+      // the grid, can't round up past it and wrap the row's last tile
       style={width === undefined ? undefined : { width: Math.floor(width) }}
     />
   );

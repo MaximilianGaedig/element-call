@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { expect, test, vi } from "vitest";
+import { expect, test } from "vitest";
 import { render } from "@testing-library/react";
 import { type FC } from "react";
 
@@ -13,8 +13,6 @@ import { TileGrid } from "./TileGrid";
 import { type SlotProps } from "./Grid";
 import { GridTileViewModel, type GridTileMedia } from "../state/TileViewModel";
 import { constant } from "../state/Behavior";
-
-vi.mock("./Grid", () => ({}));
 
 const Slot: FC<SlotProps<unknown>> = ({ id, style }) => (
   <div data-testid={id} style={style} />
