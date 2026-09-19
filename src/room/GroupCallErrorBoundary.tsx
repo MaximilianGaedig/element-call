@@ -13,6 +13,8 @@ import {
   type ReactNode,
   type SVGAttributes,
   useCallback,
+  useEffect,
+  useRef,
 } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import {
@@ -35,6 +37,10 @@ import {
 import { FullScreenView } from "../FullScreenView.tsx";
 import { ErrorView } from "../ErrorView.tsx";
 import { type WidgetHelpers } from "../widget.ts";
+import { useUrlParams } from "../UrlParams.ts";
+
+/** How long to wait before reconnecting on our own, in milliseconds */
+const AUTO_RECONNECT_DELAY_MS = 1000;
 import styles from "../ErrorView.module.css";
 
 export type CallErrorRecoveryAction = "reconnect"; // | "retry" ;
@@ -56,7 +62,25 @@ const ErrorPage: FC<ErrorPageProps> = ({
   widget,
 }: ErrorPageProps): ReactElement => {
   const { t } = useTranslation();
-  logger.error("Error boundary caught:", error);
+  logger.error(
+    `Error boundary caught: name=${error.name} message=${error.message} category=${error.category}`,
+    error,
+    ...(error.cause ? ["caused by:", error.cause] : []),
+  );
+  // The handler is recreated on each parent render, so keep the latest one in
+  // a ref and the effect stable
+  const recoveryActionHandlerRef = useRef(recoveryActionHandler);
+  recoveryActionHandlerRef.current = recoveryActionHandler;
+  const { autoReconnect } = useUrlParams();
+  useEffect(() => {
+    if (!(error instanceof ConnectionLostError) || !autoReconnect) return;
+    logger.info(`Reconnecting in ${AUTO_RECONNECT_DELAY_MS}ms, as asked`);
+    const handle = window.setTimeout(
+      () => void recoveryActionHandlerRef.current("reconnect"),
+      AUTO_RECONNECT_DELAY_MS,
+    );
+    return (): void => window.clearTimeout(handle);
+  }, [error, autoReconnect]);
   let icon: ComponentType<SVGAttributes<SVGElement>>;
   switch (error.category) {
     case ErrorCategory.CONFIGURATION_ISSUE:
@@ -162,7 +186,9 @@ export const GroupCallErrorBoundary = ({
       const callError =
         error instanceof ElementCallError
           ? error
-          : new UnknownCallError(error instanceof Error ? error : new Error());
+          : new UnknownCallError(
+              error instanceof Error ? error : new Error(String(error)),
+            );
       return (
         <ErrorPage
           widget={widget ?? null}
