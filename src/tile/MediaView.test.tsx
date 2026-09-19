@@ -78,6 +78,10 @@ describe("MediaView", () => {
       render(<MediaView {...baseProps} displayName="Bob" pinned />);
       expect(screen.getByTestId("name_tag")).toHaveTextContent("📌 Bob");
     });
+    test("badges a moderator", () => {
+      render(<MediaView {...baseProps} moderator />);
+      expect(screen.getByRole("img", { name: "Moderator" })).toBeVisible();
+    });
   });
 
   describe("waitingForMedia", () => {
