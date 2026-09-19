@@ -5,8 +5,8 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { describe, expect, test, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, test, vi } from "vitest";
+import { act, render, screen } from "@testing-library/react";
 import {
   type FC,
   type ReactElement,
@@ -37,6 +37,11 @@ import {
 } from "../utils/errors.ts";
 import { mockConfig } from "../utils/test.ts";
 import { ElementWidgetActions, type WidgetHelpers } from "../widget.ts";
+
+afterEach(() => {
+  vi.useRealTimers();
+  window.history.replaceState(null, "", "?");
+});
 
 test.each([
   {
@@ -127,6 +132,32 @@ test("should render the error page with link back to home", async () => {
   expect(onErrorMock).toHaveBeenCalledWith(error);
 
   expect(asFragment()).toMatchSnapshot();
+});
+
+test("ConnectionLostError: reconnects on its own with autoReconnect", async () => {
+  window.history.replaceState(null, "", "?autoReconnect=true");
+  vi.useFakeTimers();
+  const reconnectCallbackSpy = vi.fn().mockResolvedValue(undefined);
+  const TestComponent: FC = (): ReactNode => {
+    throw new ConnectionLostError();
+  };
+  render(
+    <BrowserRouter>
+      <GroupCallErrorBoundary
+        recoveryActionHandler={reconnectCallbackSpy}
+        widget={null}
+      >
+        <TestComponent />
+      </GroupCallErrorBoundary>
+    </BrowserRouter>,
+  );
+  screen.getByText("Connection lost");
+  // Not straight away, but a second later, with nobody having pressed anything
+  expect(reconnectCallbackSpy).not.toHaveBeenCalled();
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1000);
+  });
+  expect(reconnectCallbackSpy).toHaveBeenCalledWith("reconnect");
 });
 
 test("ConnectionLostError: Action handling should reset error state", async () => {
