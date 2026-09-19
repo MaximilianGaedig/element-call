@@ -662,6 +662,7 @@ export function createCallViewModel$(
     receivedDecline$: createReceivedDecline$(matrixRoom),
     options,
     localUser: { userId, deviceId },
+    functionalMembers: () => functionalMembersOf(matrixRoom),
   });
 
   const allConnections$ = scope.behavior(
@@ -1335,19 +1336,23 @@ export function createCallViewModel$(
     layoutMedia$.pipe(
       switchMap((l) =>
         l.type === "pip" || l.type === "one-on-one-mobile"
-          ? matrixRoomMembers$.pipe(
-              map(
-                (members) =>
-                  // Hide name tags by default in these layouts. For safety we
-                  // still need to show them in case it wouldn't be clear who
-                  // the spotlight media belongs to.
-                  // TODO: Respect io.element.functional_members (while still
-                  // being careful to never show a functional member's media
-                  // without a name tag!)
-                  // TODO: Only hide name tags in DMs, not group chats that just
-                  // happen to have only 2 users
-                  members.size > 2,
-              ),
+          ? combineLatest([matrixRoomMembers$, memberships$]).pipe(
+              map(([members, memberships]) => {
+                // Hide name tags by default in these layouts. For safety we
+                // still need to show them in case it wouldn't be clear who
+                // the spotlight media belongs to.
+                // Functional members (io.element.functional_members, e.g. a
+                // bridge's bot) don't count, unless they are in the call: a
+                // functional member's media must never show without a name tag.
+                // TODO: Only hide name tags in DMs, not group chats that just
+                // happen to have only 2 users
+                const functional = functionalMembersOf(matrixRoom);
+                const inCall = new Set(memberships.value.map((m) => m.userId));
+                const counted = [...members.keys()].filter(
+                  (userId) => !functional.has(userId) || inCall.has(userId),
+                );
+                return counted.length > 2;
+              }),
             )
           : of(true),
       ),
@@ -1879,4 +1884,20 @@ function getE2eeKeyProvider(
       .catch((e) => logger.error("Failed to set shared key for E2EE", e));
     return keyProvider;
   }
+}
+
+/**
+ * The users a room marks as functional members (`io.element.functional_members`
+ * state, e.g. a bridge's bot), which are not real participants.
+ */
+function functionalMembersOf(room: MatrixRoom): ReadonlySet<string> {
+  const content = room.currentState
+    ?.getStateEvents("io.element.functional_members", "")
+    ?.getContent<{ service_members?: unknown }>();
+  const members = content?.service_members;
+  return new Set(
+    Array.isArray(members)
+      ? members.filter((m): m is string => typeof m === "string")
+      : [],
+  );
 }

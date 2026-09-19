@@ -89,6 +89,11 @@ export interface Props {
   >;
   options: { waitForCallPickup?: boolean; autoLeaveWhenOthersLeft?: boolean };
   localUser: { deviceId: string; userId: string };
+  /**
+   * The room's functional members (`io.element.functional_members`), e.g. a
+   * bridge bot: they are never the person being rung.
+   */
+  functionalMembers?: () => ReadonlySet<string>;
 }
 
 export function createCallNotificationLifecycle$({
@@ -99,6 +104,7 @@ export function createCallNotificationLifecycle$({
   receivedDecline$,
   options,
   localUser,
+  functionalMembers = (): ReadonlySet<string> => new Set(),
 }: Props): {
   /**
    * An observable of attempts to ring the remote participant's devices.
@@ -125,10 +131,12 @@ export function createCallNotificationLifecycle$({
           notificationEvent.lifetime > 0,
       ),
       switchMap((notificationEvent) => {
-        // We assume that there is only one other user in the room when ringing
-        // TODO: Respect io.element.functional_members
+        // We assume that there is only one other user in the room when ringing,
+        // not counting functional members such as a bridge's bot: in a bridged DM
+        // the person being rung is the bridged user, not the bot.
+        const functional = functionalMembers();
         const recipient = [...matrixRoomMembers$.value.keys()].find(
-          (userId) => userId !== localUser.userId,
+          (userId) => userId !== localUser.userId && !functional.has(userId),
         );
         if (recipient === undefined) {
           logger.warn("No recipient for notification event; not ringing.");

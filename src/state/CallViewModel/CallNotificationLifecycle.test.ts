@@ -15,7 +15,11 @@ import {
 import { type RTCCallIntent } from "matrix-js-sdk/lib/matrixrtc";
 import { map, mergeMap, NEVER, type Observable, startWith } from "rxjs";
 
-import { withTestScheduler } from "../../utils/test";
+import {
+  mockMatrixRoomMember,
+  mockRtcMembership,
+  withTestScheduler,
+} from "../../utils/test";
 import {
   alice,
   aliceRtcMember,
@@ -309,6 +313,37 @@ test("decline event from wrong sender is ignored (times out)", () => {
     expectObservable(summarizeRingAttempts$(ringAttempts$)).toBe("-a 29ms A", {
       a: { intent: "audio", recipient: alice.userId },
       A: { outcome: "timeout" },
+    });
+  });
+});
+
+test("ring attempt skips functional members such as a bridge bot", () => {
+  withTestScheduler(({ scope, expectObservable, hot, behavior }) => {
+    const bot = mockMatrixRoomMember(
+      mockRtcMembership("@bridgebot:example.org", "BOTDEVICE"),
+    );
+    const { ringAttempts$ } = createCallNotificationLifecycle$({
+      scope,
+      ...defaultProps,
+      // The bridge's bot is listed first, as it created the bridged DM.
+      matrixRoomMembers$: constant(
+        new Map([
+          [bot.userId, bot],
+          [alice.userId, alice],
+        ]),
+      ),
+      functionalMembers: () => new Set([bot.userId]),
+      memberships$: scope.behavior(
+        behavior("a-b", { a: [], b: [aliceRtcMember] }).pipe(trackEpoch()),
+      ),
+      sentCallNotification$: hot("-a", {
+        a: mockRingEvent("$notif1", 30),
+      }),
+    });
+
+    expectObservable(summarizeRingAttempts$(ringAttempts$)).toBe("-aA", {
+      a: { intent: "audio", recipient: alice.userId },
+      A: { outcome: "accept" },
     });
   });
 });
