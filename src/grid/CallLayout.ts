@@ -189,6 +189,8 @@ export function packRows(
   const height = finite(bounds.height);
   gap = finite(gap);
   minRowHeight = finite(minRowHeight);
+  // An unknown shape is taken as square: as good a guess as any, and it
+  // gets a single row either way
   const aspectRatios = ratios.map((ar) => (ar > 0 && ar < Infinity ? ar : 1));
   const spans = aspectRatios.map(
     (ar, i) => (tallPortraits && ar < 1 ? 2 : 1) * (enlarged[i] ? 2 : 1),
