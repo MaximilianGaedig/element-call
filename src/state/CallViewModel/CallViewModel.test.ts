@@ -1845,26 +1845,34 @@ describe("floor control", () => {
 
   test("hideLocalTiles hides our own tiles", () => {
     window.history.replaceState(null, "", "?hideLocalTiles=true");
-    withTestScheduler(({ expectObservable }) => {
-      withCallViewModel(
-        {
-          remoteParticipants$: constant([aliceParticipant, bobParticipant]),
-          rtcMembers$: constant([localRtcMember, aliceRtcMember, bobRtcMember]),
-        },
-        (vm) => {
-          expectObservable(summarizeLayout$(vm.layout$), {
-            settled: true,
-          }).toBe("a", {
-            a: {
-              type: "grid",
-              spotlight: undefined,
-              grid: [`${aliceId}:0`, `${bobId}:0`],
-            },
-          });
-        },
-      );
-    });
-    window.history.replaceState(null, "", "?");
+    try {
+      withTestScheduler(({ expectObservable }) => {
+        withCallViewModel(
+          {
+            remoteParticipants$: constant([aliceParticipant, bobParticipant]),
+            rtcMembers$: constant([
+              localRtcMember,
+              aliceRtcMember,
+              bobRtcMember,
+            ]),
+          },
+          (vm) => {
+            expectObservable(summarizeLayout$(vm.layout$), {
+              settled: true,
+            }).toBe("a", {
+              a: {
+                type: "grid",
+                spotlight: undefined,
+                grid: [`${aliceId}:0`, `${bobId}:0`],
+              },
+            });
+          },
+        );
+      });
+    } finally {
+      // Or a failure here would leave the flag set for every later test
+      window.history.replaceState(null, "", "?");
+    }
   });
 
   test("pins apply to one device, not all of a user's devices", () => {
