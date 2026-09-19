@@ -142,6 +142,7 @@ test("the recording shows the call's video", async ({ page }) => {
   await expect(badge).toHaveAttribute("aria-busy", "false", {
     timeout: 30_000,
   });
+  // Record long enough for the file to have some seconds of video in it
   await page.waitForTimeout(15_000);
 
   await record.click();

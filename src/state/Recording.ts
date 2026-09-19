@@ -66,7 +66,11 @@ export class RecorderError extends Error {
   }
 }
 
-/** How long whoever asked waits for the recorder to confirm before giving up. */
+/**
+ * How long whoever asked waits for the recorder to confirm before giving up.
+ * The recorder takes around ten seconds to start its widget and join the
+ * call, so this leaves a few times that for a slow one.
+ */
 export const CONFIRM_TIMEOUT_MS = 30_000;
 
 /** Where a piece of media is, and how to decrypt it if it's encrypted */
