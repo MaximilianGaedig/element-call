@@ -16,7 +16,6 @@ Please see LICENSE in the repository root for full details.
   align-items: center;
   gap: var(--cpd-space-3x);
   padding: var(--cpd-space-2x);
-  padding-inline-start: var(--cpd-space-2x);
   border-radius: var(--cpd-space-3x);
   background: var(--cpd-color-alpha-gray-1200);
   color: var(--cpd-color-text-on-solid-primary);

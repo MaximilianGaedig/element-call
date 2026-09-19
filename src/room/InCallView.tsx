@@ -659,6 +659,8 @@ export const InCallView: FC<InCallViewProps> = ({
         localUserId={client.getUserId()!}
       />
       <RecordingReadyNotice vm={vm} client={client} />
+      {/* Long enough to read, short enough not to cover the call; the
+          button itself stays as it was, so the user can just try again */}
       <Toast
         open={recordingError !== null}
         onDismiss={onDismissRecordingError}

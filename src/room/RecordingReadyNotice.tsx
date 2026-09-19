@@ -57,6 +57,8 @@ function useThumbnail(
     if (file === undefined) return;
     const abort = new AbortController();
     let objectUrl: string | undefined;
+    // The notice shows the thumbnail at 96×54 CSS pixels; ask for a 16:9
+    // thumbnail a few times that so it stays sharp on high-density screens
     fetchMedia(client, file, abort.signal, { width: 320, height: 180 })
       .then((blob) => {
         objectUrl = URL.createObjectURL(blob);
@@ -102,6 +104,8 @@ export const RecordingReadyNotice: FC<Props> = ({ vm, client }) => {
       a.href = objectUrl;
       a.download = upload.body || "recording";
       a.click();
+      // The browser reads the blob URL asynchronously once the download
+      // starts, so keep it alive for a while rather than revoking at once
       setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
     } catch (e) {
       logger.error("Failed to download recording", e);
