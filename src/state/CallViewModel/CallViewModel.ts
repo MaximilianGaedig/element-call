@@ -663,6 +663,7 @@ export function createCallViewModel$(
     options,
     localUser: { userId, deviceId },
     functionalMembers: () => functionalMembersOf(matrixRoom),
+    roomCreator: () => roomCreatorOf(matrixRoom),
   });
 
   const allConnections$ = scope.behavior(
@@ -1346,11 +1347,21 @@ export function createCallViewModel$(
                 // functional member's media must never show without a name tag.
                 // TODO: Only hide name tags in DMs, not group chats that just
                 // happen to have only 2 users
+                // When the host hides functional members, a DM's creator stands
+                // in for its bot the same way it does for ringing.
                 const functional = functionalMembersOf(matrixRoom);
                 const inCall = new Set(memberships.value.map((m) => m.userId));
-                const counted = [...members.keys()].filter(
+                let counted = [...members.keys()].filter(
                   (userId) => !functional.has(userId) || inCall.has(userId),
                 );
+                const creator = roomCreatorOf(matrixRoom);
+                if (
+                  counted.length > 2 &&
+                  creator !== undefined &&
+                  !inCall.has(creator)
+                ) {
+                  counted = counted.filter((userId) => userId !== creator);
+                }
                 return counted.length > 2;
               }),
             )
@@ -1899,5 +1910,13 @@ function functionalMembersOf(room: MatrixRoom): ReadonlySet<string> {
     Array.isArray(members)
       ? members.filter((m): m is string => typeof m === "string")
       : [],
+  );
+}
+
+/** The room's creator (m.room.create's sender), if the state is readable. */
+function roomCreatorOf(room: MatrixRoom): string | undefined {
+  return (
+    room.currentState?.getStateEvents("m.room.create", "")?.getSender() ??
+    undefined
   );
 }

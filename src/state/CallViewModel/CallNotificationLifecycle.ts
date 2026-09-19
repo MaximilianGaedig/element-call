@@ -91,9 +91,12 @@ export interface Props {
   localUser: { deviceId: string; userId: string };
   /**
    * The room's functional members (`io.element.functional_members`), e.g. a
-   * bridge bot: they are never the person being rung.
+   * bridge bot: they are never the person being rung. Hosts may not let the
+   * widget read that state (Element X doesn't), so it can be empty.
    */
   functionalMembers?: () => ReadonlySet<string>;
+  /** The room's creator (m.room.create), which a bridge's bot is in a bridged DM. */
+  roomCreator?: () => string | undefined;
 }
 
 export function createCallNotificationLifecycle$({
@@ -105,6 +108,7 @@ export function createCallNotificationLifecycle$({
   options,
   localUser,
   functionalMembers = (): ReadonlySet<string> => new Set(),
+  roomCreator = (): string | undefined => undefined,
 }: Props): {
   /**
    * An observable of attempts to ring the remote participant's devices.
@@ -134,9 +138,11 @@ export function createCallNotificationLifecycle$({
         // We assume that there is only one other user in the room when ringing,
         // not counting functional members such as a bridge's bot: in a bridged DM
         // the person being rung is the bridged user, not the bot.
-        const functional = functionalMembers();
-        const recipient = [...matrixRoomMembers$.value.keys()].find(
-          (userId) => userId !== localUser.userId && !functional.has(userId),
+        const recipient = pickRingRecipient(
+          [...matrixRoomMembers$.value.keys()],
+          localUser.userId,
+          functionalMembers(),
+          roomCreator(),
         );
         if (recipient === undefined) {
           logger.warn("No recipient for notification event; not ringing.");
@@ -147,9 +153,11 @@ export function createCallNotificationLifecycle$({
         const timeout$ = timer(notificationEvent.lifetime).pipe(
           map(() => "timeout" as const),
         );
-        // Call is accepted when the recipient joins
+        // Call is accepted when someone else joins: in a ring (a DM) anyone
+        // joining from the other side picked up, even if we guessed wrong who
+        // the recipient is (e.g. a bridge bot we can't tell apart).
         const accept$ = memberships$.pipe(
-          filter((ms) => ms.value.some((m) => m.userId === recipient)),
+          filter((ms) => ms.value.some((m) => m.userId !== localUser.userId)),
           map(() => "accept" as const),
         );
         // Call is declined when we receive a decline event
@@ -203,4 +211,27 @@ export function createCallNotificationLifecycle$({
   );
 
   return { ringAttempts$, autoLeave$ };
+}
+
+/**
+ * Who a ring is for: the other member of the DM. Functional members (a bridge's
+ * bot) are skipped when known. When the host hides them from us and there are
+ * still several other members, the room's creator is skipped too: a bridged DM
+ * is created by the bridge's bot, while a two-person DM (one other member) keeps
+ * whoever created it.
+ */
+export function pickRingRecipient(
+  members: string[],
+  localUserId: string,
+  functional: ReadonlySet<string>,
+  creator: string | undefined,
+): string | undefined {
+  let others = members.filter(
+    (userId) => userId !== localUserId && !functional.has(userId),
+  );
+  if (others.length > 1 && creator !== undefined) {
+    const withoutCreator = others.filter((userId) => userId !== creator);
+    if (withoutCreator.length > 0) others = withoutCreator;
+  }
+  return others[0];
 }

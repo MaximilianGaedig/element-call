@@ -23,12 +23,14 @@ import {
 import {
   alice,
   aliceRtcMember,
+  bobRtcMember,
   local,
   localRtcMember,
 } from "../../utils/test-fixtures";
 import {
   type CallNotificationWrapper,
   createCallNotificationLifecycle$,
+  pickRingRecipient,
   type RingAttempt,
 } from "./CallNotificationLifecycle";
 import { Epoch, trackEpoch } from "../ObservableScope";
@@ -346,4 +348,66 @@ test("ring attempt skips functional members such as a bridge bot", () => {
       A: { outcome: "accept" },
     });
   });
+});
+
+test("ring picks the bridged user over the bridge bot that created the room", () => {
+  withTestScheduler(({ scope, expectObservable, hot, behavior }) => {
+    const bot = mockMatrixRoomMember(
+      mockRtcMembership("@bridgebot:example.org", "BOTDEVICE"),
+    );
+    const { ringAttempts$ } = createCallNotificationLifecycle$({
+      scope,
+      ...defaultProps,
+      // Element X doesn't let the widget read io.element.functional_members.
+      matrixRoomMembers$: constant(
+        new Map([
+          [bot.userId, bot],
+          [alice.userId, alice],
+        ]),
+      ),
+      roomCreator: () => bot.userId,
+      memberships$: scope.behavior(
+        behavior("a-b", { a: [], b: [aliceRtcMember] }).pipe(trackEpoch()),
+      ),
+      sentCallNotification$: hot("-a", {
+        a: mockRingEvent("$notif1", 30),
+      }),
+    });
+
+    expectObservable(summarizeRingAttempts$(ringAttempts$)).toBe("-aA", {
+      a: { intent: "audio", recipient: alice.userId },
+      A: { outcome: "accept" },
+    });
+  });
+});
+
+test("ring counts as picked up when anyone else joins", () => {
+  withTestScheduler(({ scope, expectObservable, hot, behavior }) => {
+    const { ringAttempts$ } = createCallNotificationLifecycle$({
+      scope,
+      ...defaultProps,
+      // We guessed alice, but bob (e.g. an unrecognised bridge puppet) picked up.
+      memberships$: scope.behavior(
+        behavior("a-b", { a: [], b: [bobRtcMember] }).pipe(trackEpoch()),
+      ),
+      sentCallNotification$: hot("-a", {
+        a: mockRingEvent("$notif1", 30),
+      }),
+    });
+
+    expectObservable(summarizeRingAttempts$(ringAttempts$)).toBe("-aA", {
+      a: { intent: "audio", recipient: alice.userId },
+      A: { outcome: "accept" },
+    });
+  });
+});
+
+test("pickRingRecipient keeps the creator of a two-person DM", () => {
+  const got = pickRingRecipient(
+    [localRtcMember.userId, alice.userId],
+    localRtcMember.userId,
+    new Set(),
+    alice.userId,
+  );
+  if (got !== alice.userId) throw new Error(`recipient ${got}`);
 });
