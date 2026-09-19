@@ -710,6 +710,8 @@ export function Grid<
               />
             )).props as { children: ReactElement[] }
           ).children,
+          // Keys are the tiles' IDs: numeric for the call's tiles, media IDs
+          // for the spotlight's, so compare them as strings
         ].sort((a, b) => String(a.key).localeCompare(String(b.key)))
       }
     </div>

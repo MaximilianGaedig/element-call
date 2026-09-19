@@ -576,10 +576,7 @@ interface Props {
    * through them one at a time.
    */
   tiled?: boolean;
-  /**
-   * Pins or unpins a user: what double-clicking a user in the spotlight does,
-   * and (for users the local user pinned) the Unpin item in their menu.
-   */
+  /** Unpins a user the local user pinned; enables Unpin in item menus. */
   onUnpin?: (vm: UserMediaViewModel) => void;
   /** Moves a tiled item to where another sits; enables dragging them. */
   onMove?: (media: MediaViewModel, to: MediaViewModel) => void;
