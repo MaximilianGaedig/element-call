@@ -1,0 +1,52 @@
+name: Deploy experiment to Netlify
+# Mirrors upstream's build + deploy-to-netlify flow, publishing the
+# matthew/experiment branch (the merge of every experiment PR, see
+# docs/experiment_stack.md) to production at
+# element-call-experiment.netlify.app. Needs the NETLIFY_AUTH_TOKEN and
+# NETLIFY_SITE_ID repository secrets. Netlify never builds anything itself.
+on:
+  push:
+    branches: [matthew/experiment]
+  workflow_dispatch:
+
+jobs:
+  build:
+    uses: ./.github/workflows/build-element-call.yaml
+    with:
+      package: full
+      vite_app_version: ${{ github.sha }}
+    secrets:
+      SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+      SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+      SENTRY_URL: ${{ secrets.SENTRY_URL }}
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+      - name: 📥 Download artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: build-output-full
+          path: webapp
+      - name: Add redirects and config
+        run: |
+          cp config/netlify_redirects webapp/_redirects
+          cp config/config_netlify_preview.json webapp/config.json
+      - name: ☁️ Deploy to Netlify
+        uses: nwtgck/actions-netlify@4cbaf4c08f1a7bfa537d6113472ef4424e4eb654 # v3.0
+        with:
+          publish-dir: webapp
+          production-deploy: true
+          deploy-message: "Deploy ${{ github.sha }} from GitHub Actions"
+          enable-pull-request-comment: false
+          enable-commit-comment: false
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        timeout-minutes: 1
