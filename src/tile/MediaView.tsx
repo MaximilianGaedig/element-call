@@ -144,11 +144,13 @@ export const MediaView: FC<Props> = ({
       (soundWaves === undefined ? 0.5 : 0.38),
   );
 
-  // Assumed 16:9 until the video shows its shape, so a hugged tile starts
-  // out the shape it will most likely end up
-  const [videoAspectRatio, setOurVideoAspectRatio] = useState<number>(16 / 9);
+  const [videoAspectRatio, setOurVideoAspectRatio] = useState<number>(NaN);
   const tileAspectRatio = targetWidth / targetHeight;
-  const hug = hugVideo && video && videoEnabled && videoAspectRatio > 0;
+  const hug = hugVideo && video && videoEnabled;
+  // A hugged tile is assumed 16:9 until the video shows its shape, so that it
+  // starts out the shape it will most likely end up; the fit of an unhugged
+  // tile keeps treating the shape as unknown (see autoVideoFit)
+  const hugRatio = Number.isNaN(videoAspectRatio) ? 16 / 9 : videoAspectRatio;
   // A tile placed by the grid has animated position and size, so hug by
   // interpolating those; one filling a flex container hugs with CSS instead
   let hugStyle: ComponentProps<typeof animated.div>["style"];
@@ -165,8 +167,8 @@ export const MediaView: FC<Props> = ({
       width: number | SpringValue<number>;
       height: number | SpringValue<number>;
     };
-    const w = to([width, height], (w, h) => Math.min(w, h * videoAspectRatio));
-    const h = to([width, height], (w, h) => Math.min(h, w / videoAspectRatio));
+    const w = to([width, height], (w, h) => Math.min(w, h * hugRatio));
+    const h = to([width, height], (w, h) => Math.min(h, w / hugRatio));
     hugStyle = {
       width: w,
       height: h,
@@ -230,7 +232,7 @@ export const MediaView: FC<Props> = ({
         {
           ...style,
           ...hugStyle,
-          "--video-aspect-ratio": hug ? videoAspectRatio : undefined,
+          "--video-aspect-ratio": hug ? hugRatio : undefined,
         } as ComponentProps<typeof animated.div>["style"]
       }
       ref={ref}

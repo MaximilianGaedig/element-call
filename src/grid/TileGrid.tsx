@@ -52,8 +52,8 @@ export function useEnlargedTiles(grid: GridTileViewModel[]): boolean[] {
 }
 
 /**
- * Tracks the aspect ratio of each tile's video, 0 while a tile has no video,
- * as one array so that the layout only re-renders when a shape changes.
+ * Tracks the shape of each tile (see videoAspectRatio) as one array, so that
+ * the layout only re-renders when a shape changes.
  */
 export function useVideoAspectRatios(grid: GridTileViewModel[]): number[] {
   return useBehavior(

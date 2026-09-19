@@ -9,10 +9,11 @@ import { expect, test } from "vitest";
 import { render } from "@testing-library/react";
 import { type FC } from "react";
 
-import { TileGrid } from "./TileGrid";
+import { TileGrid, videoAspectRatio } from "./TileGrid";
 import { type SlotProps } from "./Grid";
 import { GridTileViewModel, type GridTileMedia } from "../state/TileViewModel";
 import { constant } from "../state/Behavior";
+import { type MediaViewModel } from "../state/media/MediaViewModel";
 
 const Slot: FC<SlotProps<unknown>> = ({ id, style }) => (
   <div data-testid={id} style={style} />
@@ -43,4 +44,20 @@ test.each([
     />,
   );
   expect(getByTestId(tile.id).style.width).toBe(width);
+});
+
+test("a user's tile is 16:9 until their video shows its shape", () => {
+  const user = (ratio: number): MediaViewModel =>
+    ({
+      type: "user",
+      videoAspectRatio$: constant(ratio),
+    }) as Partial<MediaViewModel> as MediaViewModel;
+  expect(videoAspectRatio(user(NaN))).toBeCloseTo(16 / 9);
+  expect(videoAspectRatio(user(9 / 16))).toBeCloseTo(9 / 16);
+  // Other media, such as screen shares, aren't shaped this way
+  expect(
+    videoAspectRatio({
+      type: "screen share",
+    } as Partial<MediaViewModel> as MediaViewModel),
+  ).toBe(0);
 });
