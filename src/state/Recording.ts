@@ -377,12 +377,15 @@ export function createRecording(
     const content = event.getContent();
     const msgtype = content.msgtype;
     if (msgtype !== "m.video" && msgtype !== "m.audio") return;
+    // Downloading sends the user's OpenID token to the link, so only a
+    // secure one from the recorder (checked by onTimeline) is followed;
+    // a message with any other kind of link isn't a recording we can offer
     const link: unknown = content[RecordingUrlField];
+    if (link !== undefined && typeof link !== "string") return;
+    if (link !== undefined && !link.startsWith("https://")) return;
     const file =
-      typeof link === "string"
-        ? undefined
-        : mediaFile(content.file, content.url);
-    if (typeof link !== "string" && file === undefined) return;
+      link === undefined ? mediaFile(content.file, content.url) : undefined;
+    if (link === undefined && file === undefined) return;
     finishing$.value = false;
     uploads$.value = [
       ...uploads$.value,
@@ -391,7 +394,7 @@ export function createRecording(
         msgtype,
         body: content.body ?? "",
         file,
-        link: typeof link === "string" ? link : undefined,
+        link,
         thumbnail: mediaFile(
           content.info?.thumbnail_file,
           content.info?.thumbnail_url,

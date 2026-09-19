@@ -502,6 +502,17 @@ describe("createRecording", () => {
       },
       "$4",
     );
+    // A link the token shouldn't be sent to is no recording at all
+    upload(
+      bot,
+      {
+        msgtype: "m.video",
+        body: "plain.webm",
+        url: "http://bridge/recordings/plain",
+        "org.matrix.rtc.recording.url": "http://bridge/recordings/plain",
+      },
+      "$5",
+    );
     expect(r.uploads$.value).toEqual([
       {
         eventId: "$2",

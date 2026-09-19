@@ -93,6 +93,18 @@ ended, or it failed), it should clear the event itself so that clients
 don't go on warning about a recording that is over; it therefore needs the
 power to send it.
 
+A recording too big for the homeserver's media repository may instead be
+kept by the recorder (or wherever it stores files): the message is then
+the same `m.video` or `m.audio`, with its thumbnail and `info`, but its
+`url` is a link to the recorder's own download endpoint rather than an
+`mxc://` URI, and the content carries `org.matrix.rtc.recording.url` with
+that same link to mark it. A client downloads it with the user's OpenID
+token (`Authorization: Bearer` and a `server_name` query parameter), which
+the recorder verifies with the homeserver before checking that the user is
+in the room and answering with a short-lived URL for the file. Clients only
+honour the field on messages from the recorder named in the request, and
+only for `https` links, since the token goes to whatever it points at.
+
 A recorder should not record anything it can't tell the room about: if it
 can't send the events, it shouldn't record.
 

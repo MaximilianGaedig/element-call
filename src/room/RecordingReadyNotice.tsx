@@ -133,7 +133,9 @@ export const RecordingReadyNotice: FC<Props> = ({ vm, client }) => {
           { headers: { Authorization: `Bearer ${token.access_token}` } },
         );
         if (!response.ok) throw new Error(`${upload.link}: ${response.status}`);
-        const { url } = (await response.json()) as { url: string };
+        const { url } = (await response.json()) as { url?: unknown };
+        if (typeof url !== "string")
+          throw new Error(`${upload.link}: no download URL in the response`);
         window.open(url, "_blank", "noopener");
         return;
       }
