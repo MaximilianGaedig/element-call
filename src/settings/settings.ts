@@ -230,6 +230,16 @@ export const cameraBitrate = new Setting<number>("camera-bitrate", 1_700_000);
 
 export const cameraCodec = new Setting<VideoCodec>("camera-codec", "vp8");
 
+/**
+ * A shape to ask the camera for ("W:H", or "auto" for the camera's own). The
+ * browser crops the frames to it, which carves portrait content out of a
+ * virtual camera that only offers landscape formats, as OBS's does on macOS.
+ */
+export const cameraAspectRatio = new Setting<string>(
+  "camera-aspect-ratio",
+  "auto",
+);
+
 // Audio processing settings
 export const echoCancellationSetting = new Setting<boolean>(
   "echo-cancellation",

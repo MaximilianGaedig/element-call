@@ -42,6 +42,7 @@ import {
   useTrackProcessor,
   useTrackProcessorSync,
 } from "../livekit/TrackProcessorContext";
+import { getLiveKitOptions } from "../livekit/options";
 import { usePageTitle } from "../usePageTitle";
 import { useBehavior } from "../useBehavior";
 import { CallFooter, type FooterSnapshot } from "../components/CallFooter";
@@ -157,6 +158,9 @@ export const LobbyView: FC<Props> = ({
       video: videoEnabled && {
         deviceId: videoInputId,
         processor: initialProcessor,
+        // The call's own capture default (a height alone), rather than
+        // LiveKit's 16:9 preset, which would crop a portrait camera
+        resolution: getLiveKitOptions().videoCaptureDefaults?.resolution,
       },
     }),
     [initialAudioOptions, videoEnabled, videoInputId, initialProcessor],

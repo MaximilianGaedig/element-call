@@ -6,7 +6,11 @@ Please see LICENSE in the repository root for full details.
 */
 
 import { describe, expect, it, vi } from "vitest";
-import { VideoPresets, type VideoPreset } from "livekit-client";
+import {
+  VideoPresets,
+  type VideoPreset,
+  type VideoResolution,
+} from "livekit-client";
 
 import { buildLiveKitOptions, getLiveKitOptions } from "./options";
 import { Config } from "../config/Config";
@@ -17,13 +21,21 @@ vi.mock("../config/Config", () => ({
   },
 }));
 
+// Only the height and frame rate are asked of the camera, so that a portrait
+// camera isn't cropped to the preset's landscape shape
+const captureOf = (preset: VideoPreset): VideoResolution =>
+  ({
+    height: preset.resolution.height,
+    frameRate: preset.resolution.frameRate,
+  }) as VideoResolution;
+
 describe("buildLiveKitOptions", () => {
   it("returns sensible defaults with no config", () => {
     const opts = buildLiveKitOptions();
     expect(opts.adaptiveStream).toBe(true);
     expect(opts.dynacast).toBe(true);
     expect(opts.videoCaptureDefaults?.resolution).toEqual(
-      VideoPresets.h720.resolution,
+      captureOf(VideoPresets.h720),
     );
     expect(opts.publishDefaults?.videoCodec).toBe("vp8");
     expect(opts.publishDefaults?.videoEncoding).toEqual({
@@ -61,13 +73,13 @@ describe("buildLiveKitOptions", () => {
       video: { ...baseVideoConfig, max_resolution: 2160 },
     });
     expect(opts1080.videoCaptureDefaults?.resolution).toEqual(
-      VideoPresets.h1080.resolution,
+      captureOf(VideoPresets.h1080),
     );
     expect(opts1440.videoCaptureDefaults?.resolution).toEqual(
-      VideoPresets.h1440.resolution,
+      captureOf(VideoPresets.h1440),
     );
     expect(opts2160.videoCaptureDefaults?.resolution).toEqual(
-      VideoPresets.h2160.resolution,
+      captureOf(VideoPresets.h2160),
     );
     expect(opts1080.publishDefaults?.videoEncoding).toEqual({
       maxBitrate: 3_000_000,
@@ -111,7 +123,7 @@ describe("buildLiveKitOptions", () => {
     ];
     for (const [height, preset] of expectations) {
       const opts = buildLiveKitOptions({ video: { max_resolution: height } });
-      expect(opts.videoCaptureDefaults?.resolution).toEqual(preset.resolution);
+      expect(opts.videoCaptureDefaults?.resolution).toEqual(captureOf(preset));
     }
   });
 

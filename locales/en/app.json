@@ -243,6 +243,8 @@
     "advanced_camera_label": "Advanced camera settings",
     "advanced_screen_share_description": "Configure resolution, framerate, bitrate, and codec for screen sharing",
     "advanced_screen_share_label": "Advanced screen share settings",
+    "aspect_ratio_auto": "Camera's own",
+    "aspect_ratio_label": "Aspect ratio",
     "audio_processing_description": "Changes apply on next call join.",
     "audio_processing_header": "Audio processing",
     "audio_tab": {

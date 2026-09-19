@@ -26,6 +26,7 @@ import {
   noiseSuppressionSetting,
   autoGainControlSetting,
   advancedCamera,
+  cameraAspectRatio,
   cameraResolution,
   cameraFramerate,
   cameraBitrate,
@@ -217,11 +218,46 @@ describe("ECConnectionFactory - Camera quality settings", () => {
     expect(RoomConstructor).toHaveBeenCalledWith(
       expect.objectContaining({
         videoCaptureDefaults: expect.objectContaining({
-          resolution: { width: 1920, height: 1080, frameRate: 60 },
+          resolution: { height: 1080, frameRate: 60 },
         }),
         publishDefaults: expect.objectContaining({
           videoEncoding: { maxBitrate: 4_000_000, maxFramerate: 60 },
           videoCodec: "vp9",
+        }),
+      }),
+    );
+  });
+
+  test("it asks the camera for the chosen aspect ratio", () => {
+    const RoomConstructor = vi.mocked(LivekitRoom);
+
+    advancedCamera.setValue(true);
+    cameraResolution.setValue("1280x720");
+    cameraFramerate.setValue(30);
+    cameraAspectRatio.setValue("9:16");
+
+    const ecConnectionFactory = new ECConnectionFactory(
+      mockClient,
+      "!roomid:example.org",
+      mockMediaDevices({}),
+      state<ProcessorState>({
+        supported: true,
+        processor: undefined,
+      }),
+      undefined,
+      false,
+    );
+    ecConnectionFactory.createConnection(
+      testScope,
+      exampleTransport,
+      ownMemberMock,
+      logger,
+    );
+
+    expect(RoomConstructor).toHaveBeenCalledWith(
+      expect.objectContaining({
+        videoCaptureDefaults: expect.objectContaining({
+          resolution: { height: 720, frameRate: 30, aspectRatio: 9 / 16 },
         }),
       }),
     );

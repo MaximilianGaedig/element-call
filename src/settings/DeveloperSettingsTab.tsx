@@ -56,6 +56,7 @@ import {
   cameraFramerate as cameraFramerateSetting,
   cameraBitrate as cameraBitrateSetting,
   cameraCodec as cameraCodecSetting,
+  cameraAspectRatio as cameraAspectRatioSetting,
   echoCancellationSetting,
   noiseSuppressionSetting,
   autoGainControlSetting,
@@ -203,6 +204,8 @@ export const DeveloperSettingsTab: FC<Props> = ({
     framerateSetting: Setting<number>;
     bitrateSetting: Setting<number>;
     codecSetting: Setting<VideoCodec>;
+    /** A shape to crop the video to, for cameras that only offer landscape */
+    aspectRatioSetting?: Setting<string>;
     resolutionOptions: { value: string; label: string }[];
     bitrateRange: { min: number; max: number; step: number };
   }> = ({
@@ -215,6 +218,7 @@ export const DeveloperSettingsTab: FC<Props> = ({
     framerateSetting,
     bitrateSetting,
     codecSetting,
+    aspectRatioSetting,
     resolutionOptions,
     bitrateRange,
   }): ReactNode => {
@@ -225,6 +229,9 @@ export const DeveloperSettingsTab: FC<Props> = ({
     const [bitrate, setBitrate] = useSetting(bitrateSetting);
     const [bitrateRaw, setBitrateRaw] = useState(bitrate);
     const [codec, setCodec] = useSetting(codecSetting);
+    const [aspectRatio, setAspectRatio] = useSetting(
+      aspectRatioSetting ?? cameraAspectRatioSetting,
+    );
 
     return (
       <>
@@ -257,6 +264,27 @@ export const DeveloperSettingsTab: FC<Props> = ({
                 ))}
               </select>
             </div>
+            {aspectRatioSetting && (
+              <div className={settingsStyles.volumeSlider}>
+                <label htmlFor={`${id}AspectRatio`}>
+                  {t("settings.aspect_ratio_label", "Aspect ratio")}
+                </label>
+                <select
+                  id={`${id}AspectRatio`}
+                  value={aspectRatio}
+                  onChange={(e): void => setAspectRatio(e.target.value)}
+                >
+                  <option value="auto">
+                    {t("settings.aspect_ratio_auto", "Camera's own")}
+                  </option>
+                  {["16:9", "4:3", "1:1", "3:4", "9:16"].map((ratio) => (
+                    <option key={ratio} value={ratio}>
+                      {ratio}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className={settingsStyles.volumeSlider}>
               <label>
                 {t("settings.framerate_label", "Framerate")}
@@ -641,6 +669,7 @@ export const DeveloperSettingsTab: FC<Props> = ({
         framerateSetting={cameraFramerateSetting}
         bitrateSetting={cameraBitrateSetting}
         codecSetting={cameraCodecSetting}
+        aspectRatioSetting={cameraAspectRatioSetting}
         resolutionOptions={[
           { value: "640x360", label: "360p" },
           { value: "960x540", label: "540p" },
