@@ -156,6 +156,9 @@ services:
   nginx:
     #  see backend/dev_tls_setup for how to generate the tls certs
     hostname: synapse.m.localhost
+    # The digest of the multi-arch image index for the tag, which resolves to
+    # the native image per platform; a per-platform child manifest's digest
+    # (as Renovate once pinned, the linux/386 one) runs under emulation
     image: nginx:latest@sha256:05b8cb60c354a44ab824ea6e7dc69b46d50762cdbe728a347a5b656e6fb3d7c4
     pull_policy: always
     volumes:
