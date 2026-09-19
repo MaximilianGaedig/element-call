@@ -39,14 +39,18 @@ const dateTime = new Intl.DateTimeFormat(undefined, {
 });
 
 /**
+ * How long a speaker pauses before their next segment gets a new header:
+ * long enough that the sentences of one train of thought stay together,
+ * short enough that a fresh remark after a lull reads as one.
+ */
+const groupGapMs = 5_000;
+
+/**
  * One transcript segment, shown as the speaker's words rather than the
  * bot's: the bot names the speaker in the event, or failing that posts
  * the body as "Speaker: words". The body grows as the bot streams the
  * speaker's words.
  */
-/** How long a speaker pauses before their next segment gets a new header. */
-const groupGapMs = 5_000;
-
 export const Segment: FC<Caption & { continuation?: boolean }> = ({
   event,
   body,

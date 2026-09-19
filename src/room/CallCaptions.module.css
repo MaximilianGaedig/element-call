@@ -12,6 +12,8 @@ view measures it and shrinks the grid to make room; when the grid has so
 many tiles that it scrolls, the panel sticks to the bottom as an overlay
 instead of scrolling away. */
 .captions {
+  /* Two lines of transcript, which is enough to read along; 20vh keeps
+  the video the larger part on a phone */
   --captions-height: min(20vh, 120px);
   flex-shrink: 0;
   /* Stay at the bottom of the view even when the grid layers are
