@@ -279,6 +279,7 @@ export function createFloorControl(
   // they need at least that level themselves
   const requiredLevel$ = computed(() => {
     const { events, state_default: stateDefault } = powerLevels$.value;
+    // 50 is the spec's default for state_default when the event omits it
     return events?.[FloorControlEventType] ?? stateDefault ?? 50;
   });
   const maySetModerator$ = read((state) => {
@@ -300,10 +301,8 @@ export function createFloorControl(
     moderator: boolean,
   ): Promise<void> => {
     const content = powerLevels$.peek();
-    const required =
-      content.events?.[FloorControlEventType] ?? content.state_default ?? 50;
     const users = { ...content.users };
-    if (moderator) users[userId] = required;
+    if (moderator) users[userId] = requiredLevel$.peek();
     else delete users[userId];
     await room.client.sendStateEvent(
       room.roomId,
