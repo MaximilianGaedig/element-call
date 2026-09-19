@@ -2,7 +2,11 @@
 
 An overview of the PRs behind
 [element-call-experiment.netlify.app](https://element-call-experiment.netlify.app),
-grouped by topic. `matthew/experiment` is the merge of every branch below.
+grouped by topic. `matthew/experiment` is the merge of every branch below plus
+two deployment-only commits that point the Netlify config at the recording,
+SIP and transcription bot (`recording_bot`, `sip_bridge`, `transcription_bot`
+in `config/config_netlify_preview.json`); without them the record and
+captions controls don't appear on the deployed site.
 
 ## How the PRs relate
 
