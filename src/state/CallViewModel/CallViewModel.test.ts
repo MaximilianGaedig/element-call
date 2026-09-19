@@ -51,6 +51,7 @@ import {
 import { MediaDevices } from "../MediaDevices.ts";
 import { type Behavior, computed, constant, state } from "../Behavior.ts";
 import { type MediaViewModel } from "../media/MediaViewModel.ts";
+import { type RaisedHandInfo } from "../../reactions";
 import {
   localParticipant,
   withCallViewModel as withCallViewModelInMode,
@@ -1317,6 +1318,40 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
               ],
             },
           });
+        },
+      );
+    });
+  });
+
+  it("numbers raised hands in the order they went up", () => {
+    withTestScheduler(() => {
+      withCallViewModel(
+        {
+          remoteParticipants$: constant([aliceParticipant, bobParticipant]),
+          rtcMembers$: constant([localRtcMember, aliceRtcMember, bobRtcMember]),
+        },
+        (vm, _rtcSession, { raisedHands$ }) => {
+          const orderOf = (id: string): number | null => {
+            const layout = vm.layout$.value;
+            if (layout.type !== "grid") throw new Error("expected a grid");
+            const media = layout.grid.find((t) => t.media$.value.id === id)!
+              .media$.value;
+            if (media.type !== "user") throw new Error("expected a user");
+            return media.handRaisedOrder$.value;
+          };
+          const hand = (time: number): RaisedHandInfo => ({
+            time: new Date(time),
+            reactionEventId: "",
+            membershipEventId: "",
+          });
+          // A lone hand isn't numbered
+          raisedHands$.value = { [bobId]: hand(2) };
+          expect(orderOf(`${bobId}:0`)).toBe(null);
+          // Several are, by when they went up, not by who
+          raisedHands$.value = { [bobId]: hand(2), [aliceId]: hand(1) };
+          expect(orderOf(`${aliceId}:0`)).toBe(1);
+          expect(orderOf(`${bobId}:0`)).toBe(2);
+          expect(orderOf(`${localId}:0`)).toBe(null);
         },
       );
     });
