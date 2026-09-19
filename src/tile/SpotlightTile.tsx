@@ -595,6 +595,7 @@ const SpotlightItemsLayout: FC<
   );
   const rows = useMemo(() => {
     if (!relaxed) return null;
+    // A tile without a video takes the shape of a cell of the plain grid
     const cellRatio =
       (width / columns) * (Math.ceil(items.length / columns) / height);
     const ratios = aspectRatios.map((ar) => ar || cellRatio);
