@@ -28,9 +28,15 @@ export interface OrderInputs<M> {
   members: readonly OrderedMember<M>[];
   /** How many list entries fit on screen. */
   visibleTiles: number;
-  /** The member who just moved from the list into the spotlight, if any. */
+  /**
+   * The member now in the spotlight, if any. Callers pass this every time;
+   * it only matters when `leaving` is a member of the list who wasn't before.
+   */
   entering?: M;
-  /** The member who just moved from the spotlight into the list, if any. */
+  /**
+   * The member who was in the spotlight last time, if any. If they've come
+   * back to the list, they take `entering`'s old slot so nothing else shifts.
+   */
   leaving?: M;
 }
 
