@@ -29,6 +29,13 @@ import {
   type RingingMediaViewModel,
 } from "../state/media/RingingMediaViewModel";
 
+// The menu's slider measures itself, which jsdom can't do
+global.ResizeObserver = class MockResizeObserver {
+  public observe(): void {}
+  public unobserve(): void {}
+  public disconnect(): void {}
+} as unknown as typeof ResizeObserver;
+
 global.IntersectionObserver = class MockIntersectionObserver {
   public observe(): void {}
   public unobserve(): void {}
@@ -126,6 +133,36 @@ test("SpotlightTile is accessible", async () => {
   // Can toggle whether the tile is expanded
   await user.click(screen.getByRole("button", { name: "Expand" }));
   expect(toggleExpanded).toHaveBeenCalled();
+});
+
+test("a user in the spotlight has the tile menu", async () => {
+  const [vm1] = aliceAndBob();
+  const user = userEvent.setup();
+  render(
+    <TooltipProvider>
+      <SpotlightTile
+        vm={
+          new SpotlightTileViewModel(
+            constant([vm1]),
+            constant(false),
+            constant("solid"),
+          )
+        }
+        targetWidth={300}
+        targetHeight={200}
+        expanded={false}
+        onToggleExpanded={null}
+        showIndicators
+        showNameTags
+        showRingingStatus
+        focusable={true}
+      />
+    </TooltipProvider>,
+  );
+
+  // The same items as a grid tile's menu, from an options button
+  await user.click(screen.getByRole("button", { name: "Options" }));
+  screen.getByRole("menuitemcheckbox", { name: "Mute for me" });
 });
 
 test("Screen share volume UI is shown when screen share has audio", async () => {

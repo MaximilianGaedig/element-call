@@ -90,10 +90,6 @@ borders don't support gradients */
   color: var(--cpd-color-icon-primary);
 }
 
-.volumeSlider {
-  width: 100%;
-}
-
 .tile .switchCamera {
   opacity: 1;
   background: var(--cpd-color-bg-action-secondary-rest);
