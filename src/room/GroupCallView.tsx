@@ -5,12 +5,6 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { type RoomState } from "matrix-js-sdk";
-import { useRoomState } from "./useRoomState";
-import { computeSlotId } from "matrix-js-sdk/lib/matrixrtc/utils";
-
-import { isBlockedInRoom } from "../state/FloorControl.ts";
-import { type LeaveReason } from "../state/CallViewModel/CallViewModel.ts";
 import {
   type FC,
   type ReactNode,
@@ -30,6 +24,8 @@ import {
   isE2EESupported as isE2EESupportedBrowser,
 } from "livekit-client";
 import { logger } from "matrix-js-sdk/lib/logger";
+import { type RoomState } from "matrix-js-sdk";
+import { computeSlotId } from "matrix-js-sdk/lib/matrixrtc/utils";
 import {
   MatrixRTCSessionEvent,
   type MatrixRTCSession,
@@ -58,6 +54,9 @@ import {
 } from "../e2ee/sharedKeyManagement";
 import { useRoomAvatar } from "./useRoomAvatar";
 import { useRoomName } from "./useRoomName";
+import { useRoomState } from "./useRoomState";
+import { isBlockedInRoom } from "../state/FloorControl.ts";
+import { type LeaveReason } from "../state/CallViewModel/CallViewModel.ts";
 import { useJoinRule } from "./useJoinRule";
 import { InviteModal } from "./InviteModal";
 import {
