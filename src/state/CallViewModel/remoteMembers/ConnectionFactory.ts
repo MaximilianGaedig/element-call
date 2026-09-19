@@ -159,7 +159,8 @@ function generateRoomOption({
     const bps = cameraBitrate.getValue();
     const codec = cameraCodec.getValue();
 
-    // Only the height, as with the defaults, so that a portrait camera
+    // Only the height, as with the defaults (see buildLiveKitOptions for why
+    // the width is left out and the type cast), so that a portrait camera
     // isn't cropped to the chosen landscape shape, unless a shape is asked for
     const [w, h] = cameraAspectRatio.getValue().split(":").map(Number);
     const aspectRatio = w > 0 && h > 0 ? w / h : undefined;

@@ -132,7 +132,9 @@ export function buildLiveKitOptions(
     // width and 16:9 aspect ratio as well, the browser would crop a portrait
     // camera down to landscape to get closer to them, whereas with just a
     // height it scales, and the camera's own shape comes through for the
-    // tiles to hug.
+    // tiles to hug. (LiveKit flattens the resolution into getUserMedia
+    // constraints field by field, so leaving out the width leaves that
+    // constraint out; only the type insists on it, hence the cast.)
     videoCaptureDefaults: {
       resolution: {
         height: basePreset.resolution.height,
