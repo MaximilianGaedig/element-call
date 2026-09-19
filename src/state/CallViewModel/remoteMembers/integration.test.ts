@@ -13,6 +13,7 @@ import { type LivekitTransportConfig } from "matrix-js-sdk/lib/matrixrtc";
 import { logger } from "matrix-js-sdk/lib/logger";
 
 import { Scope } from "../../Scope.ts";
+import { type SFUConfig } from "../../../livekit/openIDSFU.ts";
 import { ECConnectionFactory } from "./ConnectionFactory.ts";
 import { type OpenIDClientParts } from "../../../livekit/openIDSFU.ts";
 import {
@@ -115,7 +116,13 @@ test("bob, carl, then bob joining no tracks yet", () => {
     const connectionManager = createConnectionManager$({
       scope: testScope,
       connectionFactory: ecConnectionFactory,
-      localTransport$: constant(null),
+      localTransport$: constant({
+        transport: {
+          type: "livekit",
+          livekit_service_url: "https://lk.local.test",
+        },
+        sfuConfig: { url: "https://lk.local.test", jwt: "jwt" } as SFUConfig,
+      }),
       remoteTransports$: membershipsAndTransports.transports$,
       logger: logger,
       ownMembershipIdentity: ownMemberMock,
