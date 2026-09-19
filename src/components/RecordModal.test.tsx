@@ -31,5 +31,8 @@ test("RecordModal is accessible and starts with the chosen options", async () =>
 
   await user.click(screen.getByRole("checkbox", { name: "Record audio only" }));
   await user.click(screen.getByRole("button", { name: "Start recording" }));
-  expect(onStart).toHaveBeenCalledWith({ audioOnly: true });
+  expect(onStart).toHaveBeenCalledWith({
+    audioOnly: true,
+    requireConsent: false,
+  });
 });
