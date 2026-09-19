@@ -90,7 +90,7 @@ export function createRecording(
       RoomStateEvent.Update,
       RoomStateEvent.Events,
     ],
-    (room) => room!.currentState.getStateEvents(RecordingEventType, slotId),
+    (room) => room.currentState.getStateEvents(RecordingEventType, slotId),
   );
   const recording$ = computed<RecordingState | null>(() => {
     const event = event$.value;
@@ -119,6 +119,7 @@ export function createRecording(
       await send({});
       return;
     }
+    // toggle$ only offers this once a recorder is configured
     await inviteBot(room, recorder!);
     await send({ recorder: recorder! });
   };

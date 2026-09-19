@@ -28,6 +28,8 @@ Please see LICENSE in the repository root for full details.
   pointer-events: none;
 }
 
+/* While recording the dot grows to the ring's radius (9, as RecordIcon
+   draws it), filling the ring */
 .recordDot {
   fill: var(--cpd-color-icon-critical-primary);
   transition: r 0.3s ease-out;
