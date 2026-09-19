@@ -14,7 +14,8 @@ edge and infinity means the end edge. */
 
 .floating {
   position: absolute;
-  /* Shaped to --floating-aspect-ratio within the given size, when set */
+  /* Shaped to --floating-aspect-ratio within the given size, when set: the
+  fallbacks are ratios so extreme that min() keeps the given size instead */
   --inline-size: min(
     var(--floating-inline-size),
     var(--floating-block-size) * var(--floating-aspect-ratio, 1e9)
