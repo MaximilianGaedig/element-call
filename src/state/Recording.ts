@@ -60,6 +60,12 @@ export type RecordingStreams = "composite" | "separate" | "both";
  */
 export const SharedKeyEventType = "io.element.call.shared_key";
 
+/**
+ * Field of the request naming the sender's device whose layout the recorder
+ * should mirror. See docs/call_layout_mirroring.md.
+ */
+export const DirectorDeviceField = "io.element.call.director_device";
+
 /** Empty content, or no recorder, means the call isn't being recorded. */
 export interface RecordingEventContent {
   recorder?: string;
@@ -67,6 +73,7 @@ export interface RecordingEventContent {
   streams?: RecordingStreams;
   /** Whether everyone in the call must consent before it's recorded. */
   requires_consent?: boolean;
+  [DirectorDeviceField]?: string;
 }
 
 /** A recording that is in progress. */
@@ -86,6 +93,11 @@ export interface RecordingState {
   consents: Record<string, boolean>;
   /** The users in the call who have yet to consent, when it's required. */
   awaitingConsent: string[];
+  /**
+   * The device of whoever asked whose layout the recorder mirrors, if they
+   * chose to direct it.
+   */
+  directorDevice?: string;
 }
 
 /** The recorder said it couldn't record, or didn't answer in time. */
@@ -123,6 +135,8 @@ export interface RecordingOptions {
   audioOnly?: boolean;
   /** Record only once everyone in the call has consented. */
   requireConsent?: boolean;
+  /** Have the recorder mirror this device's layout decisions. */
+  mirrorLayout?: boolean;
 }
 
 /**
@@ -362,6 +376,7 @@ export function createRecording(
             (id) => !consents[id],
           )
         : [],
+      directorDevice: content[DirectorDeviceField],
     };
   });
   // The record button shows the state event, so a failed request would
@@ -493,6 +508,10 @@ export function createRecording(
           recorder: recorder!,
           ...(options?.audioOnly ? { media: "audio" } : {}),
           ...(options?.requireConsent ? { requires_consent: true } : {}),
+          // Only a video recording has a layout to mirror
+          ...(options?.mirrorLayout && !options.audioOnly
+            ? { [DirectorDeviceField]: room.client.getDeviceId()! }
+            : {}),
         });
       }
     } catch (e) {
