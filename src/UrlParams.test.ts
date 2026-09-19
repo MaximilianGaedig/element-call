@@ -359,6 +359,18 @@ describe("UrlParams", () => {
     });
   });
 
+  describe("hideRecordingWarnings", () => {
+    it("defaults to false", () => {
+      expect(computeUrlParams().hideRecordingWarnings).toBe(false);
+    });
+
+    it("is parsed on its own, leaving hideLocalTiles alone", () => {
+      const params = computeUrlParams("?hideRecordingWarnings=true");
+      expect(params.hideRecordingWarnings).toBe(true);
+      expect(params.hideLocalTiles).toBe(false);
+    });
+  });
+
   describe("noiseSuppression", () => {
     it("defaults to true", () => {
       expect(computeUrlParams().noiseSuppression).toBe(true);
