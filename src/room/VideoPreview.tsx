@@ -5,7 +5,15 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { useEffect, useMemo, useRef, type FC, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FC,
+  type ReactNode,
+  type SyntheticEvent,
+} from "react";
 import useMeasure from "react-use-measure";
 import { facingModeFromLocalTrack, type LocalVideoTrack } from "livekit-client";
 import classNames from "classnames";
@@ -44,6 +52,14 @@ export const VideoPreview: FC<Props> = ({
   const [previewRef, previewBounds] = useMeasure();
 
   const videoEl = useRef<HTMLVideoElement | null>(null);
+  // The preview takes the video's shape (16:9 until it's known), so that a
+  // portrait camera isn't cropped to landscape
+  const [aspectRatio, setAspectRatio] = useState(16 / 9);
+  const onVideoResize = (e: SyntheticEvent<HTMLVideoElement>): void => {
+    const { videoWidth, videoHeight } = e.currentTarget;
+    if (videoWidth > 0 && videoHeight > 0)
+      setAspectRatio(videoWidth / videoHeight);
+  };
 
   useEffect(() => {
     // Effect to connect the videoTrack with the video element.
@@ -61,8 +77,14 @@ export const VideoPreview: FC<Props> = ({
   );
 
   return (
-    <div className={classNames(styles.preview)} ref={previewRef}>
+    <div
+      className={classNames(styles.preview)}
+      ref={previewRef}
+      style={{ aspectRatio }}
+    >
       <video
+        onLoadedMetadata={onVideoResize}
+        onResize={onVideoResize}
         className={
           videoTrack &&
           facingModeFromLocalTrack(videoTrack).facingMode === "user"
