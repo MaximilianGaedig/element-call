@@ -10,6 +10,7 @@
 }
 
 .reaction {
+  font-family: "Twemoji", var(--cpd-font-family-sans);
   font-size: 32pt;
   /* Reactions are "active" for 3 seconds (as per REACTION_ACTIVE_TIME_MS), give a bit more time for it to fade out. */
   animation-duration: 4s;

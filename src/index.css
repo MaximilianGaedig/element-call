@@ -18,6 +18,25 @@ Please see LICENSE in the repository root for full details.
 @import url("@vector-im/compound-design-tokens/assets/web/css/compound-design-tokens.css") layer(compound);
 @import url("@vector-im/compound-web/dist/style.css") layer(compound.components);
 
+/* Twemoji, bundled so that environments without a system colour-emoji font
+(notably WPE WebKit on Linux, which the bridge records with) still render
+reactions and other emoji. It goes first in the font stacks below, since
+WebKit's emoji font matching doesn't reliably reach a face buried at the end,
+so it's confined to the emoji code points: besides emoji it carries glyphs for
+the digits, # and * (the bases of keycap emoji) that Chrome renders as blank
+boxes, and everything else must fall through to Inter as usual. */
+@font-face {
+  font-family: "Twemoji";
+  /* block, not swap: a fallback face would draw tofu (or the platform's own
+  emoji) and then swap, which flashes on each reaction */
+  font-display: block;
+  src: url("./fonts/Twemoji_Mozilla/TwemojiMozilla-colr.woff2") format("woff2");
+  unicode-range:
+    U+00A9, U+00AE, U+200D, U+203C, U+2049, U+20E3, U+2122, U+2139, U+2190-21FF,
+    U+2300-23FF, U+24C2, U+25AA-25FE, U+2600-27BF, U+2934-2935, U+2B05-2B55,
+    U+3030, U+303D, U+3297, U+3299, U+FE0F, U+1F000-1FAFF, U+E0020-E007F;
+}
+
 :root {
   --font-scale: 1;
   --font-size-micro: calc(10px * var(--font-scale));
@@ -128,13 +147,23 @@ body,
 /* On Android and iOS, prefer native system fonts. The global.css file of
 Compound Web is where these variables ultimately get consumed to set the page's
 font-family. */
+/* Compound's own sans stack, with Twemoji in front of it */
+body[data-platform="desktop"] {
+  --cpd-font-family-sans:
+    "Twemoji", Inter, "Inter Fallback: Helvetica Neue",
+    "Inter Fallback: Segoe UI", "Inter Fallback: Roboto",
+    "Inter Fallback: Ubuntu", "Inter Fallback: Fira Sans",
+    "Inter Fallback: Noto Sans", "Inter Fallback: Arial", "Helvetica Neue",
+    "Segoe UI", Roboto, Ubuntu, "Fira Sans", "Noto Sans", Arial, sans-serif;
+}
+
 body[data-platform="android"] {
-  --cpd-font-family-sans: "Roboto", "Noto", "Inter", sans-serif;
+  --cpd-font-family-sans: "Twemoji", "Roboto", "Noto", "Inter", sans-serif;
 }
 
 body[data-platform="ios"] {
   --cpd-font-family-sans:
-    -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+    "Twemoji", -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
 }
 
 @layer compound-legacy {
