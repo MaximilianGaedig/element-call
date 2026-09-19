@@ -62,6 +62,7 @@ memberships):
       "type": "pin",
       "user_id": "@bob:example.org",
       "device_id": "BOBDEV",
+      "media": "camera",
       "pinned": true
     }
   }
@@ -88,28 +89,34 @@ clear, as the request itself was.
 ### Operations
 
 These describe what the director _did_, not what their screen looks like:
-the recorder's viewport is a different size, it has no local tile, and it
-may hold tiles the director hasn't seen yet, so copying the director's
+the recorder's viewport is a different size, it shows no tile of its own
+where the director sees theirs, and it may hold tiles the director hasn't
+seen yet, so copying the director's
 layout verbatim would not survive contact. Each operation is something the
 recorder can do to its own layout in the same terms Element Call offers its
 users, and the result is close enough to let a director frame the recording
 without being at the controls.
 
-A tile is named by the user and device whose media it shows, the same pair
-that identifies the participant's `m.rtc.member` / `m.call.member` event.
-`screen_share: true` names that participant's screen share instead of
-their camera.
+A tile is named by the participant whose media it shows and which of
+their streams it is: `user_id` and `device_id`, the pair that identifies
+the participant's `m.rtc.member` / `m.call.member` event; `media`,
+`camera` (the default) or `screen_share`; and, where a device publishes
+more than one stream of that kind (a phone sending its front and back
+cameras at once, say), `track`, the ID of the published track (the
+LiveKit track SID, which every subscriber sees alike). Absent, `track`
+means the device's only stream of that kind, which is all Element Call
+publishes today.
 
-| `type`               | Fields                                                                                   | Meaning                                                                                                                                                                                                                                                                                                                                |
-| -------------------- | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `layout`             | `layout`: `grid` or `spotlight`                                                          | The director switched layout.                                                                                                                                                                                                                                                                                                          |
-| `spotlight_expanded` | `expanded` (boolean)                                                                     | The director expanded the spotlight to fill the window, or shrank it back.                                                                                                                                                                                                                                                             |
-| `move_tile`          | `user_id`, `device_id`, `screen_share`?, `index`, `in`?: `grid` (default) or `spotlight` | The director dragged the tile into position `index` (from 0) among the tiles of the grid, or of the spotlight when it shows several. The index counts every tile the director sees other than their own, since the recorder has none of its own. The recorder moves the same tile to that index, or to the end if its list is shorter. |
-| `pin`                | `user_id`, `device_id`, `pinned` (boolean)                                               | The director pinned the participant to the spotlight, or unpinned them.                                                                                                                                                                                                                                                                |
-| `enlarge`            | `user_id`, `device_id`, `screen_share`?, `enlarged` (boolean)                            | The director enlarged the tile to twice its size in the grid, or shrank it back.                                                                                                                                                                                                                                                       |
-| `tile_options`       | any of `hug_video`, `crop_video`, `relaxed_grid`, `enlarge_active_speakers` (booleans)   | The director changed the settings that shape and pack tiles: shrinking tiles to their video, cropping video to fill the tile, packing tiles in rows rather than columns, and enlarging whoever is speaking. Only the settings that changed are present.                                                                                |
-| `rail_width`         | `width` (integer, CSS pixels)                                                            | The director resized the rail of tiles beside the landscape spotlight. The recorder applies it within whatever limits its own window allows.                                                                                                                                                                                           |
-| `volume`             | `user_id`, `device_id`, `volume` (integer, percent)                                      | The director changed how loudly the participant plays for them: 0 is muted, 100 unchanged, up to 200. Since the recording carries what the recorder hears, this is how a director turns somebody down.                                                                                                                                 |
+| `type`               | Fields                                                                                 | Meaning                                                                                                                                                                                                                                                                                                                                                                                      |
+| -------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `layout`             | `layout`: `grid` or `spotlight`                                                        | The director switched layout.                                                                                                                                                                                                                                                                                                                                                                |
+| `spotlight_expanded` | `expanded` (boolean)                                                                   | The director expanded the spotlight to fill the window, or shrank it back.                                                                                                                                                                                                                                                                                                                   |
+| `move_tile`          | tile, `index`, `in`?: `grid` (default) or `spotlight`                                  | The director dragged the tile into position `index` (from 0) among the tiles of the grid, or of the spotlight when it shows several. The index counts every tile the director sees, their own included: the recorder sees the director's camera as one more participant, and shows no tile of its own. The recorder moves the same tile to that index, or to the end if its list is shorter. |
+| `pin`                | tile, `pinned` (boolean)                                                               | The director pinned the stream to the spotlight, or unpinned it.                                                                                                                                                                                                                                                                                                                             |
+| `enlarge`            | tile, `enlarged` (boolean)                                                             | The director enlarged the tile to twice its size in the grid, or shrank it back.                                                                                                                                                                                                                                                                                                             |
+| `tile_options`       | any of `hug_video`, `crop_video`, `relaxed_grid`, `enlarge_active_speakers` (booleans) | The director changed the settings that shape and pack tiles: shrinking tiles to their video, cropping video to fill the tile, packing tiles in rows rather than columns, and enlarging whoever is speaking. Only the settings that changed are present.                                                                                                                                      |
+| `rail_width`         | `width` (integer, CSS pixels)                                                          | The director resized the rail of tiles beside the landscape spotlight. The recorder applies it within whatever limits its own window allows.                                                                                                                                                                                                                                                 |
+| `volume`             | tile, `volume` (integer, percent)                                                      | The director changed how loudly the participant's stream plays for them: 0 is muted, 100 unchanged, up to 200. Since the recording carries what the recorder hears, this is how a director turns somebody down.                                                                                                                                                                              |
 
 ### Catching up
 
@@ -147,7 +154,8 @@ them.
 ## Potential issues
 
 The recorder's view is not the director's, so the mirror is approximate.
-The director's own tile is not in the recording; their window is a
+The director's own tile sits at an end of their grid until they drag it,
+while the recorder orders it like anyone else's; their window is a
 different shape, so the recorder may be in a portrait spotlight where the
 director sees a grid; and a participant who joins between a `move_tile`
 and its arrival lands wherever Element Call's ordering puts them. Sending
