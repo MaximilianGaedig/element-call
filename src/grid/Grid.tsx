@@ -710,7 +710,7 @@ export function Grid<
               />
             )).props as { children: ReactElement[] }
           ).children,
-        ].sort((a, b) => Number(a.key) - Number(b.key))
+        ].sort((a, b) => String(a.key).localeCompare(String(b.key)))
       }
     </div>
   );
