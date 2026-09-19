@@ -180,6 +180,7 @@ test("packed tiles never overlap", () => {
 test("a few tiles get cells above the minimum area, many get the minimum", () => {
   const few = arrangeTiles(1280, 720, 4);
   expect(few.tileWidth * few.tileHeight).toBeGreaterThan(few.minTileArea);
+  // Columns are whole, so a paged grid's tiles land a little over the minimum
   const many = arrangeTiles(1280, 720, 40);
   expect(many.tileWidth * many.tileHeight).toBeLessThanOrEqual(
     many.minTileArea * 1.2,
