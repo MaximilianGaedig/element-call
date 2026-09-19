@@ -185,6 +185,21 @@ describe("createFloorControl", () => {
     expect(fc.moderation$("@bob:e:B", "@bob:e").value.explicit).toBe(false);
   });
 
+  it("drops a device's entry once its volume is back to 1x", async () => {
+    const { room, sendStateEvent } = setup(
+      { devices: { "@bob:e:B": { volume: 32768 } } },
+      ["@mod:e"],
+    );
+    const fc = createFloorControl(testScope(), room, "@mod:e", slot);
+    await fc.moderator$("@bob:e:B", "@bob:e").value!.setVolume(1);
+    expect(sendStateEvent).toHaveBeenLastCalledWith(
+      "!room",
+      FloorControlEventType,
+      {},
+      slot,
+    );
+  });
+
   it("keeps a moderator's own entry, since defaults don't apply to them", async () => {
     const { room, sendStateEvent } = setup(
       { defaults: { audio_muted: true } },

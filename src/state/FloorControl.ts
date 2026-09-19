@@ -207,6 +207,8 @@ export function createFloorControl(
   const baseline: DeviceControlContent = {
     audio_muted: false,
     video_muted: false,
+    // No volume means 1x, so a volume dragged back to 1x is dropped too
+    volume: volumeUnit,
     pinned: false,
   };
   const setDevice = async (
