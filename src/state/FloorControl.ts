@@ -29,16 +29,31 @@ export const FloorControlEventType = "org.matrix.rtc.floor_control";
  */
 export const volumeUnit = 65536;
 
-/** What floor control asks of one device, or of all devices by default. */
-export interface DeviceControlContent {
+/** What floor control asks of a stream's audio and video. */
+export interface StreamControlContent {
   audio_muted?: boolean;
   video_muted?: boolean;
   /**
-   * A multiplier to apply to the device's audio, in units of volumeUnit:
+   * A multiplier to apply to the stream's audio, in units of volumeUnit:
    * 0 is silent, 65536 is unchanged. Higher is louder, but clients need not
    * honour more than twice that.
    */
   volume?: number;
+}
+
+/**
+ * What floor control asks of one device, or of all devices by default. The
+ * stream controls at this level are for its cameras and microphones.
+ */
+export interface DeviceControlContent extends StreamControlContent {
+  /** The same for what the device shares: its screen and the audio with it. */
+  screen_share?: StreamControlContent;
+  /**
+   * Refinements for single streams, by stream ID (see
+   * docs/msc4196_matrixrtc_m_call.md), over those of the stream's kind.
+   * Device entries only. We show no named streams, so we never read these.
+   */
+  streams?: Record<string, StreamControlContent>;
   /** Whether the device is pinned to the spotlight for everyone. */
   pinned?: boolean;
   /**
@@ -88,12 +103,16 @@ export interface BridgeContent {
  */
 export const RecordingEventType = "org.matrix.rtc.recording";
 
-/** What floor control asks of a device, with the defaults applied. */
-export interface Moderation {
+/** What floor control asks of a stream, with the defaults applied. */
+export interface StreamModeration {
   audioMuted: boolean;
   videoMuted: boolean;
-  /** A multiplier to apply to the device's audio, if a moderator set one. */
+  /** A multiplier to apply to the stream's audio, if a moderator set one. */
   volume: number | undefined;
+}
+
+/** What floor control asks of a device, with the defaults applied. */
+export interface Moderation extends StreamModeration {
   /** Whether the device's tile is hidden, by a moderator or auditorium mode. */
   hidden: boolean;
   /** Whether a moderator has shut the device out of the call. */
@@ -118,11 +137,15 @@ export const unmoderated: Moderation = {
   explicit: false,
 };
 
-/** Actions a moderator can take on a device. */
-export interface ModeratorControls {
+/** Actions a moderator can take on a stream. */
+export interface StreamModeratorControls {
   setAudioMuted: (muted: boolean) => Promise<void>;
   setVideoMuted: (muted: boolean) => Promise<void>;
   setVolume: (volume: number) => Promise<void>;
+}
+
+/** Actions a moderator can take on a device. */
+export interface ModeratorControls extends StreamModeratorControls {
   setPinned: (pinned: boolean) => Promise<void>;
   setHidden: (hidden: boolean) => Promise<void>;
   setBlocked: (blocked: boolean) => Promise<void>;
@@ -175,6 +198,16 @@ export interface FloorControl {
     mediaId: string,
     userId: string,
   ) => Behavior<ModeratorControls | null>;
+  /** What floor control asks of what the given device shares. */
+  screenShareModeration$: (
+    mediaId: string,
+    userId: string,
+  ) => Behavior<StreamModeration>;
+  /** Controls for what the given device shares, if we may moderate. */
+  screenShareModerator$: (
+    mediaId: string,
+    userId: string,
+  ) => Behavior<StreamModeratorControls | null>;
   /**
    * Kicking, banning and promoting the given user to moderator, if the local
    * user has the power to. These set the state events directly rather than
@@ -403,6 +436,26 @@ export function createFloorControl(
     if (Object.keys(devices).length === 0) delete next.devices;
     await send(next);
   };
+  const setScreenShare = async (
+    id: string,
+    userId: string,
+    patch: StreamControlContent,
+  ): Promise<void> => {
+    const content = content$.peek();
+    const byDefault: StreamControlContent = {
+      audio_muted: false,
+      video_muted: false,
+      volume: volumeUnit,
+      ...content.defaults?.screen_share,
+    };
+    const merged = { ...content.devices?.[id]?.screen_share, ...patch };
+    for (const key of Object.keys(merged) as (keyof StreamControlContent)[])
+      if (merged[key] === undefined || merged[key] === byDefault[key])
+        delete merged[key];
+    await setDevice(id, userId, {
+      screen_share: Object.keys(merged).length === 0 ? undefined : merged,
+    });
+  };
   const setDefaults = async (patch: DeviceControlContent): Promise<void> => {
     const content = content$.peek();
     await send({ ...content, defaults: { ...content.defaults, ...patch } });
@@ -478,6 +531,36 @@ export function createFloorControl(
               setPinned: async (pinned) => setDevice(id, userId, { pinned }),
               setHidden: async (hidden) => setDevice(id, userId, { hidden }),
               setBlocked: async (blocked) => setDevice(id, userId, { blocked }),
+            }
+          : null,
+      ),
+    screenShareModeration$: (id, userId) =>
+      computed(() => {
+        const { defaults, devices } = content$.value;
+        // Field by field: the device's entry, its user's, then the defaults
+        const share: StreamControlContent = {
+          ...defaults?.screen_share,
+          ...devices?.[wildcardMediaId(userId)]?.screen_share,
+          ...devices?.[id]?.screen_share,
+        };
+        return {
+          audioMuted: share.audio_muted ?? false,
+          videoMuted: share.video_muted ?? false,
+          volume: toMultiplier(share.volume),
+        };
+      }),
+    screenShareModerator$: (id, userId) =>
+      computed(() =>
+        canModerate$.value
+          ? {
+              setAudioMuted: async (muted) =>
+                setScreenShare(id, userId, { audio_muted: muted }),
+              setVideoMuted: async (muted) =>
+                setScreenShare(id, userId, { video_muted: muted }),
+              setVolume: async (volume) =>
+                setScreenShare(id, userId, {
+                  volume: Math.round(volume * volumeUnit),
+                }),
             }
           : null,
       ),

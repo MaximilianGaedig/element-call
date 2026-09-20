@@ -251,6 +251,44 @@ describe("createFloorControl", () => {
     expect(fc.moderation$("@bob:e:B", "@bob:e").value.hidden).toBe(false);
   });
 
+  it("moderates what a device shares apart from its microphone", async () => {
+    const { room, sendStateEvent } = setup(
+      {
+        defaults: { audio_muted: true, screen_share: { volume: 32768 } },
+        devices: {
+          "@alice:e:*": { screen_share: { audio_muted: true } },
+          "@alice:e:A": { audio_muted: false, screen_share: { volume: 65536 } },
+        },
+      },
+      ["@mod:e"],
+    );
+    const fc = createFloorControl(testScope(), room, "@mod:e", slot);
+    // Field by field: the device's entry, its user's, then the defaults
+    expect(fc.screenShareModeration$("@alice:e:A", "@alice:e").value).toEqual({
+      audioMuted: true,
+      videoMuted: false,
+      volume: 1,
+    });
+    // The microphone's mute by default says nothing about a share
+    expect(fc.screenShareModeration$("@bob:e:B", "@bob:e").value).toEqual({
+      audioMuted: false,
+      videoMuted: false,
+      volume: 0.5,
+    });
+    // Back to what it'd get anyway, so the entry goes, and the rest stays
+    const controls = fc.screenShareModerator$("@alice:e:A", "@alice:e").value!;
+    await controls.setVolume(0.5);
+    expect(sendStateEvent.mock.lastCall![2].devices["@alice:e:A"]).toEqual({
+      audio_muted: false,
+    });
+    room.emit(RoomStateEvent.Update, null!);
+    await controls.setVideoMuted(true);
+    expect(sendStateEvent.mock.lastCall![2].devices["@alice:e:A"]).toEqual({
+      audio_muted: false,
+      screen_share: { video_muted: true },
+    });
+  });
+
   it("reports blocked devices, including through the wildcard", () => {
     const content = {
       devices: {

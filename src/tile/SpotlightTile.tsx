@@ -520,6 +520,20 @@ const ScreenShareVolumeButton: FC<ScreenShareVolumeButtonProps> = ({ vm }) => {
   );
   const onVolumeCommit = useCallback(() => vm.commitPlaybackVolume(), [vm]);
 
+  // For everyone: the share's audio is moderated apart from the microphone
+  // of whoever shares it
+  const moderation = useBehavior(vm.moderation$);
+  const moderator = useBehavior(vm.moderator$);
+  const [draftModeratedVolume, setDraftModeratedVolume] = useState<
+    number | null
+  >(null);
+  const onCommitModeratedVolume = useCallback(() => {
+    if (draftModeratedVolume !== null) {
+      void moderator?.setVolume(draftModeratedVolume);
+      setDraftModeratedVolume(null);
+    }
+  }, [moderator, draftModeratedVolume]);
+
   return (
     audioEnabled && (
       <Menu
@@ -555,6 +569,37 @@ const ScreenShareVolumeButton: FC<ScreenShareVolumeButtonProps> = ({ vm }) => {
             onValueCommit={onVolumeCommit}
           />
         </MenuItem>
+        {moderator && (
+          <>
+            <ToggleMenuItem
+              Icon={VolumeOffIcon}
+              label={t("video_tile.mute_audio_for_everyone")}
+              checked={moderation.audioMuted}
+              onSelect={(e) => {
+                e.preventDefault();
+                void moderator.setAudioMuted(!moderation.audioMuted);
+              }}
+            />
+            <MenuItem
+              as="div"
+              className={styles.volumeMenuItem}
+              onSelect={null}
+              label={null}
+              hideChevron={true}
+            >
+              <Slider
+                className={styles.volumeSlider}
+                label={t("video_tile.volume_for_everyone")}
+                value={draftModeratedVolume ?? moderation.volume ?? 1}
+                min={0}
+                max={2}
+                step={0.01}
+                onValueChange={setDraftModeratedVolume}
+                onValueCommit={onCommitModeratedVolume}
+              />
+            </MenuItem>
+          </>
+        )}
       </Menu>
     )
   );

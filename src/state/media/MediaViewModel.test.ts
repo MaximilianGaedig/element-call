@@ -24,7 +24,8 @@ import {
   mockRemoteParticipant,
   mockRemoteScreenShare,
 } from "../../utils/test";
-import { constant } from "../Behavior";
+import { constant, state } from "../Behavior";
+import { type StreamModeration, unmoderated } from "../FloorControl";
 
 global.MediaStreamTrack = class {} as unknown as {
   new (): MediaStreamTrack;
@@ -91,6 +92,31 @@ test("control a participant's volume", () => {
       g: 0.8,
     });
   });
+});
+
+test("a moderator's mute and volume apply to a screen share's audio", () => {
+  const setVolumeSpy = vi.fn();
+  const moderation$ = state<StreamModeration>({
+    ...unmoderated,
+    volume: 0.5,
+  });
+  const vm = mockRemoteScreenShare(
+    rtcMembership,
+    {},
+    mockRemoteParticipant({ setVolume: setVolumeSpy }),
+    undefined,
+    moderation$,
+  );
+  expect(setVolumeSpy).toHaveBeenLastCalledWith(
+    0.5,
+    Track.Source.ScreenShareAudio,
+  );
+  moderation$.value = { ...unmoderated, audioMuted: true, videoMuted: true };
+  expect(setVolumeSpy).toHaveBeenLastCalledWith(
+    0,
+    Track.Source.ScreenShareAudio,
+  );
+  expect(vm.videoEnabled$.value).toBe(false);
 });
 
 test("control a participant's screen share volume", () => {

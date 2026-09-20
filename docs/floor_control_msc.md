@@ -43,7 +43,15 @@ the same room.
       },
       "@bob:example.org:DEVICEID": {
         "video_muted": true,
-        "volume": 32768
+        "volume": 32768,
+        "screen_share": {
+          "volume": 16384
+        },
+        "streams": {
+          "camera:2": {
+            "video_muted": false
+          }
+        }
       }
     }
   }
@@ -62,6 +70,18 @@ the same room.
     65536 leaves the volume unchanged. Values above 65536 amplify; clients
     need not honour more than 131072 (twice). An integer because Matrix
     events cannot carry floats.
+  - `screen_share` (object): `audio_muted`, `video_muted` and `volume` as
+    above, for the device's `m.screenshare` streams: what it shares, and the
+    audio shared with it. The fields at the top level of an entry are for its
+    `m.usermedia` streams, its cameras and microphones, and say nothing about
+    what it shares: muting a presenter's microphone leaves the sound of the
+    video they're presenting alone, and the two are levelled apart.
+  - `streams` (object, device entries only): refinements for single streams,
+    keyed by stream ID (see "Media streams" in our
+    [working copy of MSC4196](./msc4196_matrixrtc_m_call.md#media-streams)),
+    each with `audio_muted`, `video_muted` and `volume` as above. This is how
+    one of two cameras, or one of two shared windows, is controlled by
+    itself. An entry for a stream the device isn't publishing does nothing.
   - `pinned` (boolean): the device is pinned to the spotlight for everyone, as
     if each viewer had pinned it themselves.
   - `hidden` (boolean): the device's tile is not shown to anyone. The device
@@ -75,6 +95,14 @@ the same room.
 - A device ID of `*` (for example `@alice:example.org:*`) makes an entry apply
   to all of that user's devices. Where a device also has its own entry, its
   fields take precedence over the wildcard's, field by field.
+- A stream's effective controls are, field by field: its entry under the
+  device's `streams`, if it has a stream ID; then the controls for streams of
+  its purpose (the top level for `m.usermedia`, `screen_share` for
+  `m.screenshare`) in the device's entry, in its user's `*` entry, and in
+  `defaults`. Stream IDs are chosen by the publisher, who could dodge a control
+  on one by publishing under another, so controls that must hold (a mute,
+  above all) belong at the level of the purpose, which covers whatever the
+  device publishes; `streams` is for refining them.
 - A device's effective controls are its own entry, falling back to `defaults`
   for any field the entry does not set. This applies to everyone in the room,
   moderators included: anyone who can send this event can control anyone,
@@ -140,11 +168,19 @@ the effective controls to every device they
 render: mute the audio of an `audio_muted` device, not display the video of a
 `video_muted` device, and scale the audio of a device with a `volume` by that
 factor. This protects the room even before the controlled device has reacted.
+The same goes for each of a device's streams under its own effective
+controls: a shared screen's audio and video under `screen_share`, and a
+stream with an entry in `streams` under that. Anything else that renders the
+call, such as a recorder or a bridge mixing its audio for a phone line,
+applies them to what it renders too.
 
 A device whose audio is controlled must stop publishing it, and must not let
 its user unmute while the control is in place. It should make clear that a
 moderator did this rather than the user. When the control is lifted the device
-stays muted until its user chooses to unmute.
+stays muted until its user chooses to unmute. The audio shared with a screen
+can't always be stopped apart from the screen, so a device whose
+`screen_share` audio is controlled may carry on publishing it; viewers
+silence it.
 
 A device whose video is controlled keeps its camera as it is: viewers simply do
 not display the video. The device should warn its user that nobody can see

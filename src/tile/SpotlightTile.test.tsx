@@ -295,6 +295,46 @@ test("Screen share volume UI is shown when screen share has audio", async () => 
   expect(screen.queryByRole("button", { name: /volume/i })).toBeInTheDocument();
 });
 
+test("A moderator can mute a screen share's audio for everyone", async () => {
+  const user = userEvent.setup();
+  const vm = mockRemoteScreenShare(
+    mockRtcMembership("@alice:example.org", "AAAA"),
+    {},
+    mockRemoteParticipant({}),
+  );
+  vi.spyOn(vm, "audioEnabled$", "get").mockReturnValue(constant(true));
+  const setAudioMuted = vi.fn().mockResolvedValue(undefined);
+  vi.spyOn(vm, "moderator$", "get").mockReturnValue(
+    constant({ setAudioMuted, setVideoMuted: vi.fn(), setVolume: vi.fn() }),
+  );
+  render(
+    <TooltipProvider>
+      <SpotlightTile
+        vm={
+          new SpotlightTileViewModel(
+            constant([vm]),
+            constant(false),
+            constant("solid"),
+          )
+        }
+        targetWidth={300}
+        targetHeight={200}
+        expanded={false}
+        onToggleExpanded={vi.fn()}
+        showIndicators
+        showNameTags
+        showRingingStatus
+        focusable
+      />
+    </TooltipProvider>,
+  );
+  await user.click(screen.getByRole("button", { name: /volume/i }));
+  await user.click(
+    screen.getByRole("menuitemcheckbox", { name: "Mute for everyone" }),
+  );
+  expect(setAudioMuted).toHaveBeenCalledWith(true);
+});
+
 test("Screen share volume UI is hidden when screen share has no audio", async () => {
   const vm = mockRemoteScreenShare(
     mockRtcMembership("@alice:example.org", "AAAA"),
