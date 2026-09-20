@@ -29,8 +29,11 @@ export interface TileRef {
   device_id: string;
   /** Which of the device's streams; the camera when absent. */
   media?: "camera" | "screen_share";
-  /** The published track, when a device has several of that kind. */
-  track?: string;
+  /**
+   * The stream's ID (docs/msc4196_matrixrtc_m_call.md), when the device
+   * publishes several of that kind; its default stream when absent.
+   */
+  stream?: string;
 }
 
 /** Something the director did to their layout. */
@@ -111,7 +114,7 @@ export interface LayoutMirror {
 /** The key two ops of a coalesced type replace each other under. */
 function coalesceKey(op: LayoutOp): string {
   return "user_id" in op
-    ? `${op.type}:${op.user_id}:${op.device_id}:${op.media ?? "camera"}:${op.track ?? ""}`
+    ? `${op.type}:${op.user_id}:${op.device_id}:${op.media ?? "camera"}:${op.stream ?? ""}`
     : op.type;
 }
 

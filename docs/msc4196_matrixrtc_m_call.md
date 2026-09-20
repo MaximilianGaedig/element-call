@@ -1,5 +1,16 @@
 # MSC4196: Voice and video calling application for MatrixRTC
 
+> **Element Call's working copy.** This is [MSC4196] as of upstream commit
+> `2407455cb5` (8 Sep 2026, branch `hughns/matrixrtc-m-call` of
+> matrix-org/matrix-spec-proposals) with one change to be proposed upstream:
+> the sections on **media streams** ("Media streams", "Stream IDs over
+> LiveKit", the three "Alternatives" about naming streams, and the two
+> "Security considerations" about stream IDs). Everything else is upstream's
+> text, byte for byte: the commit before the one that added this note holds
+> the original, so `git diff` between the two is the proposed change.
+>
+> [MSC4196]: https://github.com/matrix-org/matrix-spec-proposals/pull/4196
+
 [MSC4143] introduces MatrixRTC as an extensible framework for real-time communication in Matrix.
 MatrixRTC separates the transport of RTC data between members from the applications that use this
 data to build user experiences. This proposal introduces such an application for the concrete use
@@ -138,6 +149,56 @@ the following additional codes:
 
 [below]: #faking-intent
 
+### Media streams
+
+What a member contributes to a call is a set of *media streams*. A stream is one source of media as
+a user thinks of it: a camera together with the microphone that goes with it, or a shared screen
+together with the audio shared with it. Each stream has:
+
+- a *purpose*, either `m.usermedia` (a camera and/or microphone) or `m.screenshare` (a shared
+  screen, window or tab, and/or its audio). These are the purposes of [MSC3077], for the same
+  reason: a receiver lays out and mixes the two differently.
+- at most one video track and at most one audio track.
+- optionally, a *stream ID*.
+
+A member MAY publish any number of streams of either purpose at once, for instance the front and
+back cameras of a phone, a camera and a document camera, or two shared windows.
+
+Other parts of Matrix need to refer to one particular stream: to mute or hide it for everyone, to
+set its volume, to pin it, to say which stream a recording or a caption came from. Transports
+identify media in their own terms, which are typically assigned by the transport, differ from one
+subscriber or connection to the next, and change whenever the media is republished. The stream ID
+is the stable, transport-independent name for a stream instead:
+
+- A stream ID is a string of 1 to 64 characters from `[A-Za-z0-9._:-]`, chosen by the publishing
+  client, and unique among the streams that the member's device has published at the same time,
+  whatever their purpose.
+- A client SHOULD give a source the same stream ID whenever it publishes it again during a session,
+  and across sessions where it can (after a reconnection, after stopping and restarting a screen
+  share, after leaving and rejoining), so that something said about the stream continues to apply to it.
+- The audio and the video of a stream carry the same stream ID. This is what makes the audio shared
+  with a screen distinguishable from the microphone of whoever shares it, and one shared screen's
+  audio from another's.
+- A stream without a stream ID is the device's *default stream* of its purpose. A client that
+  publishes a single stream of a purpose MAY leave it without an ID, which is what clients
+  predating stream IDs do. A client that publishes more than one stream of a purpose at once
+  SHOULD give every one of them an ID, as otherwise the default stream can't be told apart from
+  the purpose as a whole.
+- Stream IDs are opaque. Clients MUST NOT derive meaning from them, and MUST NOT put anything in
+  them that identifies the user or their hardware (such as a device label); see [below](#stream-ids-are-visible-to-the-transport).
+
+A stream is therefore referred to from Matrix by the user ID and device ID of the `m.rtc.member`
+event that publishes it (rather than its `member.id`, which is random for every join), the
+stream's purpose, and its stream ID if it has one. A reference without a stream ID means the
+device's default stream of that purpose. Events that refer to streams SHOULD treat a reference to
+a stream ID that the device isn't publishing as referring to nothing, rather than falling back to
+another stream.
+
+Stream IDs are deliberately not announced in `m.rtc.member` events; see
+[Alternatives](#announcing-streams-in-mrtcmember-events).
+
+[MSC3077]: https://github.com/matrix-org/matrix-spec-proposals/pull/3077
+
 ### Usage with the LiveKit transport from [MSC4195]
 
 As of writing, the only known MatrixRTC transport is the `m.livekit` transport from [MSC4195].
@@ -148,10 +209,25 @@ to [subscribe] to other member's published audio and video. Clients can map Live
 and their media tracks to `m.rtc.member` events by means of the procedure for deriving LiveKit
 participant identities given in [MSC4195].
 
+#### Stream IDs over LiveKit
+
+With the `m.livekit` transport, a stream's purpose is given by the [source] of its tracks: tracks
+with the sources `camera` and `microphone` belong to an `m.usermedia` stream, and tracks with
+the sources `screen_share` and `screen_share_audio` to an `m.screenshare` stream.
+
+The stream ID is the track's [name]. A publisher sets the same name on a stream's audio and
+video track, and SHOULD also pass it as the `stream` publish option, which has LiveKit keep the
+two tracks synchronised. Tracks with an empty name belong to the participant's default stream of
+their purpose. The track SID MUST NOT be used to refer to a stream from Matrix: the SFU assigns a
+new one each time a track is published.
+
+[source]: https://docs.livekit.io/reference/client-sdk-js/enums/Track.Source.html
+[name]: https://docs.livekit.io/reference/client-sdk-js/interfaces/TrackPublishOptions.html#name
+
 Note that future transports might lack some or all of the capabilities listed above. Therefore,
 the `m.call` application is explicitly only deemed compatible with the `m.livekit` transport for
 now. If a future MSC introduces another transport, that MSC will have to evaluate the transport's
-fitness for use in `m.call`.
+fitness for use in `m.call`, including how it carries stream IDs.
 
 [LiveKit SDKs]: https://docs.livekit.io/transport/sdk-platforms/
 [publish]: https://docs.livekit.io/transport/media/publish/
@@ -176,6 +252,30 @@ Instead of having clients pass in the initial `m.rtc.slot` event via `initial_st
 further complicate the already complex steps the server has to run through during room
 creation though.
 
+### Announcing streams in `m.rtc.member` events
+
+A member could list its streams, with their IDs and purposes, in its `m.rtc.member` event. Every
+camera switched on and every screen share started or stopped would then be an update to the
+member event, sent to the whole room rather than the session, and media would routinely arrive
+before the event describing it, so that receivers would need a rule for undescribed media
+anyway. It would also disclose to the room what a member is sharing, which `intent` already
+raises concerns about. Carrying the ID with the media has none of these problems, and the
+purpose is something every transport fit for calling can already express.
+
+### A membership per stream
+
+[MSC4143] already lets a device hold several memberships, and each additional stream could be
+published under one of its own, which needs no new concept. Each membership needs its own
+connection to the transport and its own encryption keys, though, and `member.id` is random for
+every join, so that nothing said about a stream would survive its publisher rejoining.
+
+### Referring to streams by the transport's identifiers
+
+Events could name a stream by whatever the transport calls it, such as a LiveKit track SID. These
+are assigned by the transport and change when media is republished, so a mute or a volume set
+on a stream would lapse when its publisher reconnected or restarted their screen share, and
+every event format referring to streams would become specific to a transport.
+
 ## Security considerations
 
 ### Metadata leakage through intent
@@ -199,10 +299,30 @@ This could be achieved for instance by presenting different text labels ("Incomi
 Clients MAY allow their users to override any default settings before joining a call, so that a
 user can accept an incoming video call without sharing their own video, for example.
 
+### Stream IDs are chosen by the publisher
+
+Nothing stops a client from publishing a stream under a new stream ID. Anything that restricts a
+member through a reference to one of their streams, such as a moderator muting it, can therefore
+be evaded by the restricted member. Proposals that refer to streams for such purposes MUST make
+it possible to refer to all of a device's streams of a purpose (or all of its streams) at once,
+which a publisher can't evade, and SHOULD treat references to single streams as refinements of
+that.
+
+### Stream IDs are visible to the transport
+
+Stream IDs travel with the media, outside of Matrix's end-to-end encryption, so that the
+transport's infrastructure (the SFU, for `m.livekit`) and every participant it serves can read
+them. They MUST NOT contain anything that identifies the user or their hardware, such as the
+label of a capture device or the title of a shared window. Short generic IDs such as `camera:2`
+or `screen:1` are sufficient.
+
 ## Unstable prefix
 
 No unstable prefix is needed for `m.call` because it is only used inside the `m.rtc.slot`
 and `m.rtc.member` events that are themselves guarded by the unstable prefix from [MSC4143].
+
+Stream IDs need none either: a track without a name is already a default stream, and a name set
+by a client that knows nothing of stream IDs is as good an opaque ID as any.
 
 ## Dependencies
 
