@@ -885,6 +885,14 @@ export function createCallViewModel$(
           participant.type === "local"
             ? constant(null)
             : floorControl.moderator$(mediaId, userId),
+        screenShareModeration$: floorControl.screenShareModeration$(
+          mediaId,
+          userId,
+        ),
+        screenShareModerator$:
+          participant.type === "local"
+            ? constant(null)
+            : floorControl.screenShareModerator$(mediaId, userId),
         memberActions$: floorControl.memberActions$(userId),
         isModerator$: floorControl.isModerator$(userId),
         // Pinned locally, or for everyone by a moderator

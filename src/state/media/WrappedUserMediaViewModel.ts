@@ -8,7 +8,12 @@ Please see LICENSE in the repository root for full details.
 import { type LocalParticipant, type RemoteParticipant } from "livekit-client";
 
 import { type Scope } from "../Scope.ts";
-import { type Behavior, fromEvents, state } from "../Behavior.ts";
+import { type Behavior, constant, fromEvents, state } from "../Behavior.ts";
+import {
+  type StreamModeration,
+  type StreamModeratorControls,
+  unmoderated,
+} from "../FloorControl.ts";
 import type { MediaDevices } from "../MediaDevices.ts";
 import { speaker$ } from "./speaker.ts";
 import { keyedItems } from "../keyedItems.ts";
@@ -59,6 +64,9 @@ interface WrappedUserMediaInputs extends Omit<
    * camera feed but not the screen share.
    */
   duplicate?: boolean;
+  /** What floor control asks of what the device shares, and the controls. */
+  screenShareModeration$?: Behavior<StreamModeration>;
+  screenShareModerator$?: Behavior<StreamModeratorControls | null>;
 }
 
 export function createWrappedUserMedia(
@@ -68,6 +76,8 @@ export function createWrappedUserMedia(
     mediaDevices,
     pretendToBeDisconnected$,
     duplicate = false,
+    screenShareModeration$ = constant(unmoderated),
+    screenShareModerator$ = constant(null),
     ...inputs
   }: WrappedUserMediaInputs,
 ): WrappedUserMediaViewModel {
@@ -118,6 +128,8 @@ export function createWrappedUserMedia(
             id,
             participant$: participant.value$,
             pretendToBeDisconnected$,
+            moderation$: screenShareModeration$,
+            moderator$: screenShareModerator$,
           });
     },
   );
