@@ -94,6 +94,10 @@ export const RecordModal: FC<Props> = ({ open, onDismiss, onStart }) => {
           destructive
           onClick={() => onStart({ audioOnly, requireConsent, mirrorLayout })}
           data-testid="record_confirm"
+          // Focus this rather than the first checkbox, so that Enter starts
+          // the recording straight away
+          // eslint-disable-next-line jsx-a11y/no-autofocus
+          autoFocus
         >
           {t("recording.confirm_button")}
         </Button>
