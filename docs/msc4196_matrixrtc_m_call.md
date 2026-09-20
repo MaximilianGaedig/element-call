@@ -6,8 +6,8 @@
 > the sections on **media streams** ("Media streams", "Stream IDs over
 > LiveKit", the three "Alternatives" about naming streams, and the two
 > "Security considerations" about stream IDs). Everything else is upstream's
-> text (but for the repository formatter's whitespace and emphasis markers),
-> so that a diff against upstream is the proposed change.
+> text, byte for byte: the commit before the one that added this note holds
+> the original, so `git diff` between the two is the proposed change.
 >
 > [MSC4196]: https://github.com/matrix-org/matrix-spec-proposals/pull/4196
 
@@ -46,7 +46,7 @@ slot ID as per [MSC4143], thus, becomes:
 
 ```
 slot_id = {application_type}#{application_slot_id} = m.call#room (= state_key)
-```
+``` 
 
 No further parameters are required in the slot-level `application` object. Here is an example for
 an open `m.rtc.slot` event for the `m.call` application:
@@ -134,7 +134,7 @@ When a client joins an `m.call` slot where all other members have set their `int
 the joining client SHOULD not publish a video track by default. It MAY allow the user to overrule
 this initial setting both before and after joining though. If any other members have an
 `intent` of `video`, the joining client SHOULD assume the session to
-represent a video call. This does _not_ imply that the client should enter the call with video
+represent a video call. This does *not* imply that the client should enter the call with video
 enabled, however (see [below]).
 
 When leaving a slot, [MSC4143] allows clients to optionally provide context with regards to the
@@ -151,15 +151,15 @@ the following additional codes:
 
 ### Media streams
 
-What a member contributes to a call is a set of _media streams_. A stream is one source of media as
+What a member contributes to a call is a set of *media streams*. A stream is one source of media as
 a user thinks of it: a camera together with the microphone that goes with it, or a shared screen
 together with the audio shared with it. Each stream has:
 
-- a _purpose_, either `m.usermedia` (a camera and/or microphone) or `m.screenshare` (a shared
+- a *purpose*, either `m.usermedia` (a camera and/or microphone) or `m.screenshare` (a shared
   screen, window or tab, and/or its audio). These are the purposes of [MSC3077], for the same
   reason: a receiver lays out and mixes the two differently.
 - at most one video track and at most one audio track.
-- optionally, a _stream ID_.
+- optionally, a *stream ID*.
 
 A member MAY publish any number of streams of either purpose at once, for instance the front and
 back cameras of a phone, a camera and a document camera, or two shared windows.
@@ -179,7 +179,7 @@ is the stable, transport-independent name for a stream instead:
 - The audio and the video of a stream carry the same stream ID. This is what makes the audio shared
   with a screen distinguishable from the microphone of whoever shares it, and one shared screen's
   audio from another's.
-- A stream without a stream ID is the device's _default stream_ of its purpose. A client that
+- A stream without a stream ID is the device's *default stream* of its purpose. A client that
   publishes a single stream of a purpose MAY leave it without an ID, which is what clients
   predating stream IDs do. A client that publishes more than one stream of a purpose at once
   SHOULD give every one of them an ID, as otherwise the default stream can't be told apart from
