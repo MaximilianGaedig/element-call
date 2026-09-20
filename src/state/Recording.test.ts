@@ -311,12 +311,12 @@ describe("createRecording", () => {
       { recorder: bot, [DirectorDeviceField]: "ALICEDEV" },
       slot,
     );
-    // An audio recording has no layout to mirror
+    // An audio recording has no layout, but its levels are mirrored
     await r.toggle$.value!({ mirrorLayout: true, audioOnly: true });
     expect(sendStateEvent).toHaveBeenLastCalledWith(
       "!room",
       RecordingEventType,
-      { recorder: bot, media: "audio" },
+      { recorder: bot, media: "audio", [DirectorDeviceField]: "ALICEDEV" },
       slot,
     );
   });
