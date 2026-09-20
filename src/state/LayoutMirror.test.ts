@@ -112,7 +112,7 @@ describe("layout director", () => {
     expect(sendToDevice).toHaveBeenCalledTimes(1);
   });
 
-  it("only directs from the named device, for video", () => {
+  it("only directs from the named device", () => {
     const { room } = setup("@alice:e", "OTHERDEV");
     const mirror = createLayoutMirror(testScope(), room, {
       recording$: state<RecordingState | null>(recording()),
@@ -122,15 +122,25 @@ describe("layout director", () => {
       apply: () => {},
     });
     expect(mirror.directing$.value).toBe(false);
-    const { room: mine } = setup();
-    const audio = createLayoutMirror(testScope(), mine, {
+  });
+
+  it("sends only volumes for an audio recording", async () => {
+    const { room, sendToDevice } = setup();
+    const ops = createLayoutOps();
+    const mirror = createLayoutMirror(testScope(), room, {
       recording$: state<RecordingState | null>(recording({ media: "audio" })),
       recorderDevices$: constant(["BOT1"]),
-      ops: createLayoutOps(),
+      ops,
       snapshot: () => [],
       apply: () => {},
     });
-    expect(audio.directing$.value).toBe(false);
+    expect(mirror.directing$.value).toBe(true);
+    ops.emit(pin);
+    ops.emit({ ...pin, type: "volume", volume: 50 } as LayoutOp);
+    await vi.waitFor(() => expect(sendToDevice).toHaveBeenCalledTimes(1));
+    expect(sendToDevice.mock.calls[0][1].get(bot).get("BOT1").op.type).toBe(
+      "volume",
+    );
   });
 
   it("settles a stream of volume changes into one message", async () => {

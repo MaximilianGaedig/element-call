@@ -31,7 +31,8 @@ interface Props {
 /**
  * Asks the user to confirm that they want to record the call, since it
  * warns everyone in it, whether to record audio only, whether everyone
- * must consent first, and whether the recorder should mirror their layout.
+ * must consent first, and whether the recorder should mirror their layout
+ * and audio levels (only the levels, for an audio recording).
  */
 export const RecordModal: FC<Props> = ({ open, onDismiss, onStart }) => {
   const { t } = useTranslation();
@@ -76,9 +77,7 @@ export const RecordModal: FC<Props> = ({ open, onDismiss, onStart }) => {
           name="mirrorLayout"
           control={
             <CheckboxControl
-              checked={mirrorLayout && !audioOnly}
-              // An audio recording has no layout
-              disabled={audioOnly}
+              checked={mirrorLayout}
               onChange={(e) => setMirrorLayout(e.target.checked)}
             />
           }
@@ -93,13 +92,7 @@ export const RecordModal: FC<Props> = ({ open, onDismiss, onStart }) => {
         <Button
           kind="primary"
           destructive
-          onClick={() =>
-            onStart({
-              audioOnly,
-              requireConsent,
-              mirrorLayout: mirrorLayout && !audioOnly,
-            })
-          }
+          onClick={() => onStart({ audioOnly, requireConsent, mirrorLayout })}
           data-testid="record_confirm"
         >
           {t("recording.confirm_button")}
