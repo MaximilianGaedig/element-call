@@ -809,9 +809,14 @@ export function createCallViewModel$(
       ...(media.type === "screen share" ? { media: "screen_share" } : {}),
     };
   };
-  /** Whether `media` is the stream a mirrored op names. */
+  /**
+   * Whether `media` is the stream a mirrored op names. We show a device's
+   * default stream of each kind and no others, so a named stream is none
+   * of ours.
+   */
   const matchesRef = (media: MediaViewModel, ref: TileRef): boolean =>
     media.type !== "ringing" &&
+    ref.stream === undefined &&
     media.id ===
       `${ref.user_id}:${ref.device_id}:0${ref.media === "screen_share" ? ":screen-share" : ""}`;
 

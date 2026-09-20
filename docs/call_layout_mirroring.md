@@ -106,15 +106,19 @@ their streams it is: `user_id` and `device_id`, the pair that identifies
 the participant's `m.rtc.member` / `m.call.member` event; `media`,
 `camera` (the default) or `screen_share`; and, where a device publishes
 more than one stream of that kind (a phone sending its front and back
-cameras at once, say), `track`, the ID of the published track (the
-LiveKit track SID, which every subscriber sees alike). Absent, `track`
-means the device's only stream of that kind, which is all Element Call
-publishes today.
+cameras at once, say), `stream`, the stream's ID as our
+[working copy of MSC4196](./msc4196_matrixrtc_m_call.md#media-streams)
+defines it: a name the publisher gives the stream and keeps when it
+publishes it again, carried over LiveKit as the track name. Absent,
+`stream` means the device's default stream of that kind, which is all
+Element Call publishes (or shows) today. A `stream` that the recorder
+doesn't know names nothing.
 
 A tile's audio is its own: a `camera` tile's is the device's microphone,
 and a `screen_share` tile's is the audio shared with the screen, which
 `volume` turns up or down apart from the microphone of whoever shares it.
-Where `volume` carries a `track`, it is the SID of the audio track meant.
+A stream's audio and video carry the same ID, so `stream` means the same
+thing to `volume` as to everything else.
 
 | `type`               | Fields                                                                                 | Meaning                                                                                                                                                                                                                                                                                                                                                                                      |
 | -------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
