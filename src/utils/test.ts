@@ -4,7 +4,7 @@ Copyright 2023, 2024 New Vector Ltd.
 SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
-import { unmoderated } from "../state/FloorControl.ts";
+import { type StreamModeration, unmoderated } from "../state/FloorControl.ts";
 import {
   expect,
   type MockedObject,
@@ -505,6 +505,7 @@ export function mockRemoteScreenShare(
       remoteParticipants$: constant(participant ? [participant] : []),
     },
   ),
+  moderation$: Behavior<StreamModeration> = constant(unmoderated),
 ): RemoteScreenShareViewModel {
   const member = mockMatrixRoomMember(rtcMember, roomMember);
   return createRemoteScreenShare(testScope(), {
@@ -517,6 +518,8 @@ export function mockRemoteScreenShare(
     pretendToBeDisconnected$: constant(false),
     displayName$: constant(member.rawDisplayName ?? "nodisplayname"),
     mxcAvatarUrl$: constant(member.getMxcAvatarUrl()),
+    moderation$,
+    moderator$: constant(null),
   });
 }
 
