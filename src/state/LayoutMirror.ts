@@ -115,7 +115,8 @@ function coalesceKey(op: LayoutOp): string {
 /**
  * Mirrors layout decisions between whoever directs a recording and the
  * recorder: as the director, sends each decision the local user makes to
- * the recorder; as the recorder, applies the director's.
+ * the recorder; as the recorder, applies the director's. For an audio
+ * recording only the volumes are sent.
  */
 export function createLayoutMirror(
   scope: Scope,
@@ -127,12 +128,7 @@ export function createLayoutMirror(
 
   const directing$ = computed(() => {
     const r = recording$.value;
-    return (
-      r !== null &&
-      r.by === userId &&
-      r.directorDevice === deviceId &&
-      r.media === "video"
-    );
+    return r !== null && r.by === userId && r.directorDevice === deviceId;
   });
   const following$ = computed(() => {
     const r = recording$.value;
@@ -147,6 +143,8 @@ export function createLayoutMirror(
     const r = recording$.peek();
     const devices = recorderDevices$.peek();
     if (r === null || devices.length === 0) return;
+    // An audio recording has no layout, only levels
+    if (r.media === "audio" && op.type !== "volume") return;
     const content: LayoutEventContent = {
       room_id: room.roomId,
       request: r.eventId,

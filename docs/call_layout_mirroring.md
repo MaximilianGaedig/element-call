@@ -16,9 +16,10 @@ not proposed for the spec, since the operations are Element Call's.
 
 ## Who directs
 
-The record dialog offers "Mirror my layout", which is unavailable for an
-audio-only recording. When chosen, the client adds its own device to the
-`org.matrix.rtc.recording` request:
+The record dialog offers "Mirror my layout / audio levels". When chosen,
+the client adds its own device to the `org.matrix.rtc.recording` request.
+An audio-only recording has no layout, so for one only the audio levels
+are mirrored: the director sends nothing but `volume` operations.
 
 ```json
 {
@@ -116,7 +117,7 @@ publishes today.
 | `enlarge`            | tile, `enlarged` (boolean)                                                             | The director enlarged the tile to twice its size in the grid, or shrank it back.                                                                                                                                                                                                                                                                                                             |
 | `tile_options`       | any of `hug_video`, `crop_video`, `relaxed_grid`, `enlarge_active_speakers` (booleans) | The director changed the settings that shape and pack tiles: shrinking tiles to their video, cropping video to fill the tile, packing tiles in rows rather than columns, and enlarging whoever is speaking. Only the settings that changed are present.                                                                                                                                      |
 | `rail_width`         | `width` (integer, CSS pixels)                                                          | The director resized the rail of tiles beside the landscape spotlight. The recorder applies it within whatever limits its own window allows.                                                                                                                                                                                                                                                 |
-| `volume`             | tile, `volume` (integer, percent)                                                      | The director changed how loudly the participant's stream plays for them: 0 is muted, 100 unchanged, up to 200. Since the recording carries what the recorder hears, this is how a director turns somebody down.                                                                                                                                                                              |
+| `volume`             | tile, `volume` (integer, percent)                                                      | The director changed how loudly the participant's stream plays for them: 0 is muted, 100 unchanged, up to 200. Since the recording carries what the recorder hears, this is how a director turns somebody down, in an audio recording as much as a video one. A recorder that mixes the call's audio itself applies it there rather than to any playback.                                    |
 
 ### Catching up
 
@@ -146,10 +147,12 @@ operation makes no sense in its current layout, it does nothing, and does
 not report back. The director sees the recording only when it is posted;
 this is direction, not remote control.
 
-In `matrixrtc-sip-bridge`, the recorder is Element Call itself rendered in
-a headless browser, so the messages reach it through the widget API and
-the same layout code that the director used to make the decision applies
-them.
+In `matrixrtc-sip-bridge`, the video is Element Call itself rendered in a
+headless browser, so the messages reach it through the widget API and the
+same layout code that the director used to make the decision applies
+them. The audio, for audio and video recordings alike, is the bridge's own
+mix of the call's streams, so the bridge applies the `volume` operations
+to that mix itself, whether or not a browser is running.
 
 ## Potential issues
 

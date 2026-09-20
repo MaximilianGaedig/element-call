@@ -217,7 +217,7 @@
     "failed": "Couldn't ask the recorder to record the call",
     "finishing": "Finishing recording…",
     "in_progress": "Call is being recorded by {{name}} ({{userId}})",
-    "mirror_layout": "Mirror my layout in the recording",
+    "mirror_layout": "Mirror my layout / audio levels in the recording",
     "notice": "{{name}} is recording this call",
     "ready": "Recording ready",
     "recorder_failed": "The recorder couldn't record the call: {{reason}}",

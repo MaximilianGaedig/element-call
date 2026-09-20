@@ -541,8 +541,7 @@ export function createRecording(
           recorder: recorder!,
           ...(options?.audioOnly ? { media: "audio" } : {}),
           ...(options?.requireConsent ? { requires_consent: true } : {}),
-          // Only a video recording has a layout to mirror
-          ...(options?.mirrorLayout && !options.audioOnly
+          ...(options?.mirrorLayout
             ? { [DirectorDeviceField]: room.client.getDeviceId()! }
             : {}),
         });
