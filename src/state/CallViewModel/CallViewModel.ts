@@ -30,8 +30,11 @@ import { createDialIn, type DialIn } from "../DialIn.ts";
 import { v4 as uuidv4 } from "uuid";
 
 import {
+  cropVideo,
   duplicateTiles,
   enlargeActiveSpeakers,
+  hugVideo,
+  relaxedGrid,
   type Setting,
   showReactions,
 } from "../../settings/settings";
@@ -1697,15 +1700,16 @@ export function createCallViewModel$(
   // Directing a recording's layout, or following its director: what the
   // user changes below is sent as it happens; a snapshot catches a recorder
   // up; and the recorder applies each op as if its user had done it.
-  // The settings that shape and pack tiles, by their name on the wire. The
-  // tile shape ones (hug_video, crop_video, relaxed_grid) join this list
-  // with the tile shapes stack.
+  // The settings that shape and pack tiles, by their name on the wire
   type TileOption =
     | "hug_video"
     | "crop_video"
     | "relaxed_grid"
     | "enlarge_active_speakers";
-  const tileOptions: Partial<Record<TileOption, Setting<boolean>>> = {
+  const tileOptions: Record<TileOption, Setting<boolean>> = {
+    hug_video: hugVideo,
+    crop_video: cropVideo,
+    relaxed_grid: relaxedGrid,
     enlarge_active_speakers: enlargeActiveSpeakers,
   };
   const tileOptionEntries = Object.entries(tileOptions) as [
