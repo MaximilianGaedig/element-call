@@ -61,6 +61,9 @@ export interface LayoutEventContent {
   op: LayoutOp;
 }
 
+/** Where the director keeps the last `seq` it used, and for which request. */
+const seqKey = "layout-mirror-seq";
+
 /** Ops that arrive in a stream while the user drags, sent settled. */
 const coalesced = new Set<LayoutOp["type"]>(["volume", "rail_width"]);
 const COALESCE_MS = 250;
@@ -137,8 +140,29 @@ export function createLayoutMirror(
     );
   });
 
-  // Directing
+  // Directing. The count outlives a reload of the page, which would
+  // otherwise start again below what the recorder has already seen
   let seq = 0;
+  const loadSeq = (request: string): number => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(seqKey) ?? "null") as {
+        request?: unknown;
+        seq?: unknown;
+      } | null;
+      if (stored?.request === request && typeof stored.seq === "number")
+        return stored.seq;
+    } catch {
+      // No storage, or nonsense in it: count from the start
+    }
+    return 0;
+  };
+  const storeSeq = (request: string): void => {
+    try {
+      localStorage.setItem(seqKey, JSON.stringify({ request, seq }));
+    } catch {
+      // Without storage we only lose direction after a reload
+    }
+  };
   const send = async (op: LayoutOp): Promise<void> => {
     const r = recording$.peek();
     const devices = recorderDevices$.peek();
@@ -152,6 +176,7 @@ export function createLayoutMirror(
       seq: ++seq,
       op,
     };
+    storeSeq(r.eventId);
     const targets = devices.map((d) => ({ userId: r.recorder, deviceId: d }));
     if (room.hasEncryptionStateEvent())
       await sendEncryptedToDevice(
@@ -167,9 +192,14 @@ export function createLayoutMirror(
       );
   };
   const pending = new Map<string, ReturnType<typeof setTimeout>>();
+  // One at a time: encrypting takes a while, and messages that overtook
+  // each other would have the recorder drop the older as late
+  let sending = Promise.resolve();
   const direct = (op: LayoutOp): void => {
     const go = (): void => {
-      send(op).catch((e) => logger.warn("Failed to send layout op", op, e));
+      sending = sending
+        .then(async () => send(op))
+        .catch((e) => logger.warn("Failed to send layout op", op, e));
     };
     if (!coalesced.has(op.type)) return go();
     const key = coalesceKey(op);
@@ -184,7 +214,7 @@ export function createLayoutMirror(
   };
   scope.effect(() => {
     if (!directing$.value) return;
-    seq = 0;
+    seq = loadSeq(recording$.peek()!.eventId);
     const unsubscribe = ops.subscribe(direct);
     return (): void => {
       unsubscribe();
@@ -193,10 +223,17 @@ export function createLayoutMirror(
     };
   });
   // The recorder joins after the director has arranged things, so once it
-  // confirms it's recording, catch it up on everything so far
+  // confirms it's recording and we know which devices to tell, catch it up
+  // on everything so far. Anything the user did before then had nowhere to
+  // go, and is in the snapshot.
+  const reachable$ = computed(
+    () =>
+      directing$.value &&
+      recording$.value?.started === true &&
+      recorderDevices$.value.length > 0,
+  );
   scope.effect(() => {
-    if (!directing$.value || !recording$.value?.started) return;
-    for (const op of snapshot()) direct(op);
+    if (reachable$.value) for (const op of snapshot()) direct(op);
   });
 
   // Following

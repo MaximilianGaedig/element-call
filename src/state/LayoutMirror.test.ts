@@ -68,6 +68,7 @@ const pin: LayoutOp = {
 describe("layout director", () => {
   afterEach(() => {
     vi.useRealTimers();
+    localStorage.clear();
   });
 
   it("sends each op to the recorder's devices while directing", async () => {
@@ -186,6 +187,78 @@ describe("layout director", () => {
     expect(
       sendToDevice.mock.calls.map((c) => c[1].get(bot).get("BOT1").seq),
     ).toEqual([1, 2]);
+  });
+
+  it("waits for the recorder's devices before catching it up", async () => {
+    const { room, sendToDevice } = setup();
+    const recorderDevices$ = state<string[]>([]);
+    const ops = createLayoutOps();
+    createLayoutMirror(testScope(), room, {
+      recording$: state<RecordingState | null>(recording({ started: true })),
+      recorderDevices$,
+      ops,
+      snapshot: () => [pin],
+      apply: () => {},
+    });
+    ops.emit(pin);
+    await Promise.resolve();
+    expect(sendToDevice).not.toHaveBeenCalled();
+    recorderDevices$.value = ["BOT1"];
+    await vi.waitFor(() => expect(sendToDevice).toHaveBeenCalledTimes(1));
+    // Another device joining doesn't repeat it
+    recorderDevices$.value = ["BOT1", "BOT2"];
+    await Promise.resolve();
+    expect(sendToDevice).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends one message at a time, in order", async () => {
+    const { room, sendToDevice } = setup();
+    let sent = (): void => {};
+    sendToDevice.mockReturnValue(
+      new Promise<void>((resolve) => {
+        sent = resolve;
+      }),
+    );
+    const ops = createLayoutOps();
+    createLayoutMirror(testScope(), room, {
+      recording$: state<RecordingState | null>(recording()),
+      recorderDevices$: constant(["BOT1"]),
+      ops,
+      snapshot: () => [],
+      apply: () => {},
+    });
+    ops.emit(pin);
+    ops.emit({ ...pin, pinned: false });
+    await vi.waitFor(() => expect(sendToDevice).toHaveBeenCalledTimes(1));
+    await Promise.resolve();
+    expect(sendToDevice).toHaveBeenCalledTimes(1);
+    sent();
+    await vi.waitFor(() => expect(sendToDevice).toHaveBeenCalledTimes(2));
+    expect(
+      sendToDevice.mock.calls.map((c) => c[1].get(bot).get("BOT1").seq),
+    ).toEqual([1, 2]);
+  });
+
+  it("carries on counting after a reload, within the same recording", async () => {
+    const direct = async (request: string): Promise<number> => {
+      const { room, sendToDevice } = setup();
+      const ops = createLayoutOps();
+      createLayoutMirror(testScope(), room, {
+        recording$: state<RecordingState | null>(
+          recording({ eventId: request }),
+        ),
+        recorderDevices$: constant(["BOT1"]),
+        ops,
+        snapshot: () => [],
+        apply: () => {},
+      });
+      ops.emit(pin);
+      await vi.waitFor(() => expect(sendToDevice).toHaveBeenCalledTimes(1));
+      return sendToDevice.mock.calls[0][1].get(bot).get("BOT1").seq as number;
+    };
+    expect(await direct("$req")).toBe(1);
+    expect(await direct("$req")).toBe(2);
+    expect(await direct("$another")).toBe(1);
   });
 });
 

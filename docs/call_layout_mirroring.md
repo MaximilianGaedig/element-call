@@ -80,7 +80,10 @@ memberships):
 - `seq`: a counter that the director increments for every message in a
   recording, starting at 1. The recorder ignores anything at or below the
   last one it applied, so a message that arrives twice or late does
-  nothing.
+  nothing. The director sends one message at a time, so that none
+  overtakes another, and keeps the count in local storage, so that it
+  carries on after a reload rather than starting again below what the
+  recorder has seen (a clock would do as well until it was corrected).
 - `op`: the operation, below. One per message.
 
 In an encrypted room the message is Olm-encrypted, like any other to-device
@@ -129,11 +132,13 @@ Where `volume` carries a `track`, it is the SID of the audio track meant.
 The recorder joins after the director has often already arranged their
 view, and may be restarted during a recording. So when the recorder
 confirms it is recording (an `org.matrix.rtc.recording.status` of
-`started`), the director sends its current decisions as a burst of the
+`started`) and has a device in the call to send to, the director sends its current decisions as a burst of the
 operations above: the layout, whether the spotlight is expanded, the tile
 options, the rail width, then a `pin`, `enlarge` or `volume` for every tile
 where it has chosen one, and a `move_tile` for each tile in the order it
-sees them. The recorder applies them like any other.
+sees them. The recorder applies them like any other. A director
+who reloads mid-recording sends the burst again, as does one whose
+recorder left the call and came back.
 
 ## Recorder behaviour
 
