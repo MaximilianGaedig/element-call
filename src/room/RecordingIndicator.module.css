@@ -97,6 +97,12 @@ Please see LICENSE in the repository root for full details.
   box-shadow: var(--small-drop-shadow);
 }
 
+.directing {
+  padding-inline: var(--cpd-space-4x);
+  background: var(--cpd-color-bg-critical-primary);
+  text-align: center;
+}
+
 .buttons {
   display: flex;
   justify-content: flex-end;

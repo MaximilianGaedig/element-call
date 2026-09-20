@@ -336,6 +336,11 @@ export interface CallViewModel {
   floorControl: FloorControl;
   /** Recording the call through a bot, where this deployment has one. */
   recording: Recording;
+  /**
+   * Whether the recording is mirroring what this device does to its
+   * layout and audio levels.
+   */
+  directingRecording$: Behavior<boolean>;
   /** Letting people dial in over SIP, where this deployment has a bridge. */
   dialIn: DialIn;
   /**
@@ -1858,7 +1863,7 @@ export function createCallViewModel$(
       }
     }
   };
-  createLayoutMirror(scope, matrixRoom, {
+  const layoutMirror = createLayoutMirror(scope, matrixRoom, {
     recording$: recording.recording$,
     recorderDevices$,
     ops: layoutOps,
@@ -1913,6 +1918,7 @@ export function createCallViewModel$(
     tileStoreGeneration$: tileStoreGeneration$,
     floorControl,
     recording,
+    directingRecording$: layoutMirror.directing$,
     dialIn,
     toggleTileEnlarged,
     togglePinned,
