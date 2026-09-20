@@ -1,0 +1,70 @@
+/*
+Copyright 2026 Element Creations Ltd.
+
+SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+Please see LICENSE in the repository root for full details.
+*/
+
+import { expect, test } from "vitest";
+import { render } from "@testing-library/react";
+import { type FC } from "react";
+
+import { TileGrid, videoAspectRatio } from "./TileGrid";
+import { type SlotProps } from "./Grid";
+import { GridTileViewModel, type GridTileMedia } from "../state/TileViewModel";
+import { constant } from "../state/Behavior";
+import { type MediaViewModel } from "../state/media/MediaViewModel";
+
+const Slot: FC<SlotProps<unknown>> = ({ id, style }) => (
+  <div data-testid={id} style={style} />
+);
+
+const tile = new GridTileViewModel(
+  constant({
+    type: "user",
+    moderation$: constant({ pinned: false }),
+  } as Partial<GridTileMedia> as GridTileMedia),
+);
+
+test.each([
+  ["sizes slots by the grid", undefined, ""],
+  [
+    "sizes slots by the layout's rects",
+    [{ x: 1, y: 2, width: 123, height: 45 }],
+    "123px",
+  ],
+])("%s", (_, rects, width) => {
+  const { getByTestId } = render(
+    <TileGrid
+      grid={[tile]}
+      enlarged={[false]}
+      gap={20}
+      tileWidth={300}
+      tileHeight={200}
+      columns={1}
+      rects={rects}
+      Slot={Slot}
+      onDrag={() => () => {}}
+    />,
+  );
+  expect(getByTestId(tile.id).style.width).toBe(width);
+});
+
+test("a user's tile is 16:9 until their video shows its shape", () => {
+  const user = (ratio: number): MediaViewModel =>
+    ({
+      type: "user",
+      videoAspectRatio$: constant(ratio),
+    }) as Partial<MediaViewModel> as MediaViewModel;
+  expect(videoAspectRatio(user(NaN))).toBeCloseTo(16 / 9);
+  expect(videoAspectRatio(user(9 / 16))).toBeCloseTo(9 / 16);
+  // A screen share takes its video's shape once known, and is unshaped
+  // (rather than assumed 16:9) until then
+  const share = (ratio: number): MediaViewModel =>
+    ({
+      type: "screen share",
+      videoAspectRatio$: constant(ratio),
+    }) as Partial<MediaViewModel> as MediaViewModel;
+  expect(videoAspectRatio(share(NaN))).toBe(0);
+  expect(videoAspectRatio(share(4 / 3))).toBeCloseTo(4 / 3);
+});

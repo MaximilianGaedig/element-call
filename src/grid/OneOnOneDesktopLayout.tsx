@@ -14,7 +14,12 @@ import { type CallLayout, arrangeTiles } from "./CallLayout";
 import styles from "./OneOnOneDesktopLayout.module.css";
 import { type DragCallback, useUpdateLayout } from "./Grid";
 import { useBehavior } from "../useBehavior";
-import { droppedPosition, floatingClass, floatingStyle } from "./floating.ts";
+import {
+  droppedPosition,
+  floatingClass,
+  floatingStyle,
+  useFloatingAspectRatio,
+} from "./floating.ts";
 
 /**
  * An implementation of the "one-on-one" layout for desktop platforms, in which
@@ -39,6 +44,7 @@ export const makeOneOnOneDesktopLayout: CallLayout<
     useUpdateLayout();
     const { width, height } = useBehavior(minBounds$);
     const pipPosition = useBehavior(model.pipPosition$);
+    const pipAspectRatio = useFloatingAspectRatio(model.pip);
     const { tileWidth, tileHeight } = useMemo(
       () => arrangeTiles(width, height, 1),
       [width, height],
@@ -61,7 +67,7 @@ export const makeOneOnOneDesktopLayout: CallLayout<
         >
           <Slot
             className={classNames(styles.local, floatingClass)}
-            style={floatingStyle(pipPosition)}
+            style={floatingStyle(pipPosition, pipAspectRatio)}
             id={model.pip.id}
             model={model.pip}
             onDrag={onDragLocalTile}

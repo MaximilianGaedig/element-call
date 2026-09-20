@@ -112,6 +112,43 @@ test("SpotlightTile shows multiple media side by side", async () => {
   expect(screen.queryByRole("button", { name: "Next" })).toBe(null);
 });
 
+test("double-clicking a tiled item enlarges it, and again shrinks it", async () => {
+  const [vm1, vm2] = aliceAndBob();
+  const { container } = render(
+    <SpotlightTile
+      vm={
+        new SpotlightTileViewModel(
+          constant([vm1, vm2]),
+          constant(false),
+          constant("solid"),
+        )
+      }
+      targetWidth={300}
+      targetHeight={200}
+      expanded={false}
+      onToggleExpanded={null}
+      showIndicators
+      tiled
+      showNameTags
+      showRingingStatus
+      focusable={true}
+    />,
+  );
+  const user = userEvent.setup();
+  // The layout's slot for a tile shares its data-id, but isn't the tile
+  const slot = (name: string): Element => {
+    const id = (screen.getByText(name).closest("[data-id]") as HTMLElement)
+      .dataset.id;
+    return container.querySelector(`[data-id="${id}"]:not([data-testid])`)!;
+  };
+  expect(slot("Alice")).not.toHaveAttribute("data-enlarged");
+  await user.dblClick(screen.getByText("Alice"));
+  expect(slot("Alice")).toHaveAttribute("data-enlarged");
+  expect(slot("Bob")).not.toHaveAttribute("data-enlarged");
+  await user.dblClick(screen.getByText("Alice"));
+  expect(slot("Alice")).not.toHaveAttribute("data-enlarged");
+});
+
 test("SpotlightTile zooms in on one item", async () => {
   const [vm1, vm2] = aliceAndBob();
   const onToggleExpanded = vi.fn();

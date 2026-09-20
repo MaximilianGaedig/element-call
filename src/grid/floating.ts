@@ -5,11 +5,16 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { type CSSProperties } from "react";
+import { type CSSProperties, useMemo } from "react";
 
 import { type FloatingPosition } from "../state/layout-types.ts";
 import { type DragCallback } from "./Grid.tsx";
 import styles from "./Floating.module.css";
+import { type GridTileViewModel } from "../state/TileViewModel.ts";
+import { hugVideo, useSetting } from "../settings/settings.ts";
+import { useBehavior } from "../useBehavior.ts";
+import { computed } from "../state/Behavior.ts";
+import { videoAspectRatio } from "./TileGrid.tsx";
 
 /**
  * How close to an edge, in pixels, a dropped tile snaps. This is the smallest
@@ -47,11 +52,48 @@ export const floatingClass = styles.floating;
 interface FloatingCSSProperties extends CSSProperties {
   "--floating-x": number;
   "--floating-y": number;
+  "--floating-aspect-ratio"?: number;
 }
 
 /**
- * The style to apply to a floating tile's slot to place it.
+ * The style to apply to a floating tile's slot to place it, and optionally
+ * shape it (see useFloatingAspectRatio).
  */
-export function floatingStyle({ x, y }: FloatingPosition): CSSProperties {
-  return { "--floating-x": x, "--floating-y": y } as FloatingCSSProperties;
+export function floatingStyle(
+  { x, y }: FloatingPosition,
+  aspectRatio?: number,
+): CSSProperties {
+  return {
+    "--floating-x": x,
+    "--floating-y": y,
+    "--floating-aspect-ratio": aspectRatio,
+  } as FloatingCSSProperties;
+}
+
+/**
+ * The shape a floating tile's slot should take: that of its video when tiles
+ * hug their video, so that the slot's limits match what's drawn rather than
+ * leaving the tile centred in a box of a different shape.
+ */
+export function useFloatingAspectRatio(
+  tile: GridTileViewModel | undefined,
+): number | undefined {
+  const [hug] = useSetting(hugVideo);
+  return useBehavior(
+    useMemo(
+      () =>
+        computed(() => {
+          const media = tile?.media$.value;
+          if (
+            !hug ||
+            media?.type !== "user" ||
+            media.video$.value === undefined ||
+            (!media.local && !media.videoEnabled$.value)
+          )
+            return undefined;
+          return videoAspectRatio(media);
+        }),
+      [hug, tile],
+    ),
+  );
 }

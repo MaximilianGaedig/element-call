@@ -10,12 +10,18 @@ import classNames from "classnames";
 
 import { type GridLayout as GridLayoutModel } from "../state/layout-types.ts";
 import styles from "./GridLayout.module.css";
-import { type CallLayout, arrangeTiles } from "./CallLayout";
+import { type CallLayout, arrangeTiles, packRows } from "./CallLayout";
 import { type DragCallback, useUpdateLayout, useVisibleTiles } from "./Grid";
 import { useBehavior } from "../useBehavior";
 import { useReorderTiles } from "./reorder.ts";
 import { droppedPosition, floatingClass, floatingStyle } from "./floating.ts";
-import { TileGrid, cellCount, useEnlargedTiles } from "./TileGrid";
+import {
+  TileGrid,
+  cellCount,
+  useEnlargedTiles,
+  useVideoAspectRatios,
+} from "./TileGrid";
+import { hugVideo, relaxedGrid, useSetting } from "../settings/settings";
 
 /**
  * An implementation of the "grid" layout, in which all participants are shown
@@ -62,10 +68,60 @@ export const makeGridLayout: CallLayout<GridLayoutModel> = ({
     const { width, height: minHeight } = useBehavior(minBounds$);
     const enlarged = useEnlargedTiles(model.grid);
     const cells = cellCount(model.grid.length, enlarged);
-    const { gap, tileWidth, tileHeight, columns } = useMemo(
+    const arrangement = useMemo(
       () => arrangeTiles(width, minHeight, cells),
       [width, minHeight, cells],
     );
+    const { gap, columns, minTileArea } = arrangement;
+    const [hug] = useSetting(hugVideo);
+    const aspectRatios = useVideoAspectRatios(model.grid);
+    // Hugged tiles are no bigger than their videos make them, so shrink the
+    // cells to the widest and tallest of them; a grid of same-shaped videos
+    // then has even gaps rather than slack inside each cell
+    const { tileWidth, tileHeight } = useMemo(() => {
+      const known = aspectRatios.filter((ar) => ar > 0);
+      if (!hug || known.length === 0) return arrangement;
+      const tileHeight = Math.min(
+        arrangement.tileHeight,
+        Math.max(...known.map((ar) => arrangement.tileWidth / ar)),
+      );
+      const tileWidth = Math.min(
+        arrangement.tileWidth,
+        Math.max(...known.map((ar) => tileHeight * ar)),
+      );
+      return { tileWidth, tileHeight };
+    }, [hug, aspectRatios, arrangement]);
+    // Rows of one height, each tile as wide as its video's shape makes it,
+    // rather than columns; enlarged tiles take two rows
+    const [relaxed] = useSetting(relaxedGrid);
+    const rows = useMemo(() => {
+      if (!hug || !relaxed) return null;
+      const ratios = aspectRatios.map((ar) => ar || tileWidth / tileHeight);
+      // The grid keeps a gap's padding on every side. Rows shrink until the
+      // tiles fit the page, but not so far that any tile gets smaller than
+      // the grid would have paged at (portrait tiles span two rows, so they
+      // reach that area at half the row height), and scroll from there
+      const minRowHeight = Math.max(
+        ...ratios.map((ar) => Math.sqrt(minTileArea / ar) / (ar < 1 ? 2 : 1)),
+      );
+      return packRows(
+        { width: width - 2 * gap, height: minHeight - 2 * gap },
+        gap,
+        ratios,
+        { minRowHeight: Math.min(tileHeight, minRowHeight), enlarged },
+      ).map((r) => ({ ...r, x: r.x + gap, y: r.y + gap }));
+    }, [
+      hug,
+      relaxed,
+      enlarged,
+      aspectRatios,
+      width,
+      minHeight,
+      gap,
+      tileWidth,
+      tileHeight,
+      minTileArea,
+    ]);
 
     return (
       <TileGrid
@@ -77,6 +133,7 @@ export const makeGridLayout: CallLayout<GridLayoutModel> = ({
         gap={gap}
         tileWidth={tileWidth}
         tileHeight={tileHeight}
+        rects={rows ?? undefined}
         columns={columns}
         Slot={Slot}
         onDrag={onDragTile}

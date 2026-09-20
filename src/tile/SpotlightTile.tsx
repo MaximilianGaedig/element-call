@@ -71,12 +71,17 @@ import { Slider } from "../Slider";
 import { type RingingMediaViewModel } from "../state/media/RingingMediaViewModel";
 import { RingingStatus } from "./RingingStatus";
 import { UserMediaMenuItems } from "./UserMediaMenuItems";
+import { hugVideo, relaxedGrid, useSetting } from "../settings/settings";
+import { packRows } from "../grid/CallLayout";
+import { rectStyle, videoAspectRatio } from "../grid/TileGrid";
+import { shallowEquals as shallowArrayEquals } from "../utils/array";
 
 interface SpotlightItemBaseProps {
   ref?: Ref<HTMLDivElement>;
   className?: string;
   style?: ComponentProps<typeof animated.div>["style"];
   "data-id": string;
+  onDoubleClick?: () => void;
   targetWidth: number;
   targetHeight: number;
   userId: string;
@@ -93,7 +98,7 @@ interface SpotlightMemberMediaItemBaseProps extends SpotlightItemBaseProps {
   video: TrackReferenceOrPlaceholder | undefined;
   unencryptedWarning: boolean;
   focusUrl: string | undefined;
-  videoFit?: "cover" | "contain";
+  videoFit?: "cover" | "contain" | "auto";
 }
 
 interface SpotlightUserMediaItemBaseProps extends SpotlightMemberMediaItemBaseProps {
@@ -136,6 +141,7 @@ interface SpotlightUserMediaItemProps extends SpotlightMemberMediaItemBaseProps 
   vm: UserMediaViewModel;
   onUnpin: ((vm: UserMediaViewModel) => void) | undefined;
   buttons: ReactNode;
+  hugVideo?: boolean;
 }
 
 const SpotlightUserMediaItem: FC<SpotlightUserMediaItemProps> = ({
@@ -250,6 +256,8 @@ const SpotlightScreenShareItem: FC<SpotlightScreenShareItemProps> = ({
   return (
     <MediaView
       videoFit="contain"
+      hugVideo
+      setVideoAspectRatio={vm.setVideoAspectRatio}
       mirror={false}
       primaryButton={buttons}
       {...props}
@@ -312,6 +320,7 @@ const SpotlightMemberMediaItem: FC<SpotlightMemberMediaItemProps> = ({
   const video = useBehavior(vm.video$);
   const unencryptedWarning = useBehavior(vm.unencryptedWarning$);
   const focusUrl = useBehavior(vm.focusUrl$);
+  const [hug] = useSetting(hugVideo);
 
   const baseProps: SpotlightMemberMediaItemBaseProps &
     RefAttributes<HTMLDivElement> = {
@@ -322,12 +331,16 @@ const SpotlightMemberMediaItem: FC<SpotlightMemberMediaItemProps> = ({
   };
 
   // Tiled cells are often a different shape from the video, and letterboxing
-  // several of them looks like a wall of black bars, so fill the cell instead
+  // several of them looks like a wall of black bars, so fill the cell instead.
+  // A lone spotlight is big enough that cropping a video of the other
+  // orientation to it would lose most of it, so that's cropped only when the
+  // shapes are similar
   if (vm.type === "user")
     return (
       <SpotlightUserMediaItem
         vm={vm}
-        videoFit={tiled ? "cover" : undefined}
+        videoFit={tiled ? "cover" : "auto"}
+        hugVideo={hug}
         onUnpin={onUnpin}
         buttons={buttons}
         {...baseProps}
@@ -402,6 +415,7 @@ interface SpotlightItemProps {
   onUnpin: ((vm: UserMediaViewModel) => void) | undefined;
   zoomed: boolean;
   onToggleZoom: (() => void) | undefined;
+  onDoubleClick?: () => void;
 }
 
 const SpotlightItem: FC<SpotlightItemProps> = ({
@@ -422,6 +436,7 @@ const SpotlightItem: FC<SpotlightItemProps> = ({
   onUnpin,
   zoomed,
   onToggleZoom,
+  onDoubleClick,
 }) => {
   const ourRef = useRef<HTMLDivElement | null>(null);
 
@@ -447,6 +462,7 @@ const SpotlightItem: FC<SpotlightItemProps> = ({
   const baseProps: SpotlightItemBaseProps & RefAttributes<HTMLDivElement> = {
     ref,
     "data-id": vm.id,
+    onDoubleClick,
     className: classNames(className, styles.item, { [styles.snap]: snap }),
     style,
     targetWidth,
@@ -554,6 +570,8 @@ interface SpotlightItemsContext {
   className: string | undefined;
   onUnpin: ((vm: UserMediaViewModel) => void) | undefined;
   onToggleZoom: ((vm: MediaViewModel) => void) | undefined;
+  /** Double-click enlarges a tile, or shrinks it back */
+  onToggleEnlarged: (vm: MediaViewModel) => void;
 }
 
 const SpotlightItemsContext = createContext<SpotlightItemsContext | null>(null);
@@ -561,28 +579,75 @@ const SpotlightItemsContext = createContext<SpotlightItemsContext | null>(null);
 interface SpotlightItemsModel {
   items: MediaViewModel[];
   columns: number;
+  /** The size of the space the items are laid out in. */
+  width: number;
+  height: number;
+  /** The IDs of items shown at twice the size */
+  enlarged: ReadonlySet<string>;
   onMove: ((media: MediaViewModel, to: MediaViewModel) => void) | undefined;
 }
+
+const itemGap = 20; // Must match the gap in the CSS, and the rail's
 
 // When the spotlight shows several media as tiles, they're laid out by the
 // same Grid as the call's tiles, so that they can be dragged and rearranged
 // with exactly the same behaviour: this is its layout of slots...
 const SpotlightItemsLayout: FC<
   LayoutProps<SpotlightItemsModel, MediaViewModel, HTMLDivElement>
-> = ({ ref, model: { items, columns, onMove }, Slot }) => {
+> = ({
+  ref,
+  model: { items, columns, width, height, enlarged, onMove },
+  Slot,
+}) => {
   useUpdateLayout();
+  // Rows of one height, each tile as wide as its video's shape makes it,
+  // as in the grid layout (see relaxedGrid). Hugged tiles are packed this
+  // way regardless, since fixed cells would leave slack around each of them
+  const [relaxed] = useSetting(relaxedGrid);
+  const [hug] = useSetting(hugVideo);
+  const aspectRatios = useBehavior(
+    useMemo(
+      () => computed(() => items.map(videoAspectRatio), shallowArrayEquals),
+      [items],
+    ),
+  );
+  const rows = useMemo(() => {
+    if (!relaxed && !hug) return null;
+    // Unshaped items (screen shares) get a cell's shape, but never a
+    // portrait one, which would earn them two rows for content of no
+    // particular shape and leave the tile beside them sitting high
+    const cellRatio = Math.max(
+      1,
+      (width / columns) * (Math.ceil(items.length / columns) / height),
+    );
+    const ratios = aspectRatios.map((ar) => ar || cellRatio);
+    // Pinned tiles share the height on offer, so a portrait one isn't given
+    // two rows: side by side, that would dwarf the landscape ones
+    return packRows({ width, height }, itemGap, ratios, {
+      tallPortraits: false,
+      enlarged: items.map((vm) => enlarged.has(vm.id)),
+    });
+  }, [relaxed, hug, aspectRatios, width, height, columns, items, enlarged]);
   return (
     <div
       ref={ref}
       className={styles.itemsLayout}
-      style={{ "--tiled-columns": columns } as CSSProperties}
+      data-relaxed={rows !== null || undefined}
+      style={
+        {
+          "--tiled-columns": columns,
+          "--enlarged-span": Math.min(2, columns),
+        } as CSSProperties
+      }
     >
-      {items.map((vm) => (
+      {items.map((vm, i) => (
         <Slot
           key={vm.id}
           id={vm.id}
           model={vm}
           className={styles.itemSlot}
+          style={rows ? rectStyle(rows[i]) : undefined}
+          data-enlarged={enlarged.has(vm.id) || undefined}
           onDrag={
             onMove &&
             (({ over }): void => {
@@ -624,6 +689,7 @@ const SpotlightItemTile: FC<TileProps<MediaViewModel, HTMLDivElement>> = ({
       onUnpin={context.onUnpin}
       zoomed={false}
       onToggleZoom={context.onToggleZoom && (() => context.onToggleZoom!(vm))}
+      onDoubleClick={() => context.onToggleEnlarged(vm)}
     />
   );
 };
@@ -764,6 +830,16 @@ export const SpotlightTile: FC<Props> = ({
       setScrollToId(media[visibleIndex + 1].id);
   }, [latestVisibleId, latestMedia, setScrollToId]);
 
+  const [enlarged, setEnlarged] = useState<ReadonlySet<string>>(new Set());
+  const onToggleEnlarged = useCallback(
+    (vm: MediaViewModel) =>
+      setEnlarged((prev) => {
+        const next = new Set(prev);
+        if (!next.delete(vm.id)) next.add(vm.id);
+        return next;
+      }),
+    [],
+  );
   const itemsContext = useMemo<SpotlightItemsContext>(
     () => ({
       showNameTags,
@@ -774,6 +850,7 @@ export const SpotlightTile: FC<Props> = ({
       className: itemClassName,
       onUnpin,
       onToggleZoom,
+      onToggleEnlarged,
     }),
     [
       showNameTags,
@@ -784,11 +861,19 @@ export const SpotlightTile: FC<Props> = ({
       itemClassName,
       onUnpin,
       onToggleZoom,
+      onToggleEnlarged,
     ],
   );
   const itemsModel = useMemo<SpotlightItemsModel>(
-    () => ({ items: media, columns, onMove }),
-    [media, columns, onMove],
+    () => ({
+      items: media,
+      columns,
+      width: targetWidth,
+      height: targetHeight,
+      enlarged,
+      onMove,
+    }),
+    [media, columns, targetWidth, targetHeight, enlarged, onMove],
   );
 
   return (

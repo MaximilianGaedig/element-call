@@ -14,7 +14,12 @@ import { type CallLayout } from "./CallLayout";
 import styles from "./OneOnOneMobileLayout.module.css";
 import { type DragCallback, useUpdateLayout } from "./Grid";
 import { useBehavior } from "../useBehavior";
-import { droppedPosition, floatingClass, floatingStyle } from "./floating.ts";
+import {
+  droppedPosition,
+  floatingClass,
+  floatingStyle,
+  useFloatingAspectRatio,
+} from "./floating.ts";
 
 /**
  * An implementation of the "one-on-one" layout for mobile platforms, in which
@@ -47,6 +52,7 @@ export const makeOneOnOneMobileLayout: CallLayout<
     useUpdateLayout();
     const pipSize = useBehavior(model.pipSize$);
     const pipPosition = useBehavior(model.pipPosition$);
+    const pipAspectRatio = useFloatingAspectRatio(model.pip);
     const onDragLocalTile: DragCallback = useCallback(
       (drag) => {
         if (drag.final) model.pipPosition$.value = droppedPosition(drag);
@@ -59,7 +65,7 @@ export const makeOneOnOneMobileLayout: CallLayout<
         {model.pip && (
           <Slot
             className={classNames(styles.pip, floatingClass)}
-            style={floatingStyle(pipPosition)}
+            style={floatingStyle(pipPosition, pipAspectRatio)}
             id={model.pip.id}
             model={model.pip}
             onDrag={onDragLocalTile}

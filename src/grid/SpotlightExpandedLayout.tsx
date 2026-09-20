@@ -13,7 +13,12 @@ import { type CallLayout } from "./CallLayout";
 import { type DragCallback, useUpdateLayout } from "./Grid";
 import styles from "./SpotlightExpandedLayout.module.css";
 import { useBehavior } from "../useBehavior";
-import { droppedPosition, floatingClass, floatingStyle } from "./floating.ts";
+import {
+  droppedPosition,
+  floatingClass,
+  floatingStyle,
+  useFloatingAspectRatio,
+} from "./floating.ts";
 
 /**
  * An implementation of the "expanded spotlight" layout, in which the spotlight
@@ -49,6 +54,7 @@ export const makeSpotlightExpandedLayout: CallLayout<
   }): ReactNode {
     useUpdateLayout();
     const pipPosition = useBehavior(model.pipPosition$);
+    const pipAspectRatio = useFloatingAspectRatio(model.pip);
 
     const onDragPip: DragCallback = useCallback(
       (drag) => {
@@ -62,7 +68,7 @@ export const makeSpotlightExpandedLayout: CallLayout<
         {model.pip && (
           <Slot
             className={classNames(styles.pip, floatingClass)}
-            style={floatingStyle(pipPosition)}
+            style={floatingStyle(pipPosition, pipAspectRatio)}
             id={model.pip.id}
             model={model.pip}
             onDrag={onDragPip}

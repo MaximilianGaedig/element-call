@@ -18,6 +18,7 @@ import { type ComponentProps } from "react";
 
 import { MediaView } from "./MediaView";
 import { mockLocalParticipant } from "../utils/test";
+import { cropVideo } from "../settings/settings";
 
 describe("MediaView", () => {
   const participant = mockLocalParticipant({});
@@ -66,6 +67,23 @@ describe("MediaView", () => {
         screen.getByRole("img", { name: "@alice:example.com" }),
       ).toBeVisible();
       expect(screen.queryByTestId("video")).toBe(null);
+    });
+  });
+
+  describe("video fit", () => {
+    test("follows the crop setting when unset", () => {
+      cropVideo.setValue(false);
+      const { unmount } = render(<MediaView {...baseProps} />);
+      expect(screen.getByTestId("videoTile").dataset.videoFit).toBe("contain");
+      unmount();
+      cropVideo.setValue(true);
+      render(<MediaView {...baseProps} />);
+      expect(screen.getByTestId("videoTile").dataset.videoFit).toBe("cover");
+    });
+    test("auto covers a video of the tile's own orientation", () => {
+      // Until the video shows its shape it counts as landscape, like the tile
+      render(<MediaView {...baseProps} videoFit="auto" />);
+      expect(screen.getByTestId("videoTile").dataset.videoFit).toBe("cover");
     });
   });
 
