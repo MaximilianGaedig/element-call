@@ -5,14 +5,18 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, test, vi } from "vitest";
 import { type Room } from "matrix-js-sdk";
 import { TooltipProvider } from "@vector-im/compound-web";
 
-import { RecordingBadge, RecordingNotice } from "./RecordingIndicator";
-import { state } from "../state/Behavior";
+import {
+  DirectingNotice,
+  RecordingBadge,
+  RecordingNotice,
+} from "./RecordingIndicator";
+import { constant, state } from "../state/Behavior";
 import { type CallViewModel } from "../state/CallViewModel/CallViewModel";
 import { type RecordingState } from "../state/Recording";
 
@@ -42,6 +46,7 @@ function setup(
   const consentFn = vi.fn().mockResolvedValue(undefined);
   const vm = {
     recording: { recording$, consent: consentFn },
+    directingRecording$: constant(false),
   } as unknown as CallViewModel;
   render(
     <TooltipProvider>
@@ -103,4 +108,32 @@ test("asks nothing of those who have already consented", () => {
   });
   expect(screen.queryByRole("dialog")).toBeNull();
   expect(screen.queryByRole("alert")).toBeNull();
+});
+
+test("warns whoever directs the recording for as long as they do", () => {
+  const recording$ = state<RecordingState | null>({
+    by: "@alice:e",
+    recorder: "@bot:e",
+    media: "audio",
+    streams: "composite",
+    eventId: "$1",
+    started: true,
+    requiresConsent: false,
+    consents: {},
+    awaitingConsent: [],
+    directorDevice: "ALICEDEV",
+  });
+  const directingRecording$ = state(true);
+  const vm = {
+    recording: { recording$ },
+    directingRecording$,
+  } as unknown as CallViewModel;
+  render(<DirectingNotice vm={vm} />);
+  expect(screen.getByRole("status")).toHaveTextContent(
+    "The recording mirrors your audio levels",
+  );
+  act(() => {
+    directingRecording$.value = false;
+  });
+  expect(screen.queryByRole("status")).toBeNull();
 });

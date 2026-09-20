@@ -345,6 +345,11 @@ export interface CallViewModel {
   recording: Recording;
   /** Captioning the call through a bot, where this deployment has one. */
   transcription: Transcription;
+  /**
+   * Whether the recording is mirroring what this device does to its
+   * layout and audio levels.
+   */
+  directingRecording$: Behavior<boolean>;
   /** Letting people dial in over SIP, where this deployment has a bridge. */
   dialIn: DialIn;
   /**
@@ -1845,10 +1850,16 @@ export function createCallViewModel$(
       layoutOps.emit({ type: "rail_width", width });
     lastRailWidth = width;
   });
+  // A screen share's audio has a volume of its own, apart from the
+  // microphone of whoever shares it
+  const remoteAudible = (peek: boolean) =>
+    [
+      ...(peek ? userMedia$.peek() : userMedia$.value),
+      ...(peek ? screenShares$.peek() : screenShares$.value),
+    ].flatMap((m) => (m.local ? [] : [m]));
   const lastVolumes = new Map<string, number>();
   scope.effect(() => {
-    for (const m of userMedia$.value) {
-      if (m.local) continue;
+    for (const m of remoteAudible(false)) {
       const volume = Math.round(m.playbackVolume$.value * 100);
       const last = lastVolumes.get(m.id);
       lastVolumes.set(m.id, volume);
@@ -1874,7 +1885,10 @@ export function createCallViewModel$(
       if (!ref) continue;
       if (pinnedIds$.peek().has(m.id))
         ops.push({ type: "pin", ...ref, pinned: true });
-      if (!m.local && m.playbackVolume$.peek() !== 1)
+    }
+    for (const m of remoteAudible(true)) {
+      const ref = tileRef(m);
+      if (ref && m.playbackVolume$.peek() !== 1)
         ops.push({
           type: "volume",
           ...ref,
@@ -1960,7 +1974,7 @@ export function createCallViewModel$(
         break;
       case "volume": {
         const media = findMedia(op);
-        if (media?.type === "user" && !media.local) {
+        if (media && media.type !== "ringing" && !media.local) {
           media.adjustPlaybackVolume(Math.max(0, Math.min(2, op.volume / 100)));
           media.commitPlaybackVolume();
         }
@@ -1968,7 +1982,7 @@ export function createCallViewModel$(
       }
     }
   };
-  createLayoutMirror(scope, matrixRoom, {
+  const layoutMirror = createLayoutMirror(scope, matrixRoom, {
     recording$: recording.recording$,
     recorderDevices$,
     ops: layoutOps,
@@ -2024,6 +2038,7 @@ export function createCallViewModel$(
     floorControl,
     recording,
     transcription,
+    directingRecording$: layoutMirror.directing$,
     dialIn,
     toggleTileEnlarged,
     togglePinned,

@@ -56,6 +56,27 @@ export const RecordingBadge: FC<BadgeProps> = ({ vm, room, floating }) => {
   );
 };
 
+/**
+ * A warning along the top of the call for as long as the recording mirrors
+ * what this device does, so whoever directs it can't forget that rearranging
+ * their own view rearranges the recording. It can't be dismissed.
+ */
+export const DirectingNotice: FC<{ vm: CallViewModel }> = ({ vm }) => {
+  const { t } = useTranslation();
+  const directing = useBehavior(vm.directingRecording$);
+  const recording = useBehavior(vm.recording.recording$);
+  if (!directing || recording === null) return null;
+  return (
+    <div className={classNames(styles.notice, styles.directing)} role="status">
+      <Text as="span" size="md" weight="semibold">
+        {recording.media === "audio"
+          ? t("recording.directing_audio")
+          : t("recording.directing")}
+      </Text>
+    </div>
+  );
+};
+
 interface NoticeProps {
   vm: CallViewModel;
   room: Room;

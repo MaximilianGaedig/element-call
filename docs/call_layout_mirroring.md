@@ -108,6 +108,11 @@ LiveKit track SID, which every subscriber sees alike). Absent, `track`
 means the device's only stream of that kind, which is all Element Call
 publishes today.
 
+A tile's audio is its own: a `camera` tile's is the device's microphone,
+and a `screen_share` tile's is the audio shared with the screen, which
+`volume` turns up or down apart from the microphone of whoever shares it.
+Where `volume` carries a `track`, it is the SID of the audio track meant.
+
 | `type`               | Fields                                                                                 | Meaning                                                                                                                                                                                                                                                                                                                                                                                      |
 | -------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `layout`             | `layout`: `grid` or `spotlight`                                                        | The director switched layout.                                                                                                                                                                                                                                                                                                                                                                |

@@ -64,7 +64,11 @@ import {
 import { ReactionsAudioRenderer } from "./ReactionAudioRenderer";
 import { ReactionsOverlay } from "./ReactionsOverlay";
 import { CallEventAudioRenderer } from "./CallEventAudioRenderer";
-import { RecordingBadge, RecordingNotice } from "./RecordingIndicator";
+import {
+  DirectingNotice,
+  RecordingBadge,
+  RecordingNotice,
+} from "./RecordingIndicator";
 // The shared timeline components are a sizeable chunk only captions need
 const CallCaptions = lazy(async () => ({
   default: (await import("./CallCaptions")).CallCaptions,
@@ -695,6 +699,7 @@ export const InCallView: FC<InCallViewProps> = ({
           localUserId={client.getUserId()!}
         />
       )}
+      {!hideRecordingWarnings && <DirectingNotice vm={vm} />}
       <RecordingReadyNotice vm={vm} client={client} />
       {/* Long enough to read, short enough not to cover the call; the
           button itself stays as it was, so the user can just try again */}
