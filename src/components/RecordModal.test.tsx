@@ -24,6 +24,8 @@ test("RecordModal is accessible and starts with the chosen options", async () =>
     <RecordModal open={true} onDismiss={onDismiss} onStart={onStart} />,
   );
   expect(await axe(container)).toHaveNoViolations();
+  // Enter should start the recording without tabbing past the options
+  expect(screen.getByRole("button", { name: "Start recording" })).toHaveFocus();
 
   await user.click(screen.getByRole("button", { name: "Cancel" }));
   expect(onDismiss).toHaveBeenCalled();
