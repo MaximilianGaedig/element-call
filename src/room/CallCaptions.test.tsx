@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { expect, test, vi } from "vitest";
 import { type MatrixEvent } from "matrix-js-sdk";
 
@@ -72,6 +72,56 @@ test("CallCaptions shows the transcript as it arrives", () => {
   screen.getByText("and more");
   expect(screen.getAllByText("Alice")).toHaveLength(1);
   expect(screen.getAllByText("Bob")).toHaveLength(2);
+});
+
+test("CallCaptions lets the user read back, and jump to the latest", () => {
+  const segments$ = state<Caption[]>([segment("$1", "Alice: hello")]);
+  const vm = {
+    transcription: { segments$, listening$: state(true) },
+  } as unknown as CallViewModel;
+  render(<CallCaptions vm={vm} />);
+  const list = screen.getByRole("list");
+  const scrollTo = vi.fn();
+  Object.assign(list, { scrollTo });
+  const geometry = (scrollTop: number): void => {
+    for (const [k, value] of Object.entries({
+      scrollHeight: 500,
+      clientHeight: 100,
+      scrollTop,
+    }))
+      Object.defineProperty(list, k, { value, configurable: true });
+  };
+
+  // At the bottom, new words are followed
+  geometry(400);
+  fireEvent.scroll(list);
+  act(() => {
+    segments$.value = [...segments$.value, segment("$2", "Bob: hi")];
+  });
+  expect(scrollTo).toHaveBeenCalledTimes(1);
+  expect(screen.queryByText("Jump to latest")).toBeNull();
+
+  // Scrolled up, they aren't, and there's a way back down
+  geometry(100);
+  fireEvent.scroll(list);
+  act(() => {
+    segments$.value = [...segments$.value, segment("$3", "Bob: more")];
+  });
+  expect(scrollTo).toHaveBeenCalledTimes(1);
+  fireEvent.click(screen.getByText("Jump to latest"));
+  expect(scrollTo).toHaveBeenCalledTimes(2);
+});
+
+test("CallCaptions resizes from its top edge", () => {
+  const vm = {
+    transcription: { segments$: state([]), listening$: state(true) },
+  } as unknown as CallViewModel;
+  render(<CallCaptions vm={vm} />);
+  const section = screen.getByRole("region");
+  section.getBoundingClientRect = (): DOMRect =>
+    ({ height: 120 }) as unknown as DOMRect;
+  fireEvent.keyDown(screen.getByRole("separator"), { key: "ArrowUp" });
+  expect(section.style.getPropertyValue("--captions-height")).toBe("140px");
 });
 
 test("Segment shows the speaker as the sender", () => {
