@@ -50,6 +50,7 @@
     "stop_decline": "Keep it going",
     "stop_title": "Stop the transcript too?",
     "title": "Live captions",
+    "unavailable": "Element Call has been updated. Reload the page to see captions.",
     "waiting": "Waiting for the transcriber…"
   },
   "common": {

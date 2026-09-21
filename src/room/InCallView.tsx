@@ -24,6 +24,7 @@ import { type MatrixRTCSession } from "matrix-js-sdk/lib/matrixrtc";
 import classNames from "classnames";
 import { logger as rootLogger } from "matrix-js-sdk/lib/logger";
 import { useTranslation } from "react-i18next";
+import { Text } from "@vector-im/compound-web";
 
 import { Header, LeftNav, RightNav, RoomHeaderInfo } from "../Header";
 import { HeaderStyle, useUrlParams } from "../UrlParams";
@@ -66,9 +67,24 @@ import { ReactionsOverlay } from "./ReactionsOverlay";
 import { CallEventAudioRenderer } from "./CallEventAudioRenderer";
 import { RecordingBadge, RecordingNotice } from "./RecordingIndicator";
 // The shared timeline components are a sizeable chunk only captions need
-const CallCaptions = lazy(async () => ({
-  default: (await import("./CallCaptions")).CallCaptions,
-}));
+const CallCaptions = lazy(async () => {
+  try {
+    return { default: (await import("./CallCaptions")).CallCaptions };
+  } catch (e) {
+    // The chunk goes when a new version is deployed over the one this page
+    // loaded. That costs the captions, not the call.
+    rootLogger.error("Failed to load the captions panel", e);
+    return { default: CaptionsUnavailable };
+  }
+});
+const CaptionsUnavailable: FC = () => {
+  const { t } = useTranslation();
+  return (
+    <Text size="sm" role="status" className={styles.captionsUnavailable}>
+      {t("captions.unavailable")}
+    </Text>
+  );
+};
 import { RecordingReadyNotice } from "./RecordingReadyNotice";
 import { ConsentDeclinedError, RecorderError } from "../state/Recording.ts";
 import { matrixRTCMode as matrixRTCModeSetting } from "../settings/settings";

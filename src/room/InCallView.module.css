@@ -114,3 +114,10 @@ spotlight tile is maximised and displaying video, apply a gradient background. *
   position: relative;
   flex-grow: 1;
 }
+
+.captionsUnavailable {
+  margin-block-start: auto;
+  padding: var(--cpd-space-3x);
+  text-align: center;
+  color: var(--cpd-color-text-secondary);
+}
