@@ -41,8 +41,9 @@ instead of scrolling away. */
   max-inline-size: 800px;
   display: flex;
   flex-direction: column;
-  justify-content: end;
   box-sizing: border-box;
+  /* The backing runs on under the footer; the text stays above it */
+  padding-block-end: var(--captions-inset, 0px);
   border: 1px solid var(--cpd-color-border-interactive-secondary);
   border-block-end: none;
   border-start-start-radius: var(--cpd-space-4x);
@@ -55,8 +56,12 @@ instead of scrolling away. */
   overflow: hidden;
 }
 
+/* The panel's top edge, with a grabber that shows when it can be used */
 .resizer {
-  flex-shrink: 0;
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 0;
+  z-index: 1;
   block-size: var(--cpd-space-3x);
   cursor: ns-resize;
   touch-action: none;
@@ -70,18 +75,27 @@ instead of scrolling away. */
   inline-size: var(--cpd-space-10x);
   block-size: var(--cpd-space-1x);
   border-radius: var(--cpd-radius-pill-effect);
-  background: var(--cpd-color-border-interactive-secondary);
+  background: var(--cpd-color-border-interactive-hovered);
+  opacity: 0;
+  transition: opacity 0.15s;
 }
 
-.resizer:hover::after,
+.panel:hover .resizer::after,
 .resizer:focus-visible::after {
-  background: var(--cpd-color-border-interactive-hovered);
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .resizer::after {
+    opacity: 1;
+  }
 }
 
 .list {
   min-block-size: 0;
   inline-size: 100%;
-  margin: 0;
+  /* The latest words sit at the bottom of a panel they don't fill */
+  margin: auto 0 0;
   padding: 0;
   list-style: none;
   overflow-y: auto;
@@ -89,7 +103,7 @@ instead of scrolling away. */
 
 .jump {
   position: absolute;
-  inset-block-end: var(--cpd-space-2x);
+  inset-block-end: calc(var(--captions-inset, 0px) + var(--cpd-space-2x));
   inset-inline-end: var(--cpd-space-3x);
 }
 

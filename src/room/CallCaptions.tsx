@@ -220,8 +220,8 @@ export const CallCaptions: FC<{
           {
             ...(height !== null && { "--captions-height": `${height}px` }),
             blockSize: `calc(var(--captions-height) + ${inset}px)`,
+            "--captions-inset": `${inset}px`,
             marginBlockEnd: -inset,
-            paddingBlockEnd: inset,
           } as CSSProperties
         }
       >
