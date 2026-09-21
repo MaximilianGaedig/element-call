@@ -21,7 +21,12 @@ import {
   TranscriptionSpeakerField,
 } from "./Transcription.ts";
 import { constant } from "./Behavior.ts";
-import { type FloorControl, TranscriptionEventType } from "./FloorControl.ts";
+import {
+  type FloorControl,
+  TranscriptionEventType,
+  TranscriptionStatusEventType,
+  TranscriptionSubscribeEventType,
+} from "./FloorControl.ts";
 import { mockEmitter, testScope } from "../utils/test.ts";
 import { E2eeType } from "../e2ee/e2eeType.ts";
 
@@ -66,7 +71,37 @@ function messageWith(
     getRelation: () => relation ?? null,
     getSender: () => sender,
     getId: () => id,
+    getTs: () => 0,
   } as unknown as MatrixEvent;
+}
+
+function toDeviceEvent(
+  type: string,
+  content: Record<string, unknown>,
+  encrypted = true,
+  sender = bot,
+): MatrixEvent {
+  return {
+    getType: () => type,
+    getContent: () => content,
+    getSender: () => sender,
+    isEncrypted: () => encrypted,
+  } as unknown as MatrixEvent;
+}
+
+/** An update of a stream with no event behind it. */
+function privateUpdate(
+  streamId: string,
+  seq: number,
+  op: string,
+  content: Record<string, unknown>,
+  encrypted = true,
+): MatrixEvent {
+  return toDeviceEvent(
+    StreamUpdateType,
+    { room_id: "!room", stream_id: streamId, seq, op, content },
+    encrypted,
+  );
 }
 
 function update(
@@ -86,22 +121,32 @@ function update(
       content: { body },
     }),
     getSender: () => sender,
+    isEncrypted: () => false,
   } as unknown as MatrixEvent;
 }
 
 function setup(history: MatrixEvent[] = []): {
   room: Room;
   sendStateEvent: ReturnType<typeof vi.fn>;
+  /** What was Olm-encrypted for the bot's devices. */
+  encrypt: ReturnType<typeof vi.fn>;
   set: (event: MatrixEvent | null) => void;
   receive: (event: MatrixEvent) => void;
   toDevice: (event: MatrixEvent) => void;
 } {
   let current: MatrixEvent | null = null;
   const sendStateEvent = vi.fn().mockResolvedValue({});
+  const encrypt = vi.fn().mockResolvedValue({});
   const client = {
     ...mockEmitter(),
     sendStateEvent,
     getUserId: () => "@alice:e",
+    getCrypto: () => ({
+      getUserDeviceInfo: async () =>
+        Promise.resolve(new Map([[bot, new Map([["BOTDEV", {}]])]])),
+      encryptToDeviceMessages: encrypt,
+    }),
+    queueToDevice: vi.fn().mockResolvedValue(undefined),
   };
   const room = {
     ...mockEmitter(),
@@ -117,6 +162,7 @@ function setup(history: MatrixEvent[] = []): {
   return {
     room,
     sendStateEvent,
+    encrypt,
     set: (event) => {
       current = event;
       room.emit(RoomStateEvent.Update, null!);
@@ -212,8 +258,8 @@ describe("createTranscription", () => {
     expect(body()).toEqual(["Alice: so what I was saying."]);
   });
 
-  it("invites the bot and sets the state, then clears it", async () => {
-    const { room, set, sendStateEvent } = setup();
+  it("subscribes this device alone, and keeps a transcript only when asked", async () => {
+    const { room, sendStateEvent, encrypt, toDevice } = setup();
     const t = createTranscription(
       testScope(),
       room,
@@ -222,27 +268,117 @@ describe("createTranscription", () => {
       bot,
       unencrypted,
     );
+    const subscription = (on: boolean): unknown[] => [
+      TranscriptionSubscribeEventType,
+      [{ userId: bot, deviceId: "BOTDEV" }],
+      { room_id: "!room", subscribe: on },
+    ];
     await t.toggle$.value!();
+    expect(t.captions$.value).toBe(true);
     expect(sendStateEvent).toHaveBeenCalledWith(
       "!room",
       "m.room.member",
       { membership: "invite" },
       bot,
     );
-    expect(sendStateEvent).toHaveBeenCalledWith(
+    expect(encrypt).toHaveBeenLastCalledWith(...subscription(true));
+    // Nothing about captions is said to the room
+    expect(sendStateEvent).toHaveBeenCalledTimes(1);
+
+    await t.setTranscript$.value!(true);
+    expect(sendStateEvent).toHaveBeenLastCalledWith(
       "!room",
       TranscriptionEventType,
       { transcriber: bot },
       slot,
     );
-    set(stateEvent("@alice:e", { transcriber: bot }, "$req"));
-    await t.toggle$.value!();
+    await t.setTranscript$.value!(false);
     expect(sendStateEvent).toHaveBeenLastCalledWith(
       "!room",
       TranscriptionEventType,
       {},
       slot,
     );
+
+    await t.toggle$.value!();
+    expect(t.captions$.value).toBe(false);
+    expect(encrypt).toHaveBeenLastCalledWith(...subscription(false));
+
+    // The transcriber may refuse, or stop
+    await t.toggle$.value!();
+    const refusal = { room_id: "!room", subscribed: false, error: "no" };
+    toDevice(toDeviceEvent(TranscriptionStatusEventType, refusal, false));
+    expect(t.captions$.value).toBe(true);
+    toDevice(toDeviceEvent(TranscriptionStatusEventType, refusal));
+    expect(t.captions$.value).toBe(false);
+  });
+
+  it("shows segments streamed to us alone, with no transcript", () => {
+    const { room, toDevice } = setup();
+    const t = createTranscription(
+      testScope(),
+      room,
+      canTranscribe,
+      slot,
+      bot,
+      unencrypted,
+    );
+    const speaker = { [TranscriptionSpeakerField]: "@bob:e" };
+    // In the clear it could be from anyone
+    toDevice(privateUpdate("s0", 1, "replace", { body: "Bob: psst" }, false));
+    expect(t.segments$.value).toEqual([]);
+    toDevice(
+      privateUpdate("s1", 1, "replace", { body: "Bob: so", ...speaker }),
+    );
+    toDevice(privateUpdate("s1", 2, "append", { body: " what I" }));
+    toDevice(privateUpdate("s1", 2, "append", { body: " what I" }));
+    toDevice(privateUpdate("s2", 1, "replace", { body: "Alice: yes" }));
+    toDevice(
+      privateUpdate("s1", 3, "replace", {
+        body: "Bob: so what I said.",
+        ...speaker,
+      }),
+    );
+    expect(
+      t.segments$.value.map(({ event, body, speaker }) => [
+        event.getId(),
+        body,
+        speaker,
+      ]),
+    ).toEqual([
+      ["s1", "Bob: so what I said.", "Bob"],
+      ["s2", "Alice: yes", undefined],
+    ]);
+  });
+
+  it("writes a deployment's captions-for-everyone default into the room", () => {
+    const { room } = setup();
+    const setTranscriptionLevel = vi.fn().mockResolvedValue(undefined);
+    const floorControl = (level: number | undefined, canSet: boolean) =>
+      ({
+        canTranscribe$: constant(true),
+        canSetRecordingLevel$: constant(canSet),
+        transcriptionLevel$: constant(level),
+        usersDefault$: constant(0),
+        setTranscriptionLevel,
+      }) as unknown as FloorControl;
+    const create = (fc: FloorControl, forEveryone: boolean) =>
+      createTranscription(
+        testScope(),
+        room,
+        fc,
+        slot,
+        bot,
+        unencrypted,
+        forEveryone,
+      );
+    create(floorControl(undefined, true), false);
+    create(floorControl(undefined, false), true);
+    // A moderator's choice stands
+    create(floorControl(50, true), true);
+    expect(setTranscriptionLevel).not.toHaveBeenCalled();
+    create(floorControl(undefined, true), true);
+    expect(setTranscriptionLevel).toHaveBeenCalledExactlyOnceWith(0);
   });
 
   it("offers no toggle without a bot or the power to ask", () => {

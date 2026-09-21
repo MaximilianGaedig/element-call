@@ -19,6 +19,7 @@ import {
 } from "../state/FloorControl.ts";
 import { type DialIn } from "../state/DialIn.ts";
 import { DialInAddresses } from "./DialInAddresses";
+import { Config } from "../config/Config";
 import { useBehavior } from "../useBehavior";
 import styles from "./ModeratorSettingsModal.module.css";
 
@@ -129,6 +130,7 @@ export const ModeratorSettingsModal: FC<Props> = ({
   const visibility = content.auditorium_visibility;
   const recordingLevel = useBehavior(floorControl.recordingLevel$);
   const canSetRecordingLevel = useBehavior(floorControl.canSetRecordingLevel$);
+  const transcriptionLevel = useBehavior(floorControl.transcriptionLevel$);
 
   // The same choice of levels Element Web offers, plus what unset means for
   // the setting, plus whatever custom level might already be set
@@ -156,6 +158,11 @@ export const ModeratorSettingsModal: FC<Props> = ({
   const recordingLevels = levelOptions(
     t("power_level.moderator"),
     recordingLevel,
+  );
+
+  const transcriptionLevels = levelOptions(
+    t("power_level.moderator"),
+    transcriptionLevel,
   );
 
   return (
@@ -230,6 +237,34 @@ export const ModeratorSettingsModal: FC<Props> = ({
             </select>
           </FieldRow>
         )}
+        {canSetRecordingLevel &&
+          Config.get().transcription_bot !== undefined && (
+            <FieldRow>
+              <label htmlFor="transcriptionLevel">
+                {t("settings.moderator.transcription_level_label")}
+              </label>
+              <select
+                id="transcriptionLevel"
+                // The transcriber hears the call, so it's moderators
+                // unless the room says otherwise
+                value={transcriptionLevel ?? 50}
+                onChange={(e): void =>
+                  void floorControl.setTranscriptionLevel(
+                    Number(e.target.value),
+                  )
+                }
+              >
+                {/* Never unset, which would bring back the config's default */}
+                {transcriptionLevels
+                  .filter(({ value }) => value !== undefined)
+                  .map(({ value, label }) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+              </select>
+            </FieldRow>
+          )}
         {setDialInMode !== null && (
           <FieldRow>
             <label htmlFor="sipDialIn">

@@ -118,9 +118,13 @@ describe("widget", () => {
       receiveEvent: [...sendRecvEvent, "m.room.message"],
       sendState,
       receiveState,
-      sendToDevice: sendRecvToDevice,
+      sendToDevice: [
+        ...sendRecvToDevice,
+        "org.matrix.rtc.transcription.subscribe",
+      ],
       receiveToDevice: [
         ...sendRecvToDevice,
+        "org.matrix.rtc.transcription.status",
         "org.matrix.msc4471.stream.update",
         "org.matrix.msc4471.stream.encrypted",
       ],

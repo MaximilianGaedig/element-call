@@ -11,7 +11,7 @@ import { type MatrixEvent } from "matrix-js-sdk";
 
 import { state } from "../state/Behavior";
 import { type CallViewModel } from "../state/CallViewModel/CallViewModel";
-import { type Caption, type TranscriptionState } from "../state/Transcription";
+import { type Caption } from "../state/Transcription";
 
 // The shared components measure themselves, which jsdom can't
 vi.stubGlobal(
@@ -42,28 +42,16 @@ function segment(
 }
 
 test("CallCaptions shows the transcript as it arrives", () => {
-  const transcription$ = state<TranscriptionState | null>(null);
   const segments$ = state<Caption[]>([]);
-  const vm = {
-    transcription: { transcription$, segments$ },
-  } as unknown as CallViewModel;
-  const { container } = render(<CallCaptions vm={vm} />);
-  expect(container).toBeEmptyDOMElement();
-
-  act(() => {
-    transcription$.value = { transcriber: "@bot:e", rootId: null };
-  });
-  screen.getByText("Waiting for the transcriber to join…");
-  act(() => {
-    transcription$.value = { ...transcription$.value!, rootId: "$root" };
-  });
-  // Nothing to say until the transcriber has words for us
-  expect(screen.queryByText("Waiting for the transcriber to join…")).toBeNull();
+  const vm = { transcription: { segments$ } } as unknown as CallViewModel;
+  render(<CallCaptions vm={vm} />);
+  screen.getByText("Waiting for the transcriber…");
 
   act(() => {
     segments$.value = [segment("$1", "Alice: hello there")];
   });
   screen.getByText("hello there");
+  expect(screen.queryByText("Waiting for the transcriber…")).toBeNull();
   // Alice's next words within a few seconds join her first
   act(() => {
     segments$.value = [

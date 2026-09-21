@@ -14,6 +14,7 @@ import {
   type FloorControlContent,
   FloorControlEventType,
   RecordingEventType,
+  TranscriptionEventType,
 } from "./FloorControl.ts";
 import { mockEmitter, testScope } from "../utils/test.ts";
 
@@ -373,6 +374,22 @@ describe("recording level", () => {
       {
         users: { "@mod:e": 100, "@alice:e": 10 },
         events: { [FloorControlEventType]: 50, [RecordingEventType]: 10 },
+      },
+      "",
+    );
+  });
+
+  it("sets who may have the call captioned the same way", async () => {
+    const { room, sendStateEvent } = setup({}, ["@mod:e"], { "@mod:e": 100 });
+    const mod = createFloorControl(testScope(), room, "@mod:e", slot);
+    expect(mod.transcriptionLevel$.value).toBeUndefined();
+    await mod.setTranscriptionLevel(0);
+    expect(sendStateEvent).toHaveBeenCalledWith(
+      "!room",
+      "m.room.power_levels",
+      {
+        users: { "@mod:e": 100 },
+        events: { [FloorControlEventType]: 50, [TranscriptionEventType]: 0 },
       },
       "",
     );

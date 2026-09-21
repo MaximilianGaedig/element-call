@@ -10,10 +10,10 @@ This is the variant Element Call and matrixrtc-sip-bridge implement for live
 captions. It keeps MSC4471's descriptor, update and completion shapes and
 drops two things:
 
-- **Subscriptions.** There are no `subscribe` or `cancel` messages. The
-  publisher decides who receives updates. For a call that is the set of
-  devices with a live MatrixRTC membership in the same call, which is already
-  known to everyone involved and is exactly the set of people watching.
+- **Subscriptions.** There are no per-stream `subscribe` or `cancel`
+  messages. The publisher decides who receives updates. For captions that
+  is the devices that subscribed to the call's captions as a whole (see
+  `call_captions.md`) and still have a live MatrixRTC membership in it.
 - **Custom encryption.** MSC4471 defines its own AES-GCM scheme keyed from
   the descriptor. Here, updates are encrypted with the publisher's ordinary
   Megolm session for the room, exactly as if they were room events. That gives
@@ -115,8 +115,11 @@ first words arrive it posts the thread reply `Speaker: words` with the
 descriptor, then appends the words that follow about twice a second, and
 when the speaker pauses it edits the reply with the complete segment. Element
 Call renders the transient body in the captions panel and replaces it with
-the edit's content when that arrives. The recipient set is the devices with
-live memberships in the call, excluding the bridge's own.
+the edit's content when that arrives. The recipient set is the devices that
+subscribed to captions.
 
-In widget mode Element Call receives neither the thread nor the to-device
-updates (see `call_captions.md`), so nothing changes there.
+When no transcript is being kept there is no descriptor event and no edit:
+the stream is all there is. Its updates name a `stream_id` rather than an
+`event_id`, the last one carries `"done": true`, and each is Olm-encrypted to
+every recipient device rather than Megolm-encrypted, so that nothing of it
+depends on the room. See `call_captions.md`.

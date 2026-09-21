@@ -103,9 +103,8 @@ export const Segment: FC<Caption & { continuation?: boolean }> = ({
 };
 
 /**
- * Live captions: the transcript the transcriber bot posts as a thread,
- * rendered as a list of message tiles above the call controls while
- * transcription is on.
+ * Live captions: what the transcriber bot hears, rendered as a list of
+ * message tiles above the call controls while this device has captions on.
  */
 const speakerOf = ({ body, speaker }: Caption): string | undefined =>
   speaker ?? /^(.+?): /.exec(body)?.[1];
@@ -121,7 +120,6 @@ export const CallCaptions: FC<{
   inset?: number;
 }> = ({ vm, ref, inset = 0 }) => {
   const { t } = useTranslation();
-  const transcription = useBehavior(vm.transcription.transcription$);
   const segments = useBehavior(vm.transcription.segments$);
   // Keep the latest words in view as they arrive. (The shared TimelineView
   // is not used here: a few lines need no virtualising, and it never leaves
@@ -131,7 +129,6 @@ export const CallCaptions: FC<{
     list.current?.scrollTo({ top: list.current.scrollHeight });
   }, [segments]);
 
-  if (transcription === null) return null;
   return (
     <I18nContext.Provider value={i18n}>
       <section
@@ -145,14 +142,11 @@ export const CallCaptions: FC<{
         }}
       >
         {segments.length === 0 ? (
-          // Blank once the transcriber is in, until it has words for us
-          transcription.rootId === null && (
-            <div className={styles.list}>
-              <Text size="sm" className={styles.waiting}>
-                {t("captions.waiting")}
-              </Text>
-            </div>
-          )
+          <div className={styles.list}>
+            <Text size="sm" className={styles.waiting}>
+              {t("captions.waiting")}
+            </Text>
+          </div>
         ) : (
           <ol className={styles.list} ref={list}>
             {segments.map((caption, i) => {

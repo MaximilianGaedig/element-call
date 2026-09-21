@@ -248,7 +248,10 @@ export async function inviteBot(
  * which the recorder isn't, and has no public way to add one, so this
  * reaches into the rust crypto's OlmMachine and its outgoing request loop.
  */
-async function trackUser(crypto: CryptoApi, userId: string): Promise<void> {
+export async function trackUser(
+  crypto: CryptoApi,
+  userId: string,
+): Promise<void> {
   const { olmMachine, outgoingRequestsManager } = crypto as unknown as {
     olmMachine?: {
       userId: { constructor: new (id: string) => unknown };

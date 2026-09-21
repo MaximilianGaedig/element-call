@@ -36,10 +36,18 @@
   },
   "call_name": "Name of call",
   "captions": {
+    "keep_body": "Captions are shown only to you. A transcript is posted to the room as a thread, for everyone in it to read.",
+    "keep_confirm": "Keep a transcript",
+    "keep_decline": "Captions only",
+    "keep_title": "Keep a transcript in the room?",
     "start_button_label": "Turn on captions",
+    "stop_body": "A transcript of this call is being kept in the room. It can carry on without your captions.",
     "stop_button_label": "Turn off captions",
+    "stop_confirm": "Stop the transcript",
+    "stop_decline": "Keep it going",
+    "stop_title": "Stop the transcript too?",
     "title": "Live captions",
-    "waiting": "Waiting for the transcriber to join…"
+    "waiting": "Waiting for the transcriber…"
   },
   "common": {
     "analytics": "Analytics",
@@ -301,6 +309,7 @@
       "none_hidden": "Nobody is hidden.",
       "recording_level_label": "Who can record the call…",
       "show": "Show",
+      "transcription_level_label": "Who can turn on captions and transcripts…",
       "unblock": "Unblock"
     },
     "moderator_settings": "Moderator settings",
