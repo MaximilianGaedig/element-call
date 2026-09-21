@@ -116,11 +116,15 @@ describe("widget", () => {
 
     expect(createRoomWidgetClientSpy.mock.calls[0][1]).toStrictEqual({
       sendEvent: [...sendEvent, ...sendRecvEvent],
-      receiveEvent: sendRecvEvent,
+      receiveEvent: [...sendRecvEvent, "m.room.message"],
       sendState,
       receiveState,
       sendToDevice: sendRecvToDevice,
-      receiveToDevice: sendRecvToDevice,
+      receiveToDevice: [
+        ...sendRecvToDevice,
+        "org.matrix.msc4471.stream.update",
+        "org.matrix.msc4471.stream.encrypted",
+      ],
       turnServers: false,
       rtcTransports: true,
       sendDelayedEvents: true,

@@ -31,6 +31,8 @@ import { LayoutEventType } from "./state/LayoutMirror.ts";
 import {
   FloorControlEventType,
   RecordingEventType,
+  StreamEncryptedType,
+  StreamUpdateType,
   TranscriptionEventType,
 } from "./state/FloorControl.ts";
 
@@ -199,11 +201,17 @@ export const initializeWidget = (
         api,
         {
           sendEvent: [...sendEvent, ...sendRecvEvent],
-          receiveEvent: sendRecvEvent,
+          // Captions are the transcriber's thread replies and their edits
+          receiveEvent: [...sendRecvEvent, EventType.RoomMessage],
           sendState,
           receiveState,
           sendToDevice: sendRecvToDevice,
-          receiveToDevice: sendRecvToDevice,
+          receiveToDevice: [
+            ...sendRecvToDevice,
+            // A caption's words as they are spoken
+            StreamUpdateType,
+            StreamEncryptedType,
+          ],
           turnServers: false,
           rtcTransports: true,
           sendDelayedEvents: true,
