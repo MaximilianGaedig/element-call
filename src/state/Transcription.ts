@@ -19,7 +19,12 @@ import {
 import { logger } from "matrix-js-sdk/lib/logger";
 
 import { type Behavior, computed, fromEvents, state } from "./Behavior.ts";
-import { type FloorControl, TranscriptionEventType } from "./FloorControl.ts";
+import {
+  type FloorControl,
+  StreamEncryptedType,
+  StreamUpdateType,
+  TranscriptionEventType,
+} from "./FloorControl.ts";
 import { type Scope } from "./Scope.ts";
 import { inviteBot, sendSharedKey } from "./Recording.ts";
 import { type EncryptionSystem } from "../e2ee/sharedKeyManagement.ts";
@@ -38,10 +43,7 @@ import { E2eeType } from "../e2ee/e2eeType.ts";
 /** Content field of a segment naming the user who spoke it. */
 export const TranscriptionSpeakerField = "org.matrix.rtc.transcription.speaker";
 
-/** An MSC4471 stream update, sent in the clear in unencrypted rooms. */
-export const StreamUpdateType = "org.matrix.msc4471.stream.update";
-/** A stream update Megolm-encrypted with the room's session. */
-const StreamEncryptedType = "org.matrix.msc4471.stream.encrypted";
+export { StreamUpdateType };
 
 interface StreamUpdate {
   room_id: string;

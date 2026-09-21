@@ -92,6 +92,10 @@ export const RecordingEventType = "org.matrix.rtc.recording";
  * captions) is asked for, gated like recording by who may send it.
  */
 export const TranscriptionEventType = "org.matrix.rtc.transcription";
+/** An MSC4471 stream update, sent in the clear in unencrypted rooms. */
+export const StreamUpdateType = "org.matrix.msc4471.stream.update";
+/** A stream update Megolm-encrypted with the room's session. */
+export const StreamEncryptedType = "org.matrix.msc4471.stream.encrypted";
 
 /** What floor control asks of a device, with the defaults applied. */
 export interface Moderation {
