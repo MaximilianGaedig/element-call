@@ -36,11 +36,13 @@
   },
   "call_name": "Name of call",
   "captions": {
+    "jump_to_latest": "Jump to latest",
     "keep_body": "Captions are shown only to you. A transcript is posted to the room as a thread, for everyone in it to read.",
     "keep_confirm": "Keep a transcript",
     "keep_decline": "Captions only",
     "keep_title": "Keep a transcript in the room?",
     "listening": "Listening…",
+    "resize": "Resize captions",
     "start_button_label": "Turn on captions",
     "stop_body": "A transcript of this call is being kept in the room. It can carry on without your captions.",
     "stop_button_label": "Turn off captions",
