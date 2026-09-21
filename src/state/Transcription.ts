@@ -107,6 +107,8 @@ export interface Transcription {
   transcription$: Behavior<TranscriptionState | null>;
   /** Whether this device is showing captions. */
   captions$: Behavior<boolean>;
+  /** Whether the transcriber has said it's captioning for this device. */
+  listening$: Behavior<boolean>;
   /** What has been said since captions were on, oldest first. */
   segments$: Behavior<Caption[]>;
   /**
@@ -156,6 +158,7 @@ export function createTranscription(
   // Segments that are only a stream, no transcript being kept
   const private$ = state<Caption[]>([]);
   const captions$ = state(false);
+  const listening$ = state(false);
   const transcription$ = computed<TranscriptionState | null>(() => {
     const event = event$.value;
     const content = event?.getContent() as
@@ -262,6 +265,7 @@ export function createTranscription(
       }>();
       if (!event.isEncrypted() || status.room_id !== room.roomId) return;
       if (status.error) logger.warn("Captions refused:", status.error);
+      listening$.value = status.subscribed === true;
       if (status.subscribed === false) captions$.value = false;
     } else if (event.getType() === StreamUpdateType) {
       applyUpdate(event.getContent<StreamUpdate>(), event.isEncrypted());
@@ -354,6 +358,7 @@ export function createTranscription(
     const on = !captions$.peek();
     // Shown at once; the transcriber's answer turns them back off
     captions$.value = on;
+    listening$.value = false;
     try {
       if (on) {
         await inviteBot(room, transcriber!);
@@ -401,6 +406,7 @@ export function createTranscription(
   return {
     transcription$,
     captions$,
+    listening$,
     segments$,
     toggle$: computed(() => (allowed$.value ? toggle : null)),
     setTranscript$: computed(() => (allowed$.value ? setTranscript : null)),

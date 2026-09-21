@@ -121,6 +121,7 @@ export const CallCaptions: FC<{
 }> = ({ vm, ref, inset = 0 }) => {
   const { t } = useTranslation();
   const segments = useBehavior(vm.transcription.segments$);
+  const listening = useBehavior(vm.transcription.listening$);
   // Keep the latest words in view as they arrive. (The shared TimelineView
   // is not used here: a few lines need no virtualising, and it never leaves
   // its loading state under React StrictMode.)
@@ -144,7 +145,7 @@ export const CallCaptions: FC<{
         {segments.length === 0 ? (
           <div className={styles.list}>
             <Text size="sm" className={styles.waiting}>
-              {t("captions.waiting")}
+              {listening ? t("captions.listening") : t("captions.waiting")}
             </Text>
           </div>
         ) : (
