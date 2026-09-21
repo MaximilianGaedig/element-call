@@ -43,15 +43,23 @@ function segment(
 
 test("CallCaptions shows the transcript as it arrives", () => {
   const segments$ = state<Caption[]>([]);
-  const vm = { transcription: { segments$ } } as unknown as CallViewModel;
+  const listening$ = state(false);
+  const vm = {
+    transcription: { segments$, listening$ },
+  } as unknown as CallViewModel;
   render(<CallCaptions vm={vm} />);
   screen.getByText("Waiting for the transcriber…");
+  // The transcriber is in, and nobody has said anything yet
+  act(() => {
+    listening$.value = true;
+  });
+  screen.getByText("Listening…");
 
   act(() => {
     segments$.value = [segment("$1", "Alice: hello there")];
   });
   screen.getByText("hello there");
-  expect(screen.queryByText("Waiting for the transcriber…")).toBeNull();
+  expect(screen.queryByText("Listening…")).toBeNull();
   // Alice's next words within a few seconds join her first
   act(() => {
     segments$.value = [

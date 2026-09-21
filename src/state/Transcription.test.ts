@@ -304,8 +304,16 @@ describe("createTranscription", () => {
     expect(t.captions$.value).toBe(false);
     expect(encrypt).toHaveBeenLastCalledWith(...subscription(false));
 
-    // The transcriber may refuse, or stop
+    // The transcriber says when it's listening, and may refuse, or stop
     await t.toggle$.value!();
+    expect(t.listening$.value).toBe(false);
+    toDevice(
+      toDeviceEvent(TranscriptionStatusEventType, {
+        room_id: "!room",
+        subscribed: true,
+      }),
+    );
+    expect(t.listening$.value).toBe(true);
     const refusal = { room_id: "!room", subscribed: false, error: "no" };
     toDevice(toDeviceEvent(TranscriptionStatusEventType, refusal, false));
     expect(t.captions$.value).toBe(true);

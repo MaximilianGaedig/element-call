@@ -40,6 +40,7 @@
     "keep_confirm": "Keep a transcript",
     "keep_decline": "Captions only",
     "keep_title": "Keep a transcript in the room?",
+    "listening": "Listening…",
     "start_button_label": "Turn on captions",
     "stop_body": "A transcript of this call is being kept in the room. It can carry on without your captions.",
     "stop_button_label": "Turn off captions",
