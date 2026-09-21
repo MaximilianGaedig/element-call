@@ -129,6 +129,8 @@ export const Default: Story = {
     recordingPending: false,
     toggleCaptions: fn(),
     captions: false,
+    transcript: false,
+    setTranscript: undefined,
     toggleBlur: fn(),
     videoBlurEnabled: true,
     hangup: fn(),

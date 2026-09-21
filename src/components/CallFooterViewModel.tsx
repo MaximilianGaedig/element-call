@@ -171,9 +171,14 @@ export function createCallFooterViewModel(
         ? undefined
         : (options?: RecordingOptions): void => void toggle(options);
     }),
-    captions$: computed(
+    captions$: computed(() => callModel.transcription.captions$.value),
+    transcript$: computed(
       () => callModel.transcription.transcription$.value !== null,
     ),
+    setTranscript$: computed(() => {
+      const set = callModel.transcription.setTranscript$.value;
+      return set === null ? undefined : (keep: boolean): void => void set(keep);
+    }),
     toggleCaptions$: computed(() => {
       const toggle = callModel.transcription.toggle$.value;
       return toggle === null ? undefined : (): void => void toggle();
@@ -238,6 +243,8 @@ export function createLobbyFooterViewModel(
       recordingPending: false,
       toggleCaptions: undefined,
       captions: false,
+      transcript: false,
+      setTranscript: undefined,
       audioEnabled: undefined,
       audioBusy: false,
       audioMutedByModerator: false,

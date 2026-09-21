@@ -353,7 +353,7 @@ export const InCallView: FC<InCallViewProps> = ({
   const [headerRef, headerBounds] = useMeasure();
   const [footerRef, footerBounds] = useMeasure();
   const [captionsRef, captionsBounds] = useMeasure();
-  const captionsOn = useBehavior(vm.transcription.transcription$) !== null;
+  const captionsOn = useBehavior(vm.transcription.captions$);
   const showFooter = useBehavior(footerVm.showFooter$);
   // The captions panel runs on underneath the footer, so that there's no
   // edge above the buttons, and keeps its text above them

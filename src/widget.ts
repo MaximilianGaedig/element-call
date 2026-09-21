@@ -34,6 +34,8 @@ import {
   StreamEncryptedType,
   StreamUpdateType,
   TranscriptionEventType,
+  TranscriptionStatusEventType,
+  TranscriptionSubscribeEventType,
 } from "./state/FloorControl.ts";
 
 // Subset of the actions in element-web
@@ -205,9 +207,11 @@ export const initializeWidget = (
           receiveEvent: [...sendRecvEvent, EventType.RoomMessage],
           sendState,
           receiveState,
-          sendToDevice: sendRecvToDevice,
+          // Captions are asked for from the transcriber, device to device
+          sendToDevice: [...sendRecvToDevice, TranscriptionSubscribeEventType],
           receiveToDevice: [
             ...sendRecvToDevice,
+            TranscriptionStatusEventType,
             // A caption's words as they are spoken
             StreamUpdateType,
             StreamEncryptedType,

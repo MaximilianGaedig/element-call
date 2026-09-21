@@ -27,6 +27,7 @@ import {
 import styles from "./CallFooter.module.css";
 import { MoreButton } from "./MoreButton";
 import { RecordModal } from "./RecordModal";
+import { TranscriptModal } from "./TranscriptModal";
 import { type RecordingOptions } from "../state/Recording";
 import {
   MediaMuteAndSwitchButton,
@@ -103,8 +104,12 @@ export interface FooterState {
   recording: boolean;
   /** Whether the recorder has yet to confirm that it's recording */
   recordingPending: boolean;
-  /** Whether the call is being captioned */
+  /** Whether this device is showing captions */
   captions: boolean;
+  /** Whether a transcript of the call is being kept in the room */
+  transcript: boolean;
+  /** Starts or stops the transcript */
+  setTranscript: ((keep: boolean) => void) | undefined;
 
   /** Also controls if the audio output button is visible */
   audioOutputSwitcher: AudioOutputSwitcher | undefined;
@@ -163,6 +168,23 @@ export const CallFooter: FC<FooterProps> = ({
   const toggleRecording = useBehavior(vm.toggleRecording$);
   const captions = useBehavior(vm.captions$);
   const toggleCaptions = useBehavior(vm.toggleCaptions$);
+  const transcript = useBehavior(vm.transcript$);
+  const setTranscript = useBehavior(vm.setTranscript$);
+  // Captions are ours alone; whether the room keeps a transcript is asked
+  // as they're turned on, and whether it carries on as they're turned off
+  const [transcriptModalOpen, setTranscriptModalOpen] = useState(false);
+  const onCaptionsClick = useMemo(
+    () =>
+      toggleCaptions === undefined
+        ? undefined
+        : (): void => {
+            toggleCaptions();
+            // On with no transcript yet, or off with one running
+            if (setTranscript !== undefined && captions === transcript)
+              setTranscriptModalOpen(true);
+          },
+    [toggleCaptions, setTranscript, captions, transcript],
+  );
   // Starting a recording warns the whole room, so it's confirmed first
   const [recordModalOpen, setRecordModalOpen] = useState(false);
   const onRecordClick = useMemo(
@@ -281,14 +303,14 @@ export const CallFooter: FC<FooterProps> = ({
     );
   }
 
-  if (toggleCaptions !== undefined) {
+  if (onCaptionsClick !== undefined) {
     buttons.push(
       <CaptionsButton
         size={buttonSize}
         key="captions"
         className={styles.captions}
         enabled={captions}
-        onClick={toggleCaptions}
+        onClick={onCaptionsClick}
         data-testid="incall_captions"
       />,
     );
@@ -335,7 +357,7 @@ export const CallFooter: FC<FooterProps> = ({
       recording={recording}
       toggleRecording={onRecordClick}
       captions={captions}
-      toggleCaptions={toggleCaptions}
+      toggleCaptions={onCaptionsClick}
       reactions={
         reactionIdentifier && reactionData && showModals
           ? { identifier: reactionIdentifier, reactionData }
@@ -403,6 +425,17 @@ export const CallFooter: FC<FooterProps> = ({
       {!hideControls && <div className={styles.buttons}>{buttons}</div>}
       {!hideControls && layoutSwitchVm && (
         <LayoutSwitch vm={layoutSwitchVm} className={styles.layout} />
+      )}
+      {setTranscript !== undefined && transcriptModalOpen && (
+        <TranscriptModal
+          open
+          keeping={transcript}
+          onDismiss={() => setTranscriptModalOpen(false)}
+          onChoose={(keep) => {
+            setTranscriptModalOpen(false);
+            if (keep !== transcript) setTranscript(keep);
+          }}
+        />
       )}
       {toggleRecording !== undefined && recordModalOpen && (
         <RecordModal

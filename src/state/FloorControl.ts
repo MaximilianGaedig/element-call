@@ -107,6 +107,12 @@ export const RecordingEventType = "org.matrix.rtc.recording";
  * captions) is asked for, gated like recording by who may send it.
  */
 export const TranscriptionEventType = "org.matrix.rtc.transcription";
+/** To-device, Olm-encrypted: a device asks the transcriber for captions. */
+export const TranscriptionSubscribeEventType =
+  "org.matrix.rtc.transcription.subscribe";
+/** To-device, Olm-encrypted: the transcriber's answer. */
+export const TranscriptionStatusEventType =
+  "org.matrix.rtc.transcription.status";
 /** An MSC4471 stream update, sent in the clear in unencrypted rooms. */
 export const StreamUpdateType = "org.matrix.msc4471.stream.update";
 /** A stream update Megolm-encrypted with the room's session. */
@@ -200,6 +206,12 @@ export interface FloorControl {
   recordingLevel$: Behavior<number | undefined>;
   /** Whether the local user may change the recording level. */
   canSetRecordingLevel$: Behavior<boolean>;
+  /**
+   * The power level set for captions, if the room sets one explicitly;
+   * otherwise it's the state default. Those who may change the recording
+   * level may change this one.
+   */
+  transcriptionLevel$: Behavior<number | undefined>;
   /** Whether the given user may change floor control. */
   isModerator$: (userId: string) => Behavior<boolean>;
   /** What floor control asks of the given device. */
@@ -240,6 +252,7 @@ export interface FloorControl {
   setAuditoriumVisibility: (level: number | undefined) => Promise<void>;
   /** Sets who may record, or unsets it to fall back to the state default. */
   setRecordingLevel: (level: number | undefined) => Promise<void>;
+  setTranscriptionLevel: (level: number | undefined) => Promise<void>;
   setSipDialIn: (mode: SipDialIn | undefined) => Promise<void>;
   setBridge: (userId: string, bridge: BridgeContent) => Promise<void>;
   /** The room's default power level for users, for labelling levels. */
@@ -492,15 +505,24 @@ export function createFloorControl(
   const canSetRecordingLevel$ = read((state) =>
     state.maySendStateEvent(EventType.RoomPowerLevels, localUserId),
   );
-  const setRecordingLevel = async (
+  const setEventLevel = async (
+    eventType: string,
     level: number | undefined,
   ): Promise<void> => {
     const content = powerLevels$.peek();
     const events = { ...content.events };
-    if (level === undefined) delete events[RecordingEventType];
-    else events[RecordingEventType] = level;
+    if (level === undefined) delete events[eventType];
+    else events[eventType] = level;
     await sendPowerLevels({ ...content, events });
   };
+  const setRecordingLevel = async (level: number | undefined): Promise<void> =>
+    setEventLevel(RecordingEventType, level);
+  const transcriptionLevel$ = computed(
+    () => powerLevels$.value.events?.[TranscriptionEventType],
+  );
+  const setTranscriptionLevel = async (
+    level: number | undefined,
+  ): Promise<void> => setEventLevel(TranscriptionEventType, level);
 
   return {
     content$,
@@ -509,6 +531,7 @@ export function createFloorControl(
     canTranscribe$,
     recordingLevel$,
     canSetRecordingLevel$,
+    transcriptionLevel$,
     isModerator$: (userId) => computed(() => mayModerate$.value(userId)),
     moderation$: (id, userId) =>
       computed(() => {
@@ -607,6 +630,7 @@ export function createFloorControl(
     setAuditoriumVisibility: async (level) =>
       setField("auditorium_visibility", level),
     setRecordingLevel,
+    setTranscriptionLevel,
     setSipDialIn: async (mode) => setField("sip_dial_in", mode),
     setBridge: async (userId, bridge) =>
       setField("bridges", { ...content$.peek().bridges, [userId]: bridge }),

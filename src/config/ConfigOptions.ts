@@ -112,6 +112,17 @@ export interface ConfigOptions {
   transcription_bot?: string;
 
   /**
+   * Whether everyone in a call may turn on captions (and keep a transcript),
+   * in rooms that don't say. Captions are made by the transcription bot,
+   * which has to be able to hear the call, so by default only those who can
+   * send state (moderators) may ask for them. The bot goes by the room's
+   * power levels, so this default is written to a room's power levels by
+   * the first user to join a call there who is able to, and moderators can
+   * change it from there in the moderator settings.
+   */
+  transcription_for_everyone?: boolean;
+
+  /**
    * The user ID of a SIP bridge bot, such as a matrixrtc-sip-bridge.
    * Moderators can allow dial-in from their settings, which invites the bot
    * into the room and asks it for the call's SIP addresses. Unset hides
