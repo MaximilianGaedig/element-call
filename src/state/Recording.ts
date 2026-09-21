@@ -440,7 +440,8 @@ export function createRecording(
       {
         eventId: event.getId()!,
         msgtype,
-        body: content.body ?? "",
+        // With a caption (MSC2530) the body is the caption, not the name
+        body: content.filename ?? content.body ?? "",
         file,
         link,
         thumbnail: mediaFile(
