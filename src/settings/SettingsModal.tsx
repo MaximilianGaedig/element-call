@@ -27,6 +27,7 @@ import {
 } from "./settings";
 import { PreferencesSettingsTab } from "./PreferencesSettingsTab";
 import { DialInAddresses } from "./DialInAddresses";
+import { type DialInAddresses as DialInAddressesInfo } from "../state/DialIn";
 import { Slider } from "../Slider";
 import { DeviceSelection } from "./DeviceSelection";
 import { useTrackProcessor } from "../livekit/TrackProcessorContext";
@@ -65,8 +66,8 @@ interface Props {
   }[];
   /** Only available while in a call. Used by the developer tab. */
   developerSettingsVm?: ViewModel<DeveloperSettingsSnapshot>;
-  /** SIP addresses for dialling into the call, if a moderator allowed it. */
-  dialIn?: string[];
+  /** Addresses for dialling into the call, if a moderator allowed it. */
+  dialIn?: DialInAddressesInfo;
 }
 
 export const defaultSettingsTab: SettingsTab = "audio";
@@ -244,7 +245,7 @@ export const SettingsModal: FC<Props> = ({
     content: (
       <>
         <Text>{t("settings.dial_in.introduction")}</Text>
-        <DialInAddresses addresses={dialIn ?? []} />
+        <DialInAddresses addresses={dialIn ?? { sip: [], phone: [] }} />
       </>
     ),
   };

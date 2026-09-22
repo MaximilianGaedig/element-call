@@ -285,6 +285,7 @@
     },
     "dial_in": {
       "introduction": "Dial one of these addresses from a SIP phone or app to join this call.",
+      "phone_code": "and enter code {{code}} followed by #",
       "tab_title": "Dial in",
       "waiting": "Waiting for the bridge to say how to dial in…"
     },

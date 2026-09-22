@@ -10,24 +10,32 @@ import { useTranslation } from "react-i18next";
 import { Text } from "@vector-im/compound-web";
 
 import styles from "./DialInAddresses.module.css";
+import { type DialInAddresses as Addresses } from "../state/DialIn.ts";
 
 interface Props {
-  addresses: string[];
+  addresses: Addresses;
 }
 
-/** The SIP addresses that dial into the call, or that they're still coming */
 export const DialInAddresses: FC<Props> = ({ addresses }) => {
   const { t } = useTranslation();
-  return addresses.length === 0 ? (
+  return addresses.sip.length === 0 && addresses.phone.length === 0 ? (
     <Text size="sm" className={styles.waiting}>
       {t("settings.dial_in.waiting")}
     </Text>
   ) : (
     <ul className={styles.list}>
-      {addresses.map((address) => (
+      {addresses.sip.map((address) => (
         <li key={address}>
           <Text as="span" size="sm">
             <a href={address}>{address}</a>
+          </Text>
+        </li>
+      ))}
+      {addresses.phone.map(({ number, code }) => (
+        <li key={number}>
+          <Text as="span" size="sm">
+            <a href={number}>{number.replace(/^tel:/, "")}</a>{" "}
+            {t("settings.dial_in.phone_code", { code })}
           </Text>
         </li>
       ))}

@@ -78,7 +78,12 @@ export interface FloorControlContent {
 export type SipDialIn = "audio" | "video";
 
 export interface BridgeContent {
+  /** SIP URIs that dial straight into the call. */
   sip?: string[];
+  /** Phone numbers (`tel:` URIs) of the bridge's dial-in menu. */
+  tel?: string[];
+  /** The code to enter on that menu to reach this call. */
+  code?: string;
 }
 
 /**
