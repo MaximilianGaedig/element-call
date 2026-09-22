@@ -122,7 +122,7 @@ services:
   #   git clone -b matthew/as https://github.com/element-hq/matrix-rust-sdk-private ../matrix-rust-sdk-private
   sipbridge:
     profiles: [sipbridge]
-    image: ghcr.io/element-hq/matrixrtc-sip-bridge:d274f27
+    image: ghcr.io/element-hq/matrixrtc-sip-bridge:b845d04-arm64
     build:
       context: ../matrixrtc-sip-bridge
       additional_contexts:
@@ -235,11 +235,16 @@ services:
     networks:
       - ecbackend
 
+  # Loads the SIP calling module (dialler + "call via SIP" buttons) from a
+  # checkout of element-modules-private next to this repo; build it first:
+  #   cd ../element-modules-private && pnpm install && \
+  #     pnpm --filter @element-hq/element-web-module-sip-calling prepare
   element-web:
     image: ghcr.io/element-hq/element-web:develop
     pull_policy: always
     volumes:
       - ./backend/ew.test.config.json:/app/config.json:Z
+      - ../element-modules-private/modules/sip-calling/element-web/lib/index.js:/modules/sip-calling.js:Z
     environment:
       ELEMENT_WEB_PORT: 8081
     ports:

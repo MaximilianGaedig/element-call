@@ -22,6 +22,15 @@ public_ip = "127.0.0.1"
 [sip.auth]
 enabled = false
 
+# 1:1 calls out of Matrix (the Element Web sip-calling module's dialler and
+# "call via SIP" buttons). There is no trunk in the dev stack, so numbers
+# loop back to the bridge itself and go nowhere useful; dial a Matrix user
+# through the bridge's own inbound side instead, e.g.
+# `bob_synapse.m.localhost@127.0.0.1:5062`, which rings @bob in a DM.
+[sip.outbound]
+domain = "127.0.0.1:5062"
+ring_timeout_secs = 60
+
 [bridge]
 uri_prefix = "room"
 livekit_service_url = "https://matrix-rtc.m.localhost/livekit/jwt"
