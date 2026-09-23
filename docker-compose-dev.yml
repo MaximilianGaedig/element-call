@@ -242,7 +242,7 @@ services:
   element-web:
     # element-web#35153 (module call options), built from that branch;
     # back to :develop once it lands
-    image: ghcr.io/element-hq/element-web-experiment:213b1923b0
+    image: ghcr.io/element-hq/element-web-experiment:5e035cf568
     volumes:
       - ./backend/ew.test.config.json:/app/config.json:Z
       - ../element-modules-private/modules/sip-calling/element-web/lib:/modules/sip-calling:Z
