@@ -122,7 +122,7 @@ services:
   #   git clone -b matthew/as https://github.com/element-hq/matrix-rust-sdk-private ../matrix-rust-sdk-private
   sipbridge:
     profiles: [sipbridge]
-    image: ghcr.io/element-hq/matrixrtc-sip-bridge:bd9ce9f-arm64
+    image: ghcr.io/element-hq/matrixrtc-sip-bridge:4243301-arm64
     build:
       context: ../matrixrtc-sip-bridge
       additional_contexts:
