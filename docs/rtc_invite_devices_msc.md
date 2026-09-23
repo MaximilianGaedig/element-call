@@ -94,8 +94,9 @@ replaces an earlier one:
     Unlike `m.rtc.decline` it is not a deliberate rejection by the user.
   - `unreachable`: the endpoint could not be reached (SIP `404`/`408`/`480`/
     `503`, no registered device).
-- `reason` (string, optional): free-text detail for diagnostics; clients
-  SHOULD NOT display it verbatim.
+- `reason` (string, optional): free-text detail for diagnostics (the SIP
+  status line, say). Clients MAY show it alongside the state so a failed
+  call can be diagnosed from the timeline; they SHOULD NOT interpret it.
 
 Pickup and rejection stay as they are in MSC4075: a device that answers
 joins the slot; one that declines sends `m.rtc.decline`. A `busy` or
