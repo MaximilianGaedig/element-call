@@ -253,7 +253,7 @@ services:
     pull_policy: always
     volumes:
       - ./backend/ew.test.config.json:/app/config.json:Z
-      - ../element-modules-private/modules/sip-calling/element-web/lib/index.js:/modules/sip-calling.js:Z
+      - ../element-modules-private/modules/sip-calling/element-web/lib:/modules/sip-calling:Z
     environment:
       ELEMENT_WEB_PORT: 8081
     ports:
