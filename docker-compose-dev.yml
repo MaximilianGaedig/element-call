@@ -246,6 +246,9 @@ services:
     volumes:
       - ./backend/ew.test.config.json:/app/config.json:Z
       - ../element-modules-private/modules/sip-calling/element-web/lib:/modules/sip-calling:Z
+      # element-web#35168: no-cache for /modules, so a rebuilt module shows
+      # up on a plain reload
+      - ./backend/ew-nginx.conf.template:/etc/nginx/templates/default.conf.template:Z
     environment:
       ELEMENT_WEB_PORT: 8081
     ports:
