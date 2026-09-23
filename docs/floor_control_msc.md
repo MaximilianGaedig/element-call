@@ -146,9 +146,15 @@ The bridge replies to all of the sender's devices with
 ```json
 {
   "room_id": "!call:example.org",
-  "sip": ["sip:room-1a2b3c@sip.example.org:5062"]
+  "sip": ["sip:room_12345678@sip.example.org:5062"],
+  "tel": ["tel:+442081234567"],
+  "code": "12345678"
 }
 ```
+
+`sip` lists URIs that dial straight into the call. `tel` (optional) lists
+phone numbers that reach the bridge's dial-in menu, where `code` is what to
+key in to be joined to this call.
 
 The client then records the reply under `bridges` in floor control. The
 bridge must be a member of the room (or invited to it) before it will answer,

@@ -36,7 +36,7 @@ describe("createDialIn", () => {
       setBridge: vi.fn().mockResolvedValue(undefined),
     } as unknown as FloorControl;
     const dialIn = createDialIn(testScope(), room, floorControl, bridge);
-    expect(dialIn.addresses$.value).toEqual(["sip:a@b"]);
+    expect(dialIn.addresses$.value).toEqual({ sip: ["sip:a@b"], phone: [] });
 
     await dialIn.setMode$.value!("video");
     expect(floorControl.setSipDialIn).toHaveBeenCalledWith("video");

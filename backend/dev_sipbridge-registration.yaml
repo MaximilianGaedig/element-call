@@ -13,5 +13,7 @@ namespaces:
   aliases: []
   rooms: []
 rate_limited: false
+# Third-party lookup: tel:/sip: URIs resolve to @_sip_… virtual users
+protocols: [sip]
 de.sorunome.msc2409.push_ephemeral: true
 org.matrix.msc3202: true

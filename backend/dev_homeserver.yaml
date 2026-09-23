@@ -48,6 +48,9 @@ experimental_features:
   msc2409_to_device_messages_enabled: true
   msc3202_device_masquerading: true
   msc3202_transaction_extensions: true
+  # Extended profiles: the sip-calling Element Web module reads a user's
+  # phone number from the io.element.phone profile field
+  msc4133_enabled: true
 
 # The maximum allowed duration by which sent events can be delayed, as
 # per MSC4140. Must be a positive value if set.  Defaults to no

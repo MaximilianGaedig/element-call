@@ -26,13 +26,23 @@ export const BridgeInfoEventType = "org.matrix.rtc.bridge_info";
 export interface BridgeInfoContent {
   room_id: string;
   sip?: string[];
+  tel?: string[];
+  code?: string;
+}
+
+/** How to reach the call from outside, gathered from every bridge. */
+export interface DialInAddresses {
+  /** SIP URIs that dial straight into the call. */
+  sip: string[];
+  /** Phone numbers with the code to key into the bridge's menu. */
+  phone: { number: string; code: string }[];
 }
 
 export interface DialIn {
   /** Whether dial-in is allowed, and with what media. */
   mode$: Behavior<SipDialIn | undefined>;
-  /** The SIP addresses that dial into the call, from every bridge. */
-  addresses$: Behavior<string[]>;
+  /** The addresses that dial into the call, from every bridge. */
+  addresses$: Behavior<DialInAddresses>;
   /**
    * Allows or forbids dial-in. Null if the local user may not moderate or
    * no bridge is configured. Allowing it invites the bridge and asks it for
@@ -48,11 +58,17 @@ export function createDialIn(
   bridge: string | undefined,
 ): DialIn {
   const mode$ = computed(() => floorControl.content$.value.sip_dial_in);
-  const addresses$ = computed(() =>
-    Object.values(floorControl.content$.value.bridges ?? {}).flatMap(
-      (b) => b.sip ?? [],
-    ),
-  );
+  const addresses$ = computed((): DialInAddresses => {
+    const bridges = Object.values(floorControl.content$.value.bridges ?? {});
+    return {
+      sip: bridges.flatMap((b) => b.sip ?? []),
+      phone: bridges.flatMap((b) =>
+        b.code === undefined
+          ? []
+          : (b.tel ?? []).map((number) => ({ number, code: b.code! })),
+      ),
+    };
+  });
 
   // Only the configured bridge is believed, and only about this room; the
   // answer is written into floor control by whoever asked (a moderator)
@@ -63,9 +79,14 @@ export function createDialIn(
       event.getSender() !== bridge
     )
       return;
-    const { room_id: roomId, sip } = event.getContent<BridgeInfoContent>();
+    const {
+      room_id: roomId,
+      sip,
+      tel,
+      code,
+    } = event.getContent<BridgeInfoContent>();
     if (roomId === room.roomId && floorControl.canModerate$.peek())
-      void floorControl.setBridge(bridge, { sip: sip ?? [] });
+      void floorControl.setBridge(bridge, { sip: sip ?? [], tel, code });
   };
   room.client.on(ClientEvent.ToDeviceEvent, onToDevice);
   scope.onEnd(() => room.client.off(ClientEvent.ToDeviceEvent, onToDevice));

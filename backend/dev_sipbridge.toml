@@ -19,8 +19,26 @@ public_host = "localhost"
 # this to a reachable address and publish the RTP ports.
 public_ip = "127.0.0.1"
 
+# Callers allowed to use the [sip.dids] numbers (see below)
+trusted_trunks = ["127.0.0.0/8", "172.16.0.0/12"]
+
 [sip.auth]
 enabled = false
+
+# 1:1 calls out of Matrix (the Element Web sip-calling module's dialler and
+# "call via SIP" buttons). There is no trunk in the dev stack, so numbers
+# loop back to the bridge itself and go nowhere useful; dial a Matrix user
+# through the bridge's own inbound side instead, e.g.
+# `bob_synapse.m.localhost@127.0.0.1:5062`, which rings @bob in a DM.
+[sip.outbound]
+domain = "127.0.0.1:5062"
+ring_timeout_secs = 60
+
+# Conference dial-in menu: sip:ivr@localhost:5062, or the pretend phone
+# number below when called from inside the docker network (the number
+# is what Element Call shows next to the room's 8-digit code).
+[sip.dids]
+"+442081234567" = "ivr"
 
 [bridge]
 uri_prefix = "room"
